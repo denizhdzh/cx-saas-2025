@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://toolslash.web.app/sitemap.xml
+Sitemap: https://us-central1-toolslash.cloudfunctions.net/generateSitemap
+Sitemap: https://generatesitemap-3ouhy3su2q-uc.a.run.app
+
+# Crawl-delay
+Crawl-delay: 1
+
+# Disallow admin pages
+Disallow: /admin
+Disallow: /admin/* 

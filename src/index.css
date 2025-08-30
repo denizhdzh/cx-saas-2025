@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-stone-900 text-stone-200 antialiased;
+  }
+  /* Add more base styles here */
+}
+
+@layer components {
+  .form-input,
+  .form-textarea,
+  .form-select {
+    @apply w-full px-3 py-2.5 bg-stone-800/60 border border-stone-700 rounded-lg text-stone-100 placeholder-stone-500 focus:border-lime-500 focus:ring-lime-500 focus:outline-none text-sm transition-colors shadow-sm;
+  }
+  .form-textarea {
+    @apply resize-y min-h-[80px];
+  }
+  .form-select {
+    @apply appearance-none pr-8 bg-no-repeat;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a3a3a3' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-size: 1.5em 1.5em;
+  }
+  .section-title {
+    @apply text-xl font-semibold text-stone-100 border-b border-stone-700 pb-2 mb-6;
+  }
+  /* Add more component styles here */
+}
