@@ -205,53 +205,146 @@ const scrapeToolDetails = async (browser, toolUrl) => {
     // Wait for content to load
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Extract tool information
+    // Extract tool information using updated selectors
     const toolData = await page.evaluate(() => {
-      // Tool name
-      const nameElement = document.querySelector('h1[data-sentry-component="LegacyText"]');
-      const name = nameElement ? nameElement.textContent.trim() : '';
-
-      // Tagline
-      const taglineElement = document.querySelector('h2.text-18.text-gray-700');
-      const tagline = taglineElement ? taglineElement.textContent.trim() : '';
-
-      // Description
-      const descElement = document.querySelector('[data-sentry-component="Description"] p');
-      const description = descElement ? descElement.textContent.trim() : '';
-
-      // Website URL
-      const websiteElement = document.querySelector('[data-test="visit-website-button"]');
-      const websiteUrl = websiteElement ? websiteElement.href : '';
-
-      // Categories
-      const categoryElements = document.querySelectorAll('[data-sentry-component="Categories"] a[href*="/categories/"]');
-      const categories = Array.from(categoryElements).map(el => {
-        const href = el.getAttribute('href');
-        return href ? href.split('/categories/')[1] : '';
-      }).filter(cat => cat);
-
-      // Logo
-      let logoUrl = '';
-      const logoElement = document.querySelector('img[data-test*="-thumbnail"]');
-      if (logoElement) {
-        logoUrl = logoElement.src;
-      } else {
-        // Fallback to gallery image
-        const galleryElement = document.querySelector('[data-sentry-component="Gallery"] img');
-        if (galleryElement) {
-          logoUrl = galleryElement.src;
+      // Tool name - try multiple selectors
+      let name = '';
+      const nameSelectors = [
+        'h1[data-test*="product-name"]',
+        'h1.text-24',
+        'h1.text-32',
+        'h1:first-of-type',
+        '[data-test*="name"] h1'
+      ];
+      
+      for (const selector of nameSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          name = element.textContent.trim();
+          break;
         }
       }
 
-      // Pricing
-      const pricingElement = document.querySelector('[data-test="pricing-type"]');
+      // Tagline - try multiple selectors
+      let tagline = '';
+      const taglineSelectors = [
+        '[data-test*="tagline"]',
+        'h2.text-18',
+        'h2.text-16', 
+        'p.text-18',
+        '.tagline'
+      ];
+      
+      for (const selector of taglineSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          tagline = element.textContent.trim();
+          break;
+        }
+      }
+
+      // Description - try multiple selectors
+      let description = '';
+      const descSelectors = [
+        '[data-test*="description"] p',
+        '[data-sentry-component="Description"] p',
+        '.description p',
+        'div[class*="description"] p'
+      ];
+      
+      for (const selector of descSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          description = element.textContent.trim();
+          break;
+        }
+      }
+
+      // Website URL - try multiple selectors
+      let websiteUrl = '';
+      const urlSelectors = [
+        'a[data-test*="website"]',
+        'a[data-test*="visit"]',
+        'a[href*="http"]:not([href*="producthunt.com"])',
+        '.website-link a'
+      ];
+      
+      for (const selector of urlSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.href) {
+          websiteUrl = element.href;
+          break;
+        }
+      }
+
+      // Categories - try multiple approaches
+      const categories = [];
+      const categorySelectors = [
+        'a[href*="/topics/"]',
+        'a[href*="/categories/"]', 
+        '[data-test*="topic"] a',
+        '.topics a'
+      ];
+      
+      for (const selector of categorySelectors) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          Array.from(elements).forEach(el => {
+            const href = el.getAttribute('href');
+            if (href) {
+              let category = '';
+              if (href.includes('/topics/')) {
+                category = href.split('/topics/')[1];
+              } else if (href.includes('/categories/')) {
+                category = href.split('/categories/')[1];
+              }
+              if (category && !categories.includes(category)) {
+                categories.push(category);
+              }
+            }
+          });
+          if (categories.length > 0) break;
+        }
+      }
+
+      // Logo - try multiple selectors
+      let logoUrl = '';
+      const logoSelectors = [
+        'img[alt*="logo"]',
+        'img[data-test*="thumbnail"]',
+        'img[data-test*="logo"]',
+        '.product-image img',
+        'img:first-of-type'
+      ];
+      
+      for (const selector of logoSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.src) {
+          logoUrl = element.src;
+          break;
+        }
+      }
+
+      // Pricing - try multiple approaches
       let pricingModel = '';
-      if (pricingElement) {
-        const pricingText = pricingElement.textContent.trim();
-        if (pricingText === 'Payment Required') {
-          pricingModel = 'Paid';
-        } else {
-          pricingModel = pricingText;
+      const pricingSelectors = [
+        '[data-test*="pricing"]',
+        '.pricing',
+        '.price'
+      ];
+      
+      for (const selector of pricingSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          const pricingText = element.textContent.trim();
+          if (pricingText.toLowerCase().includes('free')) {
+            pricingModel = 'Free';
+          } else if (pricingText.toLowerCase().includes('paid') || pricingText.toLowerCase().includes('payment')) {
+            pricingModel = 'Paid';
+          } else {
+            pricingModel = pricingText;
+          }
+          break;
         }
       }
 
@@ -306,22 +399,61 @@ const scrapeProductHuntUrls = async () => {
     await page.setViewport({ width: 1200, height: 800 });
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
     
-    // Navigate to Product Hunt homepage
-    await page.goto('https://www.producthunt.com', { 
+    // Navigate to Product Hunt today's page to get only today's launches
+    await page.goto(`https://www.producthunt.com/`, { 
       waitUntil: 'domcontentloaded', 
       timeout: 60000 
     });
 
     // Wait for content to load
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // Extract tool links from the main page
+    // First, try to click "See all of today's products" button to load more
+    try {
+      // Wait for the button to be present
+      await page.waitForSelector('button', { timeout: 5000 });
+      
+      // Find and click the "See all" button
+      const seeAllButton = await page.evaluateHandle(() => {
+        const buttons = document.querySelectorAll('button');
+        for (let button of buttons) {
+          if (button.textContent && button.textContent.includes('See all of today')) {
+            return button;
+          }
+        }
+        return null;
+      });
+      
+      if (seeAllButton && seeAllButton.asElement()) {
+        logger.info('🔽 Clicking "See all of today\'s products" button...');
+        await seeAllButton.asElement().click();
+        // Wait for new content to load
+        await new Promise(resolve => setTimeout(resolve, 4000));
+        logger.info('✅ Successfully clicked "See all" button, loading more tools...');
+      } else {
+        logger.info('ℹ️ "See all" button not found, proceeding with visible tools');
+      }
+    } catch (error) {
+      logger.info('ℹ️ No "See all" button found or failed to click, proceeding with visible tools:', error.message);
+    }
+
+    // Extract tool links from today's launches
     const toolLinks = await page.evaluate(() => {
-      const sections = document.querySelectorAll('section[data-test^="post-item-"]');
+      // Find the homepage today section
+      const todaySection = document.querySelector('[data-test="homepage-section-today"]');
+      
+      let sections;
+      if (todaySection) {
+        sections = todaySection.querySelectorAll('section[data-test^="post-item-"]');
+      } else {
+        // Fallback to all post-item sections
+        sections = document.querySelectorAll('section[data-test^="post-item-"]');
+      }
+      
       const links = [];
       
-      // Get first 30 tools only
-      const maxTools = Math.min(sections.length, 30);
+      // Get up to 20 tools after clicking "see more"
+      const maxTools = Math.min(sections.length, 20);
       
       for (let i = 0; i < maxTools; i++) {
         const section = sections[i];
@@ -398,12 +530,20 @@ const processToolUrls = async (toolUrls) => {
             if (cleanWebsiteUrl) {
               try {
                 logger.info(`📸 Taking screenshot for: ${toolData.name} - ${cleanWebsiteUrl}`);
+                
+                // Add delay before screenshot to be respectful
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
                 screenshotUrl = await takeScreenshot(cleanWebsiteUrl, `scrape_${Date.now()}`);
                 if (screenshotUrl) {
                   logger.info(`📸 ✅ Screenshot taken: ${screenshotUrl}`);
                 } else {
                   logger.warn(`📸 ⚠️ Screenshot failed for: ${toolData.name}`);
                 }
+                
+                // Add delay after screenshot
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
               } catch (screenshotError) {
                 logger.error(`📸 ❌ Screenshot error for ${toolData.name}:`, screenshotError.message);
               }
@@ -437,8 +577,10 @@ const processToolUrls = async (toolUrls) => {
         logger.error(`❌ Error processing ${toolUrl}:`, error.message);
       }
       
-      // Small delay between tools
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Proper delay between tools to avoid overwhelming servers (3-5 seconds)
+      const delay = Math.floor(Math.random() * 3000) + 3000; // 3-6 seconds random
+      logger.info(`⏳ Waiting ${Math.round(delay/1000)} seconds before next tool...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
 
     await browser.close();
@@ -863,37 +1005,58 @@ exports.addMissingSlugs = onCall(async (request) => {
   }
 });
 
-exports.generateSitemap = functions.https.onRequest(async (req, res) => {
+exports.generateSitemap = onRequest(async (req, res) => {
   try {
     // CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
     res.set('Content-Type', 'application/xml');
+    res.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
 
-    const baseUrl = 'https://toolslash.com';
+    const baseUrl = 'https://ittools.dev';
     
-    // Get all approved/verified tools from Firestore (including old tools without status)
-    const toolsSnapshot = await admin.firestore()
-      .collection('tools')
-      .get();
-    
-    // Filter tools on client side to include approved, verified, or old tools without status
-    const validTools = [];
-    toolsSnapshot.forEach(doc => {
-      const tool = doc.data();
-      // Include if: status is approved/verified, OR no status field (old tools), OR has a slug (published)
-      if (tool.status === 'approved' || tool.status === 'verified' || !tool.status || tool.slug) {
-        validTools.push({ id: doc.id, ...tool });
-      }
-    });
+    // IT Tools - Static tools list
+    const itTools = [
+      // Developer Essentials
+      { id: 'json-formatter', name: 'JSON Formatter', category: 'Developer' },
+      { id: 'json-prettify', name: 'JSON Prettify', category: 'Developer' },
+      { id: 'xml-prettify', name: 'XML Prettify', category: 'Developer' },
+      { id: 'base64', name: 'Base64 Encoder', category: 'Developer' },
+      { id: 'url-encoder', name: 'URL Encoder', category: 'Developer' },
+      { id: 'hash-generator', name: 'Hash Generator', category: 'Developer' },
+      { id: 'hash-text', name: 'Hash Text', category: 'Developer' },
+      { id: 'jwt-decoder', name: 'JWT Decoder', category: 'Developer' },
+      { id: 'uuid-generator', name: 'UUID Generator', category: 'Developer' },
+      { id: 'token-generator', name: 'Token Generator', category: 'Developer' },
+      { id: 'password-generator', name: 'Password Generator', category: 'Security' },
+      { id: 'qr-generator', name: 'QR Code Generator', category: 'Utility' },
+      { id: 'color-picker', name: 'Color Picker', category: 'Design' },
+      { id: 'html-entities', name: 'HTML Entity Encoder', category: 'Developer' },
+      // Text & Data Tools
+      { id: 'text-diff', name: 'Text Diff', category: 'Text' },
+      { id: 'json-diff', name: 'JSON Diff', category: 'Developer' },
+      { id: 'word-counter', name: 'Word Counter', category: 'Text' },
+      { id: 'lorem-ipsum', name: 'Lorem Ipsum', category: 'Text' },
+      { id: 'markdown-html', name: 'Markdown to HTML', category: 'Converter' },
+      { id: 'regex-tester', name: 'Regex Tester', category: 'Developer' },
+      { id: 'sql-formatter', name: 'SQL Formatter', category: 'Developer' },
+      // Format Converters
+      { id: 'json-xml', name: 'JSON to XML', category: 'Converter' },
+      { id: 'xml-json', name: 'XML to JSON', category: 'Converter' },
+      { id: 'json-csv', name: 'JSON to CSV', category: 'Converter' },
+      { id: 'datetime-converter', name: 'DateTime Converter', category: 'Utility' },
+      // AI-Powered Premium Tools
+      { id: 'ocr', name: 'OCR (Image to Text)', category: 'AI' },
+      { id: 'code-generator', name: 'AI Code Generator', category: 'AI' },
+      { id: 'regex-generator', name: 'AI Regex Generator', category: 'AI' },
+      { id: 'sql-builder', name: 'AI SQL Builder', category: 'AI' }
+    ];
 
-    // Get unique categories
+    // Get unique categories from IT tools
     const categoriesSet = new Set();
-    validTools.forEach(tool => {
-      if (tool.categories) {
-        tool.categories.forEach(cat => categoriesSet.add(cat));
-      }
+    itTools.forEach(tool => {
+      categoriesSet.add(tool.category);
     });
     
     // Get actual search terms from Firestore that have been searched
@@ -909,11 +1072,16 @@ exports.generateSitemap = functions.https.onRequest(async (req, res) => {
       actualSearchTerms = searchTermsSnapshot.docs.map(doc => doc.data().term);
     } catch (error) {
       console.error('Error fetching search terms:', error);
-      // Fallback to manual popular terms if Firestore fails
+      // IT Tools specific search terms
       actualSearchTerms = [
-        'ai tools', 'project management', 'design software', 'analytics', 
-        'marketing automation', 'productivity', 'collaboration',
-        'design tools', 'development tools', 'ai', 'automation'
+        'json formatter', 'base64 encoder', 'url encoder', 'hash generator',
+        'uuid generator', 'password generator', 'qr code generator', 'color picker',
+        'text diff', 'word counter', 'lorem ipsum', 'regex tester',
+        'json to xml', 'xml to json', 'json to csv', 'datetime converter',
+        'jwt decoder', 'html entities', 'sql formatter', 'markdown to html',
+        'developer tools', 'online tools', 'free tools', 'web tools',
+        'json tools', 'text tools', 'converter tools', 'hash tools',
+        'encoding tools', 'ai tools', 'it tools', 'utility tools'
       ];
     }
 
@@ -949,13 +1117,38 @@ exports.generateSitemap = functions.https.onRequest(async (req, res) => {
   
 `;
 
-    // Add category pages
-    Array.from(categoriesSet).forEach(category => {
-      const encodedCategory = encodeURIComponent(category);
+    // IT Tools categories
+    const allCategories = new Set([
+      'Developer', 'Converter', 'Text', 'Security', 'Utility', 'Design', 'AI'
+    ]);
+    
+    Array.from(allCategories).forEach(category => {
+      const encodedCategory = encodeURIComponent(category.toLowerCase().replace(/\s+/g, '-'));
       sitemap += `  <url>
     <loc>${baseUrl}/category/${encodedCategory}</loc>
-    <changefreq>weekly</changefreq>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+  </url>
+  
+`;
+    });
+    
+    // Add browse variations
+    const browseVariations = [
+      '/browse',
+      '/browse?featured=true',
+      '/browse?sort=name',
+      '/browse?sort=recent',
+      '/browse?sort=popular'
+    ];
+    
+    browseVariations.forEach(browsePath => {
+      sitemap += `  <url>
+    <loc>${baseUrl}${browsePath}</loc>
+    <changefreq>daily</changefreq>
     <priority>0.7</priority>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
   </url>
   
 `;
@@ -973,39 +1166,113 @@ exports.generateSitemap = functions.https.onRequest(async (req, res) => {
 `;
     });
 
-    // Add tool pages
-    validTools.forEach(tool => {
-      // Only add tools that have slugs
-      if (tool.slug) {
-        const lastMod = tool.updatedAt ? tool.updatedAt.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-        
-        sitemap += `  <url>
-    <loc>${baseUrl}/tool/${tool.slug}</loc>
+    // Add IT tool pages
+    itTools.forEach(tool => {
+      sitemap += `  <url>
+    <loc>${baseUrl}/tool/${tool.id}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <lastmod>${lastMod}</lastmod>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
   </url>
   
 `;
-      }
     });
 
     sitemap += `</urlset>`;
 
+    // Log sitemap generation statistics
+    logger.info(`🗺️ Sitemap generated with ${itTools.length} IT tools, ${allCategories.size} categories, ${actualSearchTerms.length} search terms`);
+    
     res.send(sitemap);
     
   } catch (error) {
-    console.error('Sitemap generation error:', error);
+    logger.error('❌ Sitemap generation error:', error);
     res.status(500).send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://toolslash.web.app</loc>
+    <loc>https://ittools.dev</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+  </url>
+  <url>
+    <loc>https://ittools.dev/browse</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ittools.dev/search</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>`);
   }
 });
+
+/**
+ * Scheduled function to regenerate sitemap daily at 2 AM UTC
+ */
+exports.updateSitemapDaily = onSchedule('0 2 * * *', async () => {
+  try {
+    logger.info('🗺️ Starting daily sitemap update...');
+    
+    // Trigger sitemap regeneration by calling our own function
+    const response = await fetch('https://us-central1-toolslash.cloudfunctions.net/generateSitemap');
+    
+    if (response.ok) {
+      logger.info('✅ Daily sitemap update completed successfully');
+    } else {
+      logger.error('❌ Daily sitemap update failed with status:', response.status);
+    }
+  } catch (error) {
+    logger.error('❌ Error in daily sitemap update:', error);
+  }
+});
+
+//exports.scrapeProductHuntDaily = onSchedule('3 13 * * *', async () => {
+  //try {
+    //logger.info('🕘 Starting scheduled daily Product Hunt scraping...');
+    
+    // Step 1: Get URLs
+   // logger.info('📋 Step 1: Collecting tool URLs...');
+   // const toolUrls = await scrapeProductHuntUrls();
+    
+    // Step 2: Process URLs
+   // logger.info('🔄 Step 2: Processing individual tools...');
+   // const tools = await processToolUrls(toolUrls);
+    
+    // Step 3: Save to Firestore
+    //logger.info('💾 Step 3: Saving to Firestore...');
+    //const savedCount = await saveScrapedTools(tools);
+    
+   // logger.info(`✅ Daily scraping completed. Found ${toolUrls.length} URLs, processed ${tools.length} tools, saved ${savedCount} new tools.`);
+    
+    // Optional: Log to a separate collection for monitoring
+   // if (db) {
+   //   await db.collection('scraping_logs').add({
+    //    type: 'daily_scrape',
+     //   urlsFound: toolUrls.length,
+      //  toolsProcessed: tools.length,
+      //  savedCount: savedCount,
+      //  timestamp: admin.firestore.FieldValue.serverTimestamp(),
+       // status: 'completed'
+     // });
+   // }
+    
+ // } catch (error) {
+   // logger.error('❌ Error in daily Product Hunt scraping:', error);
+    
+    // Log error for monitoring
+   // if (db) {
+   //   await db.collection('scraping_logs').add({
+   //     type: 'daily_scrape',
+   //     error: error.message,
+   //     timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    //    status: 'failed'
+    //  });
+   // }
+  //}
+//});
 
 /**
  * Takes a screenshot of a website and returns the URL
