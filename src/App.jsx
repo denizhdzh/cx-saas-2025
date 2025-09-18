@@ -6,7 +6,7 @@ function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-stone-900 text-stone-200">
+        <div className="min-h-screen bg-neutral-100">
           <Routes>
             <Route path="/" element={<HomePage />} />
           </Routes>

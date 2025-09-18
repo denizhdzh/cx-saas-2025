@@ -2,7 +2,7 @@
 
 @layer base {
   body {
-    @apply bg-stone-900 text-stone-200 antialiased;
+    @apply bg-neutral-100 text-stone-200 antialiased;
   }
   /* Add more base styles here */
 }
