@@ -1,13 +1,54 @@
-# React + Vite
+# CX-SaaS - AI Agent Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Modern AI agent SaaS platform that enables businesses to create, train, and deploy intelligent chatbots on their websites with a sleek toast-style interface.
 
-Currently, two official plugins are available:
+## 🚀 What is CX-SaaS?
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+CX-SaaS is a white-label AI agent platform where:
 
-## Expanding the ESLint configuration
+- **Businesses** train and customize their own AI agents
+- **AI agents** get embedded as modern toast-style widgets on customer websites  
+- **Website visitors** interact with these intelligent agents for support, sales, and engagement
+- **Everything** is brandable and customizable for each business
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# toolish123
+## 🎯 Key Features
+
+### For Business Owners (Our Customers)
+- **Easy AI Training**: Upload documents, FAQs, product info to train custom agents
+- **Smart Deployment**: One-click embed with simple script tag
+- **Brand Customization**: Match colors, logos, and messaging to your brand
+- **Analytics Dashboard**: Track conversations, leads, and performance metrics
+- **CRM Integration**: Connect with existing tools (HubSpot, Salesforce, etc.)
+
+### For End Users (Their Website Visitors)
+- **Modern Toast UI**: Non-intrusive, sleek notification-style interface
+- **Intelligent Responses**: Context-aware conversations powered by trained AI
+- **Multi-language Support**: Communicate in visitors' preferred language
+- **Lead Capture**: Seamless transition from chat to contact forms
+- **Mobile Optimized**: Perfect experience across all devices
+
+## 🛠 Tech Stack
+
+- **Frontend**: React + Vite
+- **Styling**: Tailwind CSS (assumed)
+- **AI Integration**: OpenAI/Claude APIs
+- **Deployment**: Firebase Hosting
+- **Backend**: Firebase Functions
+
+## 🎨 UI Philosophy
+
+**Toast-Style Widgets**: Unlike traditional chatbots that take up screen space, our agents appear as elegant toast notifications that slide in when needed - modern, unobtrusive, and highly engaging.
+
+## 🏢 Business Model
+
+- **SaaS Subscription**: Monthly/yearly plans based on usage
+- **White-Label**: Customers deploy under their own brand
+- **Widget Embedding**: Simple integration like Google Analytics
+- **Scalable Pricing**: From small businesses to enterprise
+
+## 📊 Target Market
+
+- E-commerce stores seeking better customer support
+- SaaS companies wanting to automate sales conversations  
+- Service businesses needing 24/7 customer engagement
+- Agencies managing multiple client websites

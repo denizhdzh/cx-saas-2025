@@ -3,7 +3,7 @@ import React from 'react';
 export default function Footer() {
   return (
     <footer className="relative border-t border-neutral-200">
-      <div className="max-w-5xl mx-auto px-8 py-12 relative">
+      <div className="max-w-6xl mx-auto px-8 py-12 relative">
         {/* Vertical lines */}
         <div className="absolute left-6 top-0 bottom-0 w-px bg-neutral-200"></div>
         <div className="absolute right-6 top-0 bottom-0 w-px bg-neutral-200"></div>
@@ -12,8 +12,8 @@ export default function Footer() {
           <div className="grid md:grid-cols-4 gap-8">
             {/* Company */}
             <div>
-              <div className="text-base font-medium text-neutral-900 mb-4">
-                Brand
+              <div className="text-base font-bold text-neutral-900 mb-4">
+                Candela AI
               </div>
               <p className="text-xs text-neutral-600 leading-relaxed">
                 Building the future of digital experiences, one product at a time.

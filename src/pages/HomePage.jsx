@@ -13,10 +13,8 @@ export default function HomePage() {
       </Helmet>
       <div className="min-h-screen bg-neutral-100">
         <Header />
-        <div className="pt-24">
-          <Hero />
-          <Footer />
-        </div>
+        <Hero />
+        <Footer />
       </div>
     </>
   );
