@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -21,9 +22,9 @@ export default function Header() {
             : 'px-0 py-0'
         }`}>
           {/* Logo */}
-          <div className="text-lg font-bold text-neutral-900">
-            Candela AI
-          </div>
+          <Link to="/" className="text-lg font-bold text-neutral-900">
+            Orchis AI
+          </Link>
           
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
@@ -39,7 +40,8 @@ export default function Header() {
           </nav>
           
           {/* CTA Button */}
-          <button 
+          <Link 
+            to="/signin"
             className="px-4 py-2 text-xs font-medium transition-colors rounded-xl text-white"
             style={{
               borderWidth: '0.5px',
@@ -50,8 +52,8 @@ export default function Header() {
               background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%)'
             }}
           >
-            Get Started
-          </button>
+            Sign In
+          </Link>
         </div>
       </div>
     </header>

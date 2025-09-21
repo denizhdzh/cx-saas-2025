@@ -10,15 +10,18 @@
     "preview": "npx vite preview"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.3.1",
     "@tailwindcss/postcss": "^4.1.8",
     "@tailwindcss/vite": "^4.1.8",
+    "chart.js": "^4.5.0",
     "firebase": "^11.8.1",
     "firebase-admin": "^12.1.1",
     "firebase-functions": "^5.0.1",
     "phosphor-react": "^1.4.1",
     "react": "^19.1.0",
+    "react-chartjs-2": "^5.3.0",
     "react-dom": "^19.1.0",
     "react-helmet-async": "^2.0.5",
     "react-router-dom": "^7.6.1",

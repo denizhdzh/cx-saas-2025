@@ -1,30 +1,52 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
-import { getFunctions } from "firebase/functions";
-// import { getAnalytics } from "firebase/analytics"; // İhtiyaç duyarsan açabilirsin
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
+import { getAnalytics } from 'firebase/analytics';
 
-// Your web app's Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyAQ-umzRT1WQKPCWraGCjedkDYjcCc3iX8",
+  authDomain: "candelaai.firebaseapp.com",
+  projectId: "candelaai",
+  storageBucket: "candelaai.firebasestorage.app",
+  messagingSenderId: "548269259862",
+  appId: "1:548269259862:web:158a73d2f63c96c8ce0ff7",
+  measurementId: "G-52V17260NZ"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
+export const functions = getFunctions(app);
+export const analytics = getAnalytics(app);
 
-// Initialize Firebase services
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const functions = getFunctions(app);
-// const analytics = getAnalytics(app); // İhtiyaç duyarsan açabilirsin
+// Google Auth Provider
+const provider = new GoogleAuthProvider();
 
-export { db, auth, storage, functions, app }; 
+// Sign in with Google
+export const signInWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (error) {
+    console.error('Error signing in with Google:', error);
+    throw error;
+  }
+};
+
+// Sign out
+export const signOutUser = async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error('Error signing out:', error);
+    throw error;
+  }
+};
+
+// Auth state observer
+export const onAuthStateChange = (callback) => {
+  return onAuthStateChanged(auth, callback);
+}; 

@@ -2,7 +2,7 @@
 
 @layer base {
   body {
-    @apply bg-neutral-100 text-stone-200 antialiased;
+    @apply bg-neutral-100 text-stone-900 antialiased;
   }
   /* Add more base styles here */
 }
@@ -11,7 +11,7 @@
   .form-input,
   .form-textarea,
   .form-select {
-    @apply w-full px-3 py-2.5 bg-stone-800/60 border border-stone-700 rounded-lg text-stone-100 placeholder-stone-500 focus:border-lime-500 focus:ring-lime-500 focus:outline-none text-sm transition-colors shadow-sm;
+    @apply w-full px-3 py-2 bg-white border border-neutral-300 rounded-lg text-neutral-900 placeholder-neutral-500 focus:border-emerald-900 focus:outline-none text-sm transition-colors;
   }
   .form-textarea {
     @apply resize-y min-h-[80px];
@@ -22,8 +22,34 @@
     background-position: right 0.5rem center;
     background-size: 1.5em 1.5em;
   }
-  .section-title {
-    @apply text-xl font-semibold text-stone-100 border-b border-stone-700 pb-2 mb-6;
+  .btn-primary {
+    @apply px-6 py-2 text-sm font-medium bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed;
   }
-  /* Add more component styles here */
+  .btn-secondary {
+    @apply px-6 py-2 text-sm font-medium bg-white text-neutral-900 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors cursor-pointer;
+  }
+  .card {
+    @apply bg-white border border-neutral-200 rounded-xl hover:border-neutral-300 transition-colors duration-200;
+  }
+  .card-header {
+    @apply px-6 py-4 border-b border-neutral-100 bg-neutral-50/50 rounded-t-xl;
+  }
+  .card-content {
+    @apply p-6;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+  .badge-default {
+    @apply bg-neutral-100 text-neutral-700;
+  }
+  .badge-processing {
+    @apply bg-blue-100 text-blue-700;
+  }
+  .badge-success {
+    @apply bg-emerald-900 text-white;
+  }
+  .badge-error {
+    @apply bg-red-100 text-red-700;
+  }
 }
