@@ -118,9 +118,9 @@ export default function SettingsPage() {
           <div className="p-8">
             {/* Header */}
             <div className="mb-8">
-              <div className="text-xs text-gray-400 mb-2">Settings</div>
-              <h1 className="text-2xl font-thin text-gray-900">Account preferences</h1>
-              <div className="w-12 h-px bg-gray-900 mt-4"></div>
+              <div className="text-xs text-neutral-400 mb-8">Settings</div>
+              <h1 className="text-2xl font-thin text-neutral-900">Account preferences</h1>
+              <div className="w-12 h-px bg-neutral-900 mt-4"></div>
             </div>
 
             <div className="max-w-6xl space-y-6">
@@ -151,7 +151,17 @@ export default function SettingsPage() {
                       {userPlan}
                     </span>
                     {userPlan === 'free' && (
-                      <button className="text-xs font-medium text-gray-900 hover:text-gray-700 transition-colors">
+                      <button 
+                        className="text-xs font-medium px-3 py-1.5 transition-colors rounded-lg text-white hover:opacity-90"
+                        style={{
+                          borderWidth: '0.5px',
+                          borderStyle: 'solid',
+                          borderColor: 'rgb(20, 20, 20)',
+                          backgroundColor: 'rgba(0, 0, 0, 0)',
+                          boxShadow: 'rgba(255, 255, 255, 0.15) 0px 1px 0px 0px inset',
+                          background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%)'
+                        }}
+                      >
                         Upgrade
                       </button>
                     )}

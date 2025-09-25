@@ -1,13 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
-import InsightsPage from './pages/InsightsPage';
-import EditAgentPage from './pages/EditAgentPage';
-import ConfigurationPage from './pages/ConfigurationPage';
-import CreateAgentPage from './pages/CreateAgentPage';
-import ChatPage from './pages/ChatPage';
 import SettingsPage from './pages/SettingsPage';
 import SignInPage from './pages/SignInPage';
+import CreateAgentPage from './pages/CreateAgentPage';
+import TrainPage from './pages/TrainPage';
+import EmbedPage from './pages/EmbedPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
@@ -29,19 +27,9 @@ function App() {
                   <DashboardPage />
                 </ProtectedRoute>
               } />
-              <Route path="/insights" element={
+              <Route path="/settings" element={
                 <ProtectedRoute>
-                  <InsightsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/edit-agent" element={
-                <ProtectedRoute>
-                  <EditAgentPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/configuration" element={
-                <ProtectedRoute>
-                  <ConfigurationPage />
+                  <SettingsPage />
                 </ProtectedRoute>
               } />
               <Route path="/create-agent" element={
@@ -49,14 +37,14 @@ function App() {
                   <CreateAgentPage />
                 </ProtectedRoute>
               } />
-              <Route path="/chat" element={
+              <Route path="/train-agent" element={
                 <ProtectedRoute>
-                  <ChatPage />
+                  <TrainPage />
                 </ProtectedRoute>
               } />
-              <Route path="/settings" element={
+              <Route path="/embed" element={
                 <ProtectedRoute>
-                  <SettingsPage />
+                  <EmbedPage />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFoundPage />} />

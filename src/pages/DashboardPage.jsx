@@ -64,18 +64,27 @@ export default function DashboardPage() {
         
         <div className="ml-64 flex h-screen">
           {/* Left Sidebar - Agent List */}
-          <div className="w-80 border-r border-gray-200 flex flex-col">
+          <div className="w-80 border-r border-neutral-200 flex flex-col">
             {/* Header */}
             <div className="p-6 border-b border-gray-200">
-              <div className="text-xs text-gray-400 mb-2">Dashboard</div>
-              <h1 className="text-lg font-medium text-gray-900">AI Agents</h1>
+              <div className="text-xs text-neutral-400 mb-8">Dashboard</div>
+              <h1 className="text-2xl font-thin text-neutral-900">AI Agents</h1>
+              <div className="w-12 h-px bg-neutral-900 mt-4"></div>
             </div>
 
             {/* Create Button */}
             <div className="p-4 border-b border-gray-200">
               <button
                 onClick={handleCreateAgent}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm"
+                className="w-full px-6 py-3 text-sm font-medium transition-colors rounded-xl text-white flex items-center justify-center gap-3 hover:opacity-90 cursor-pointer"
+                style={{
+                  borderWidth: '0.5px',
+                  borderStyle: 'solid',
+                  borderColor: 'rgb(20, 20, 20)',
+                  backgroundColor: 'rgba(0, 0, 0, 0)',
+                  boxShadow: 'rgba(255, 255, 255, 0.15) 0px 2px 0px 0px inset',
+                  background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%)'
+                }}
               >
                 <PlusIcon className="w-4 h-4" />
                 Create Agent
@@ -98,7 +107,7 @@ export default function DashboardPage() {
                       className="p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors mb-1"
                       onClick={() => {
                         selectAgent(agent);
-                        window.location.href = '/edit-agent';
+                        window.location.href = '/train-agent';
                       }}
                     >
                       <div className="flex items-start gap-3">

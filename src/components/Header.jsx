@@ -15,7 +15,7 @@ export default function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
-      <div className="max-w-6xl mx-auto px-8 py-6 relative">
+      <div className="max-w-5xl mx-auto px-8 py-6 relative">
         <div className={`flex items-center justify-between transition-all duration-200 ${
           isScrolled 
             ? 'bg-white border border-neutral-300 rounded-3xl px-4 py-3' 

@@ -1,416 +1,518 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { OpenAI } = require('openai');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
+const OpenAI = require('openai');
 
 admin.initializeApp();
-const db = admin.firestore();
 
-// OpenAI Configuration
+// Initialize OpenAI with rate limiting
 const openai = new OpenAI({
-  apiKey: functions.config().openai?.key || process.env.OPENAI_API_KEY
+  apiKey: functions.config().openai.key, // Set with: firebase functions:config:set openai.key="your-api-key"
 });
 
-// Utility function to chunk text
-function chunkText(text, maxLength = 1000) {
+// Rate limiting helper
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+let lastApiCall = 0;
+const MIN_API_INTERVAL = 100; // 100ms between calls
+
+// Initialize services
+const db = admin.firestore();
+const storage = admin.storage();
+
+// Text chunking function
+function chunkText(text, chunkSize = 1000, overlap = 200) {
   const chunks = [];
-  let currentChunk = '';
+  let start = 0;
   
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim());
-  
-  for (const sentence of sentences) {
-    if ((currentChunk + sentence).length > maxLength && currentChunk.length > 0) {
-      chunks.push(currentChunk.trim());
-      currentChunk = sentence;
-    } else {
-      currentChunk += (currentChunk ? '. ' : '') + sentence;
+  while (start < text.length) {
+    let end = start + chunkSize;
+    
+    // Try to end at a sentence boundary
+    if (end < text.length) {
+      const lastPeriod = text.lastIndexOf('.', end);
+      const lastNewline = text.lastIndexOf('\n', end);
+      const boundary = Math.max(lastPeriod, lastNewline);
+      
+      if (boundary > start + chunkSize * 0.5) {
+        end = boundary + 1;
+      }
     }
-  }
-  
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
+    
+    const chunk = text.slice(start, end).trim();
+    if (chunk.length > 0) {
+      chunks.push(chunk);
+    }
+    
+    start = Math.max(start + chunkSize - overlap, end);
   }
   
   return chunks;
 }
 
-// Generate embeddings for text chunks
-async function generateEmbeddings(textChunks) {
+// Extract text from different file types
+async function extractTextFromFile(buffer, mimeType, filename) {
   try {
-    const embeddings = [];
-    
-    for (const chunk of textChunks) {
-      const response = await openai.embeddings.create({
-        model: 'text-embedding-ada-002',
-        input: chunk
-      });
-      
-      embeddings.push({
-        text: chunk,
-        embedding: response.data[0].embedding
-      });
+    switch (mimeType) {
+      case 'application/pdf':
+        const pdfData = await pdfParse(buffer);
+        return pdfData.text;
+        
+      case 'text/plain':
+        return buffer.toString('utf-8');
+        
+      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        const docResult = await mammoth.extractRawText({ buffer });
+        return docResult.value;
+        
+      default:
+        throw new Error(`Unsupported file type: ${mimeType}`);
     }
-    
-    return embeddings;
   } catch (error) {
-    console.error('Error generating embeddings:', error);
+    console.error(`Error extracting text from ${filename}:`, error);
     throw error;
   }
 }
 
-// Calculate cosine similarity
-function cosineSimilarity(a, b) {
-  const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
-  const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-  const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-  return dotProduct / (magnitudeA * magnitudeB);
-}
+// Create and train agent
+exports.trainAgent = functions.https.onCall(async (data, context) => {
+  // Check authentication
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { agentId, documents, agentConfig } = data;
+  const userId = context.auth.uid;
+  
+  try {
+    console.log('🚀 Starting agent training for user:', userId);
+    
+    // Create/update agent in users/{userId}/agents/{agentId}
+    const agentRef = db.collection('users').doc(userId).collection('agents').doc(agentId);
+    const agentData = {
+      ...agentConfig,
+      id: agentId,
+      userId,
+      trainingStatus: 'training',
+      documentCount: documents.length,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    await agentRef.set(agentData, { merge: true });
+    console.log('✅ Agent created/updated in Firestore');
+    
+    // Process each document
+    const allChunks = [];
+    
+    for (const doc of documents) {
+      console.log(`📄 Processing document: ${doc.name}`);
+      
+      try {
+        // Use text content directly from frontend
+        const text = doc.textContent;
+        console.log(`📝 Using provided text content: ${text.length} characters from ${doc.name}`);
+        
+        // Create chunks
+        const chunks = chunkText(text);
+        console.log(`✂️ Created ${chunks.length} chunks from ${doc.name}`);
+        
+        // Create embeddings for chunks and store with vector data
+        console.log(`🔄 Creating embeddings for ${chunks.length} chunks...`);
+        
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          
+          try {
+            // Rate limiting for OpenAI API
+            const now = Date.now();
+            const timeSinceLastCall = now - lastApiCall;
+            if (timeSinceLastCall < MIN_API_INTERVAL) {
+              await delay(MIN_API_INTERVAL - timeSinceLastCall);
+            }
+            lastApiCall = Date.now();
+            
+            // Generate embedding with OpenAI
+            const embeddingResponse = await openai.embeddings.create({
+              model: "text-embedding-ada-002",
+              input: chunk,
+            });
+            
+            const embedding = embeddingResponse.data[0].embedding;
+            
+            // Store chunk with embedding
+            const chunkRef = agentRef.collection('chunks').doc();
+            const chunkData = {
+              id: chunkRef.id,
+              content: chunk,
+              embedding: embedding, // Vector representation
+              source: doc.name,
+              sourceId: doc.id,
+              index: i,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              metadata: {
+                fileType: doc.type,
+                fileName: doc.name,
+                chunkIndex: i,
+                totalChunks: chunks.length,
+                originalSize: doc.size,
+                embeddingModel: "text-embedding-ada-002"
+              }
+            };
+            
+            await chunkRef.set(chunkData);
+            allChunks.push(chunkData);
+            
+            console.log(`✅ Created embedding for chunk ${i + 1}/${chunks.length} from ${doc.name}`);
+            
+          } catch (embeddingError) {
+            console.error(`❌ Error creating embedding for chunk ${i}:`, embeddingError);
+            
+            // Retry once for rate limit errors
+            if (embeddingError.status === 429 || embeddingError.message.includes('rate limit')) {
+              console.log(`🔄 Retrying embedding for chunk ${i} after rate limit...`);
+              await delay(2000); // Wait 2 seconds
+              
+              try {
+                const retryResponse = await openai.embeddings.create({
+                  model: "text-embedding-ada-002",
+                  input: chunk,
+                });
+                
+                const embedding = retryResponse.data[0].embedding;
+                const chunkRef = agentRef.collection('chunks').doc();
+                const chunkData = {
+                  id: chunkRef.id,
+                  content: chunk,
+                  embedding: embedding,
+                  source: doc.name,
+                  sourceId: doc.id,
+                  index: i,
+                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                  metadata: {
+                    fileType: doc.type,
+                    fileName: doc.name,
+                    chunkIndex: i,
+                    totalChunks: chunks.length,
+                    originalSize: doc.size,
+                    embeddingModel: "text-embedding-ada-002",
+                    retried: true
+                  }
+                };
+                
+                await chunkRef.set(chunkData);
+                allChunks.push(chunkData);
+                console.log(`✅ Retry successful for chunk ${i + 1}/${chunks.length} from ${doc.name}`);
+                continue;
+              } catch (retryError) {
+                console.error(`❌ Retry failed for chunk ${i}:`, retryError);
+              }
+            }
+            
+            // Store chunk without embedding as fallback
+            const chunkRef = agentRef.collection('chunks').doc();
+            const chunkData = {
+              id: chunkRef.id,
+              content: chunk,
+              embedding: null,
+              source: doc.name,
+              sourceId: doc.id,
+              index: i,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              metadata: {
+                fileType: doc.type,
+                fileName: doc.name,
+                chunkIndex: i,
+                totalChunks: chunks.length,
+                originalSize: doc.size,
+                embeddingError: embeddingError.message,
+                needsRetry: true
+              }
+            };
+            
+            await chunkRef.set(chunkData);
+            allChunks.push(chunkData);
+          }
+        }
+        
+        console.log(`💾 Stored ${chunks.length} chunks with embeddings for ${doc.name}`);
+        
+      } catch (docError) {
+        console.error(`❌ Error processing document ${doc.name}:`, docError);
+        // Continue with other documents
+      }
+    }
+    
+    // Update agent with final training status
+    await agentRef.update({
+      trainingStatus: 'trained',
+      totalChunks: allChunks.length,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    console.log('🎉 Training completed successfully');
+    
+    return {
+      success: true,
+      agentId,
+      totalDocuments: documents.length,
+      totalChunks: allChunks.length,
+      message: 'Agent trained successfully'
+    };
+    
+  } catch (error) {
+    console.error('❌ Error training agent:', error);
+    
+    // Update agent status to error
+    try {
+      await db.collection('users').doc(userId).collection('agents').doc(agentId).update({
+        trainingStatus: 'error',
+        error: error.message,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (updateError) {
+      console.error('Error updating agent status:', updateError);
+    }
+    
+    throw new functions.https.HttpsError('internal', `Training failed: ${error.message}`);
+  }
+});
 
 // Process uploaded document
 exports.processDocument = functions.https.onCall(async (data, context) => {
+  // Check authentication
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { agentId, fileName, fileUrl } = data;
+  
   try {
-    // Verify authentication
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-    }
-
-    const { agentId, fileName, fileContent, fileType } = data;
-    const userId = context.auth.uid;
-
-    // Verify agent belongs to user
-    const agentDoc = await db.collection('agents').doc(agentId).get();
-    if (!agentDoc.exists || agentDoc.data().userId !== userId) {
-      throw new functions.https.HttpsError('permission-denied', 'Agent not found or access denied');
-    }
-
-    let extractedText = '';
-
-    // Extract text based on file type
-    if (fileType === 'text/plain') {
-      extractedText = fileContent;
-    } else if (fileType === 'application/pdf') {
-      const buffer = Buffer.from(fileContent, 'base64');
-      const pdfData = await pdfParse(buffer);
-      extractedText = pdfData.text;
-    } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      const buffer = Buffer.from(fileContent, 'base64');
-      const result = await mammoth.extractRawText({ buffer });
-      extractedText = result.value;
-    } else {
-      throw new functions.https.HttpsError('invalid-argument', 'Unsupported file type');
-    }
-
-    // Clean and chunk the text
-    const cleanText = extractedText.replace(/\s+/g, ' ').trim();
-    const chunks = chunkText(cleanText);
-
-    // Generate embeddings
-    const embeddings = await generateEmbeddings(chunks);
-
-    // Store document and embeddings in Firestore
-    const documentRef = db.collection('documents').doc();
-    const documentData = {
-      id: documentRef.id,
-      agentId,
-      userId,
-      fileName,
-      fileType,
-      uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
-      chunkCount: chunks.length,
-      processed: true
-    };
-
-    await documentRef.set(documentData);
-
-    // Store embeddings in subcollection
+    // Download file from storage
+    const file = storage.bucket().file(fileUrl);
+    const [fileBuffer] = await file.download();
+    const [metadata] = await file.getMetadata();
+    
+    // Extract text from file
+    const text = await extractTextFromFile(fileBuffer, metadata.contentType, fileName);
+    
+    // Create chunks
+    const chunks = chunkText(text);
+    
+    // Store chunks in Firestore using correct user structure
     const batch = db.batch();
-    embeddings.forEach((embedding, index) => {
-      const embeddingRef = documentRef.collection('embeddings').doc(`chunk_${index}`);
-      batch.set(embeddingRef, {
-        text: embedding.text,
-        embedding: embedding.embedding,
-        chunkIndex: index
-      });
+    const chunksData = [];
+    const agentRef = db.collection('users').doc(context.auth.uid).collection('agents').doc(agentId);
+    
+    chunks.forEach((chunk, index) => {
+      const chunkDoc = agentRef.collection('chunks').doc();
+      const chunkData = {
+        id: chunkDoc.id,
+        content: chunk,
+        embedding: null, // Will be generated separately
+        source: fileName,
+        sourceId: `uploaded_${Date.now()}_${index}`,
+        index,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        metadata: {
+          fileType: metadata.contentType,
+          fileName,
+          chunkIndex: index,
+          totalChunks: chunks.length
+        }
+      };
+      
+      batch.set(chunkDoc, chunkData);
+      chunksData.push(chunkData);
     });
-
-    await batch.commit();
-
+    
     // Update agent document count
-    await db.collection('agents').doc(agentId).update({
+    batch.update(agentRef, {
       documentCount: admin.firestore.FieldValue.increment(1),
       trainingStatus: 'trained',
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-
+    
+    await batch.commit();
+    
     return {
       success: true,
-      documentId: documentRef.id,
-      chunkCount: chunks.length
+      chunksCreated: chunks.length,
+      chunks: chunksData
     };
-
+    
   } catch (error) {
     console.error('Error processing document:', error);
-    throw new functions.https.HttpsError('internal', error.message);
+    throw new functions.https.HttpsError('internal', 'Failed to process document');
   }
 });
 
-// Chat with agent
+// Helper function to calculate cosine similarity
+function cosineSimilarity(vecA, vecB) {
+  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+  const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+  const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+  return dotProduct / (magnitudeA * magnitudeB);
+}
+
+// Chat with agent using similarity search
 exports.chatWithAgent = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { agentId, message, sessionId } = data;
+  const userId = context.auth.uid;
+  
   try {
-    // Verify authentication
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    console.log(`💬 Processing chat for agent ${agentId}: "${message}"`);
+    
+    // Rate limiting for OpenAI API
+    const now = Date.now();
+    const timeSinceLastCall = now - lastApiCall;
+    if (timeSinceLastCall < MIN_API_INTERVAL) {
+      await delay(MIN_API_INTERVAL - timeSinceLastCall);
     }
-
-    const { agentId, message, conversationId } = data;
-    const userId = context.auth.uid;
-
-    // Verify agent belongs to user
-    const agentDoc = await db.collection('agents').doc(agentId).get();
-    if (!agentDoc.exists || agentDoc.data().userId !== userId) {
-      throw new functions.https.HttpsError('permission-denied', 'Agent not found or access denied');
-    }
-
-    const agent = agentDoc.data();
-
-    // Generate embedding for the user message
-    const messageEmbedding = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: message
+    lastApiCall = Date.now();
+    
+    // Generate embedding for user's question
+    const questionEmbedding = await openai.embeddings.create({
+      model: "text-embedding-ada-002",
+      input: message,
     });
-
-    // Find relevant document chunks
-    const documentsSnapshot = await db.collection('documents')
-      .where('agentId', '==', agentId)
+    const questionVector = questionEmbedding.data[0].embedding;
+    
+    // Get all chunks for this agent
+    const chunksSnapshot = await db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('chunks')
       .get();
-
-    let relevantChunks = [];
-
-    for (const docSnapshot of documentsSnapshot.docs) {
-      const embeddingsSnapshot = await docSnapshot.ref.collection('embeddings').get();
-      
-      for (const embeddingDoc of embeddingsSnapshot.docs) {
-        const embeddingData = embeddingDoc.data();
-        const similarity = cosineSimilarity(
-          messageEmbedding.data[0].embedding,
-          embeddingData.embedding
-        );
-
-        if (similarity > 0.7) { // Similarity threshold
-          relevantChunks.push({
-            text: embeddingData.text,
-            similarity,
-            documentId: docSnapshot.id
-          });
-        }
-      }
+    
+    if (chunksSnapshot.empty) {
+      return {
+        response: "I don't have any knowledge base to answer your question. Please train me with some documents first.",
+        sessionId
+      };
     }
-
-    // Sort by similarity and take top 3
-    relevantChunks.sort((a, b) => b.similarity - a.similarity);
-    relevantChunks = relevantChunks.slice(0, 3);
-
+    
+    // Calculate similarity scores for each chunk
+    const chunksWithScores = [];
+    chunksSnapshot.docs.forEach(doc => {
+      const chunkData = doc.data();
+      if (chunkData.embedding) {
+        const similarity = cosineSimilarity(questionVector, chunkData.embedding);
+        chunksWithScores.push({
+          ...chunkData,
+          similarity
+        });
+      }
+    });
+    
+    // Sort by similarity and get top 3 most relevant chunks
+    const topChunks = chunksWithScores
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 3);
+    
+    console.log(`🔍 Found ${topChunks.length} relevant chunks, top similarity: ${topChunks[0]?.similarity || 0}`);
+    
     // Build context from relevant chunks
-    const context = relevantChunks.length > 0 
-      ? relevantChunks.map(chunk => chunk.text).join('\n\n')
-      : '';
-
-    // Get conversation history
-    let conversationHistory = [];
-    if (conversationId) {
-      const historySnapshot = await db.collection('conversations')
-        .doc(conversationId)
-        .collection('messages')
-        .orderBy('timestamp', 'asc')
-        .limit(10)
-        .get();
-
-      conversationHistory = historySnapshot.docs.map(doc => doc.data());
-    }
-
-    // Create system prompt based on agent type
-    const systemPrompts = {
-      customer_support: "You are a helpful customer support assistant. Use the provided context to answer questions accurately and professionally.",
-      sales: "You are a sales assistant. Help customers understand products and guide them towards making informed decisions.",
-      technical: "You are a technical support specialist. Provide detailed technical assistance based on the documentation.",
-      general: "You are a helpful AI assistant. Answer questions using the provided context when available."
-    };
-
-    const systemPrompt = systemPrompts[agent.type] || systemPrompts.general;
-
-    // Build messages for OpenAI
-    const messages = [
-      {
-        role: 'system',
-        content: `${systemPrompt}\n\n${context ? `Context from documents:\n${context}\n\n` : ''}Remember to be helpful and accurate in your responses.`
-      }
-    ];
-
-    // Add conversation history
-    conversationHistory.forEach(msg => {
-      messages.push({
-        role: msg.role,
-        content: msg.content
-      });
-    });
-
-    // Add current user message
-    messages.push({
-      role: 'user',
-      content: message
-    });
-
-    // Get response from OpenAI
+    const context = topChunks.map(chunk => chunk.content).join('\n\n');
+    
+    // Generate response using OpenAI
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are a helpful AI assistant. Answer the user's question based on the provided context. If the context doesn't contain relevant information, say so politely. Keep your response concise and helpful.
+
+Context from knowledge base:
+${context}`
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
       max_tokens: 500,
-      temperature: 0.7
+      temperature: 0.7,
     });
-
-    const aiResponse = completion.choices[0].message.content;
-
-    // Save conversation to Firestore
-    const conversationRef = conversationId 
-      ? db.collection('conversations').doc(conversationId)
-      : db.collection('conversations').doc();
-
-    if (!conversationId) {
-      await conversationRef.set({
-        agentId,
-        userId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    } else {
-      await conversationRef.update({
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
-
-    // Save messages
-    const batch = db.batch();
     
-    const userMessageRef = conversationRef.collection('messages').doc();
-    batch.set(userMessageRef, {
-      role: 'user',
-      content: message,
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    const aiMessageRef = conversationRef.collection('messages').doc();
-    batch.set(aiMessageRef, {
-      role: 'assistant',
-      content: aiResponse,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      relevantChunks: relevantChunks.length
-    });
-
-    await batch.commit();
-
-    return {
-      response: aiResponse,
-      conversationId: conversationRef.id,
-      relevantSources: relevantChunks.length
+    const response = completion.choices[0].message.content;
+    
+    // Store conversation
+    const conversationData = {
+      agentId,
+      sessionId: sessionId || `session_${Date.now()}`,
+      userId,
+      message,
+      response,
+      relevantChunks: topChunks.map(chunk => ({
+        content: chunk.content.substring(0, 100) + '...',
+        similarity: chunk.similarity,
+        source: chunk.source
+      })),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     };
-
-  } catch (error) {
-    console.error('Error in chat:', error);
-    throw new functions.https.HttpsError('internal', error.message);
-  }
-});
-
-// Get agent conversations
-exports.getAgentConversations = functions.https.onCall(async (data, context) => {
-  try {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-    }
-
-    const { agentId } = data;
-    const userId = context.auth.uid;
-
-    // Verify agent belongs to user
-    const agentDoc = await db.collection('agents').doc(agentId).get();
-    if (!agentDoc.exists || agentDoc.data().userId !== userId) {
-      throw new functions.https.HttpsError('permission-denied', 'Agent not found or access denied');
-    }
-
-    const conversationsSnapshot = await db.collection('conversations')
-      .where('agentId', '==', agentId)
-      .orderBy('updatedAt', 'desc')
-      .limit(20)
-      .get();
-
-    const conversations = await Promise.all(
-      conversationsSnapshot.docs.map(async (doc) => {
-        const conversationData = doc.data();
-        
-        // Get last message
-        const lastMessageSnapshot = await doc.ref.collection('messages')
-          .orderBy('timestamp', 'desc')
-          .limit(1)
-          .get();
-
-        const lastMessage = lastMessageSnapshot.docs[0]?.data();
-
-        return {
-          id: doc.id,
-          ...conversationData,
-          lastMessage: lastMessage?.content || '',
-          lastMessageTime: lastMessage?.timestamp
-        };
-      })
-    );
-
-    return { conversations };
-
-  } catch (error) {
-    console.error('Error getting conversations:', error);
-    throw new functions.https.HttpsError('internal', error.message);
-  }
-});
-
-// Delete document
-exports.deleteDocument = functions.https.onCall(async (data, context) => {
-  try {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-    }
-
-    const { documentId } = data;
-    const userId = context.auth.uid;
-
-    const documentDoc = await db.collection('documents').doc(documentId).get();
-    if (!documentDoc.exists || documentDoc.data().userId !== userId) {
-      throw new functions.https.HttpsError('permission-denied', 'Document not found or access denied');
-    }
-
-    const documentData = documentDoc.data();
-
-    // Delete embeddings subcollection
-    const embeddingsSnapshot = await documentDoc.ref.collection('embeddings').get();
-    const batch = db.batch();
     
-    embeddingsSnapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-
-    // Delete document
-    batch.delete(documentDoc.ref);
-    await batch.commit();
-
-    // Update agent document count
-    await db.collection('agents').doc(documentData.agentId).update({
-      documentCount: admin.firestore.FieldValue.increment(-1),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    return { success: true };
-
+    await db.collection('conversations').add(conversationData);
+    
+    console.log(`✅ Generated response: ${response.substring(0, 100)}...`);
+    
+    return {
+      response,
+      sessionId: conversationData.sessionId,
+      relevantSources: topChunks.map(c => c.source)
+    };
+    
   } catch (error) {
-    console.error('Error deleting document:', error);
-    throw new functions.https.HttpsError('internal', error.message);
+    console.error('❌ Error in chat:', error);
+    throw new functions.https.HttpsError('internal', `Chat failed: ${error.message}`);
+  }
+});
+
+// Generate embed code
+exports.generateEmbedCode = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { agentId } = data;
+  
+  try {
+    // Get agent data (using user structure)
+    const agentDoc = await db.collection('users').doc(context.auth.uid).collection('agents').doc(agentId).get();
+    if (!agentDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Agent not found');
+    }
+    
+    const agent = agentDoc.data();
+    
+    const embedCode = `
+<!-- Orchis Chatbot -->
+<div id="orchis-chatbot-${agentId}"></div>
+<script>
+  (function() {
+    const chatbotConfig = {
+      agentId: '${agentId}',
+      projectName: '${agent.projectName || 'Chatbot'}',
+      primaryColor: '#2563eb',
+      position: 'bottom-right'
+    };
+    
+    const script = document.createElement('script');
+    script.src = 'https://your-domain.com/chatbot-widget.js';
+    script.onload = function() {
+      OrchisChatbot.init(chatbotConfig);
+    };
+    document.head.appendChild(script);
+  })();
+</script>`;
+
+    return { embedCode };
+    
+  } catch (error) {
+    console.error('Error generating embed code:', error);
+    throw new functions.https.HttpsError('internal', 'Failed to generate embed code');
   }
 });

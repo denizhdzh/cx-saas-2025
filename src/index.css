@@ -2,54 +2,108 @@
 
 @layer base {
   body {
-    @apply bg-neutral-100 text-stone-900 antialiased;
+    @apply bg-white text-neutral-900 antialiased;
+    font-feature-settings: "kern", "liga", "clig", "calt";
   }
-  /* Add more base styles here */
+  
+  * {
+    @apply border-neutral-200;
+  }
+  
+  /* Minimal typography hierarchy */
+  h1 { @apply text-2xl font-thin text-neutral-900 leading-tight; }
+  h2 { @apply text-lg font-medium text-neutral-900; }
+  h3 { @apply text-sm font-medium text-neutral-900; }
+  
+  /* Consistent text sizes */
+  .text-label { @apply text-xs text-neutral-400 uppercase tracking-wider; }
+  .text-body { @apply text-sm text-neutral-600 leading-relaxed; }
+  .text-caption { @apply text-xs text-neutral-500; }
 }
 
 @layer components {
+  /* Minimal form inputs - consistent with SettingsPage */
   .form-input,
   .form-textarea,
   .form-select {
-    @apply w-full px-3 py-2 bg-white border border-neutral-300 rounded-lg text-neutral-900 placeholder-neutral-500 focus:border-emerald-900 focus:outline-none text-sm transition-colors;
+    @apply w-full px-3 py-2 bg-white border border-neutral-200 rounded-md text-sm text-neutral-900 placeholder-neutral-400 focus:border-neutral-300 focus:outline-none transition-colors;
   }
+  
   .form-textarea {
     @apply resize-y min-h-[80px];
   }
+  
   .form-select {
     @apply appearance-none pr-8 bg-no-repeat;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a3a3a3' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.5rem center;
-    background-size: 1.5em 1.5em;
+    background-size: 1.2em 1.2em;
   }
+  
+  /* Dark gradient buttons - consistent across all pages */
   .btn-primary {
-    @apply px-6 py-2 text-sm font-medium bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed;
+    @apply px-6 py-3 text-sm font-medium transition-colors rounded-xl text-white hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    border: 0.5px solid rgb(20, 20, 20);
+    box-shadow: rgba(255, 255, 255, 0.15) 0px 2px 0px 0px inset;
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%);
   }
+  
   .btn-secondary {
-    @apply px-6 py-2 text-sm font-medium bg-white text-neutral-900 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors cursor-pointer;
+    @apply px-6 py-3 text-sm font-medium bg-white text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors cursor-pointer;
   }
+  
+  .btn-ghost {
+    @apply px-3 py-1.5 text-xs font-medium text-neutral-700 hover:text-neutral-900 transition-colors cursor-pointer;
+  }
+  
+  /* Minimal cards - clean and subtle */
   .card {
-    @apply bg-white border border-neutral-200 rounded-xl hover:border-neutral-300 transition-colors duration-200;
+    @apply bg-white border border-neutral-200 rounded-lg transition-colors duration-200;
   }
+  
   .card-header {
-    @apply px-6 py-4 border-b border-neutral-100 bg-neutral-50/50 rounded-t-xl;
+    @apply px-6 py-4 border-b border-neutral-100;
   }
+  
   .card-content {
     @apply p-6;
   }
+  
+  /* Subtle badges */
   .badge {
-    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
   }
+  
   .badge-default {
-    @apply bg-neutral-100 text-neutral-700;
+    @apply bg-neutral-100 text-neutral-600;
   }
+  
   .badge-processing {
-    @apply bg-blue-100 text-blue-700;
+    @apply bg-blue-50 text-blue-600;
   }
+  
   .badge-success {
-    @apply bg-emerald-900 text-white;
+    @apply bg-green-50 text-green-600;
   }
+  
   .badge-error {
-    @apply bg-red-100 text-red-700;
+    @apply bg-red-50 text-red-600;
+  }
+  
+  /* Minimal toggle - matching SettingsPage */
+  .toggle {
+    @apply relative inline-flex h-5 w-9 items-center rounded-full transition-colors;
+  }
+  
+  .toggle-active {
+    @apply bg-neutral-900;
+  }
+  
+  .toggle-inactive {
+    @apply bg-neutral-200;
+  }
+  
+  .toggle-thumb {
+    @apply inline-block h-3 w-3 transform rounded-full bg-white transition-transform;
   }
 }

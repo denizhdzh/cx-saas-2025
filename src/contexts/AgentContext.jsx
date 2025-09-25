@@ -25,8 +25,9 @@ export const AgentProvider = ({ children }) => {
     
     setLoading(true);
     try {
-      const q = query(collection(db, 'agents'), where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
+      // Use user subcollection structure: users/{userId}/agents
+      const agentsRef = collection(db, 'users', user.uid, 'agents');
+      const querySnapshot = await getDocs(agentsRef);
       const agentsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -54,11 +55,12 @@ export const AgentProvider = ({ children }) => {
         trainingStatus: 'not_trained'
       };
 
-      const docRef = await addDoc(collection(db, 'agents'), newAgent);
+      // Use user subcollection structure: users/{userId}/agents
+      const agentsRef = collection(db, 'users', user.uid, 'agents');
+      const docRef = await addDoc(agentsRef, newAgent);
       const createdAgent = { id: docRef.id, ...newAgent };
       
       setAgents(prev => [...prev, createdAgent]);
-      setSelectedAgent(createdAgent); // Auto-select the created agent
       return createdAgent;
     } catch (error) {
       console.error('Error creating agent:', error);
@@ -68,8 +70,11 @@ export const AgentProvider = ({ children }) => {
 
   // Update agent
   const updateAgent = async (agentId, updates) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
-      const agentRef = doc(db, 'agents', agentId);
+      // Use user subcollection structure: users/{userId}/agents/{agentId}
+      const agentRef = doc(db, 'users', user.uid, 'agents', agentId);
       const updateData = {
         ...updates,
         updatedAt: new Date()
@@ -92,8 +97,11 @@ export const AgentProvider = ({ children }) => {
 
   // Delete agent
   const deleteAgent = async (agentId) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
-      await deleteDoc(doc(db, 'agents', agentId));
+      // Use user subcollection structure: users/{userId}/agents/{agentId}
+      await deleteDoc(doc(db, 'users', user.uid, 'agents', agentId));
       setAgents(prev => prev.filter(agent => agent.id !== agentId));
       
       if (selectedAgent?.id === agentId) {

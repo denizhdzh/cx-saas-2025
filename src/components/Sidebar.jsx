@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Squares2X2Icon, 
-  ChartBarIcon, 
-  SparklesIcon, 
-  TicketIcon, 
   ArrowRightStartOnRectangleIcon, 
   CogIcon
 } from '@heroicons/react/24/outline';
@@ -37,6 +34,19 @@ export default function Sidebar() {
     fetchUserPlan();
   }, [user]);
 
+  // Auto-select most recent agent
+  useEffect(() => {
+    if (agents.length > 0 && !selectedAgent) {
+      // Sort agents by creation date and select the most recent
+      const sortedAgents = [...agents].sort((a, b) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+      selectAgent(sortedAgents[0]);
+    }
+  }, [agents, selectedAgent, selectAgent]);
+
   const handleSignOut = async () => {
     try {
       await signOutUser();
@@ -54,25 +64,11 @@ export default function Sidebar() {
       badge: null
     },
     { 
-      path: '/insights', 
-      icon: ChartBarIcon, 
-      label: 'Insights',
-      description: 'Data & reports',
-      badge: 'New'
-    },
-    { 
-      path: '/edit-agent', 
-      icon: SparklesIcon, 
-      label: 'Edit Agent',
-      description: 'Training & customization',
+      path: '/embed', 
+      icon: Squares2X2Icon, 
+      label: 'Embed Code',
+      description: 'Get integration code',
       badge: null
-    },
-    { 
-      path: '/tickets', 
-      icon: TicketIcon, 
-      label: 'Support',
-      description: 'Help & tickets',
-      badge: '2'
     },
   ];
 
@@ -103,28 +99,42 @@ export default function Sidebar() {
         </div>
 
         {/* Agent Selector */}
-        {agents.length > 0 && (
-          <div className="px-3 py-3 border-b border-gray-100">
-            <div className="text-xs font-medium text-gray-700 mb-2">Selected Agent</div>
-            <select
-              value={selectedAgent?.id || ''}
-              onChange={(e) => {
-                const agent = agents.find(a => a.id === e.target.value);
-                if (agent) {
-                  selectAgent(agent);
-                }
-              }}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-gray-300 bg-white"
+        <div className="px-3 py-3 border-b border-gray-100">
+          <div className="text-xs font-medium text-gray-700 mb-2">Current Agent</div>
+          {agents.length > 0 ? (
+            <div className="relative">
+              <select
+                value={selectedAgent?.id || ''}
+                onChange={(e) => {
+                  const agent = agents.find(a => a.id === e.target.value);
+                  if (agent) {
+                    selectAgent(agent);
+                  }
+                }}
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none appearance-none cursor-pointer hover:bg-gray-100 transition-colors"
+              >
+                {agents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                </svg>
+              </div>
+            </div>
+          ) : (
+            <Link
+              to="/create-agent"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors"
             >
-              <option value="">Select an agent...</option>
-              {agents.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+              <span className="text-lg">+</span>
+              <span>Create Agent</span>
+            </Link>
+          )}
+        </div>
 
         {/* Main Navigation */}
         <div className="flex-1 px-3 py-4">
