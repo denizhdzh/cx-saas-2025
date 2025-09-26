@@ -43,7 +43,7 @@ export default function FAQ() {
         <div className="mx-6">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             {/* Left side - Heading and description */}
-            <div className="lg:sticky lg:top-8">
+            <div className="lg:sticky lg:top-28">
               <h2 className="text-4xl font-semibold text-neutral-900 mb-6">
                 Frequently Asked Questions
               </h2>
@@ -52,14 +52,7 @@ export default function FAQ() {
                 Can't find what you're looking for?
               </p>
               
-              <button className="px-6 py-3 text-sm font-medium border border-neutral-900 rounded-xl hover:bg-neutral-900 hover:text-white transition-colors">
-                Contact Support
-              </button>
-              
-              {/* IMAGE PLACEHOLDER */}
-              <div className="mt-8 p-8 border-2 border-dashed border-neutral-300 rounded-lg text-center">
-                <p className="text-neutral-500 font-mono text-sm">[IMAGE: Support team illustration]</p>
-              </div>
+
             </div>
             
             {/* Right side - FAQ items */}

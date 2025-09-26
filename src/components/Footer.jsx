@@ -11,77 +11,39 @@ export default function Footer() {
         <div className="mx-6">
           <div className="grid md:grid-cols-4 gap-8">
             {/* Company */}
-            <div>
+            <div className="md:col-span-2">
               <div className="text-base font-bold text-neutral-900 mb-4">
-                Candela AI
+                ORCHIS AI
               </div>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Building the future of digital experiences, one product at a time.
+              <p className="text-xs text-neutral-600 leading-relaxed max-w-md">
+                AI agents that actually understand context, learn from your business, 
+                and speak like humans do. Coming soon.
               </p>
             </div>
             
-            {/* Product */}
+            {/* Contact */}
             <div>
-              <h3 className="text-sm font-medium text-neutral-900 mb-4">Product</h3>
-              <ul className="space-y-3">
-                <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    Integrations
-                  </a>
-                </li>
-              </ul>
+              <h3 className="text-sm font-medium text-neutral-900 mb-4">Get in Touch</h3>
+              <p className="text-xs text-neutral-600 mb-3">
+                Questions about ORCHIS?
+              </p>
+              <a href="mailto:hello@orchis.ai" className="text-xs text-neutral-900 hover:underline">
+                hello@orchis.ai
+              </a>
             </div>
             
-            {/* Company */}
+            {/* Legal */}
             <div>
-              <h3 className="text-sm font-medium text-neutral-900 mb-4">Company</h3>
+              <h3 className="text-sm font-medium text-neutral-900 mb-4">Coming Soon</h3>
               <ul className="space-y-3">
                 <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    About
-                  </a>
+                  <span className="text-xs text-neutral-600">Documentation</span>
                 </li>
                 <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    Blog
-                  </a>
+                  <span className="text-xs text-neutral-600">Privacy Policy</span>
                 </li>
                 <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    Careers
-                  </a>
-                </li>
-              </ul>
-            </div>
-            
-            {/* Support */}
-            <div>
-              <h3 className="text-sm font-medium text-neutral-900 mb-4">Support</h3>
-              <ul className="space-y-3">
-                <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    Help Center
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                    Privacy
-                  </a>
+                  <span className="text-xs text-neutral-600">Terms of Service</span>
                 </li>
               </ul>
             </div>
@@ -90,16 +52,8 @@ export default function Footer() {
           <div className="border-t border-neutral-200 mt-12 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <p className="text-xs text-neutral-600">
-                © 2025 Brand. All rights reserved.
+                © 2025 ORCHIS AI. All rights reserved.
               </p>
-              <div className="flex items-center space-x-6 mt-4 md:mt-0">
-                <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                  Terms
-                </a>
-                <a href="#" className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors">
-                  Privacy
-                </a>
-              </div>
             </div>
           </div>
         </div>
