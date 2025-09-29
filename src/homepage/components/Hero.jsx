@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { addToWaitlist } from '../utils/firebaseFunctions';
+import ToastDemo from './ToastDemo';
+import { addToWaitlist } from '../../utils/firebaseFunctions';
 
-export default function CTA() {
+export default function Hero() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -37,36 +38,36 @@ export default function CTA() {
 
   return (
     <section className="relative">
-      {/* Section separator line */}
-      <div className="w-full h-px bg-neutral-200 mb-24"></div>
-      
-      <div className="max-w-6xl mx-auto px-2 py-24 relative">
-        {/* Vertical lines */}
-        <div className="absolute left-6 top-0 bottom-0 w-px bg-neutral-200"></div>
-        <div className="absolute right-6 top-0 bottom-0 w-px bg-neutral-200"></div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-2 pt-20 sm:pt-24 lg:pt-32 pb-12 lg:pb-16 relative">
+        {/* Vertical lines - hidden on mobile */}
+        <div className="hidden lg:block absolute left-6 top-0 bottom-0 w-px bg-neutral-200"></div>
+        <div className="hidden lg:block absolute right-6 top-0 bottom-0 w-px bg-neutral-200"></div>
         
-        <div className="mx-6">
-          <div className="text-center">
-            <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">
-              COMING SOON
-            </div>
-            <h2 className="text-3xl lg:text-4xl font-thin text-neutral-900 mb-6 leading-tight max-w-3xl mx-auto">
-              Be among the first to experience<br />
-              <span className="text-neutral-500">conversations</span> that matter
-            </h2>
-            <p className="text-neutral-600 text-base mb-12 leading-relaxed max-w-2xl mx-auto">
-              Join our waitlist and get early access to AI agents that understand 
-              your business context and speak like real humans.
-            </p>
-            
-            <div className="max-w-md mx-auto mb-12">
-              <h3 className="text-xl font-semibold text-neutral-900 mb-6">
-                Join the Waitlist
-              </h3>
+        <div className="mx-4 sm:mx-6">
+          <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-end lg:min-h-[70vh]">
+            {/* Left side - Content */}
+            <div className="text-center lg:text-left pl-6">
+              <div className="text-sm font-bold text-orange-600 mb-6 lg:mb-8 tracking-wider">
+                ORCHIS
+              </div>
               
-              <div className="space-y-4">
+              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-thin text-neutral-900 leading-tight lg:leading-[0.95] mb-6 lg:mb-8">
+                Your customers deserve<br />
+                <span className="text-neutral-500">conversations</span><br />
+                not confusion
+              </h1>
+              
+              <div className="w-12 lg:w-16 h-px bg-neutral-900 mb-6 lg:mb-8 mx-auto lg:mx-0"></div>
+              
+              <p className="text-lg lg:text-xl text-neutral-600 font-light mb-8 lg:mb-12 leading-relaxed max-w-lg mx-auto lg:mx-0">
+                AI agents that actually understand context, learn from your business, 
+                and speak like humans do.
+              </p>
+              
+              {/* Waitlist signup */}
+              <div className="max-w-md mx-auto lg:mx-0">
                 {isSubmitted ? (
-                  <div className="text-center">
+                  <div className="text-center lg:text-left">
                     <div className="inline-flex items-center px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
                       <span className="text-sm text-green-700 font-medium">✓ Thanks! We'll be in touch soon.</span>
                     </div>
@@ -103,31 +104,44 @@ export default function CTA() {
                     {error && (
                       <p className="text-xs text-red-600 mt-2 px-1">{error}</p>
                     )}
-                    <p className="text-xs text-neutral-500 text-center">
+                    <p className="text-xs text-neutral-500 text-center sm:text-left">
                       Be the first to know when we launch. No spam, unsubscribe anytime.
                     </p>
                   </form>
                 )}
               </div>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-              <div className="flex flex-col items-center">
-                <div className="w-3 h-3 bg-neutral-900 rounded-full mb-3"></div>
-                <span className="text-sm text-neutral-600">Priority access when we launch</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-3 h-3 bg-neutral-900 rounded-full mb-3"></div>
-                <span className="text-sm text-neutral-600">Exclusive updates on development</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-3 h-3 bg-neutral-900 rounded-full mb-3"></div>
-                <span className="text-sm text-neutral-600">Special launch pricing</span>
+
+            {/* Right side - Desktop only, bottom aligned */}
+            <div className="hidden lg:flex lg:items-end lg:justify-center">
+              <div className="w-full max-w-sm">
+                <ToastDemo />
               </div>
             </div>
           </div>
           
-
+          {/* Mobile ToastDemo - Below content */}
+          <div className="lg:hidden mt-12 flex justify-center">
+            <div className="w-full max-w-sm">
+              <ToastDemo />
+            </div>
+          </div>
+          
+          {/* Stats - Below both sides */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8 text-center mt-16 lg:mt-24 pt-12 lg:pt-16 border-t border-neutral-200">
+            <div>
+              <div className="text-2xl lg:text-3xl font-light text-neutral-900 mb-2">94%</div>
+              <div className="text-sm text-neutral-500">Resolution Rate</div>
+            </div>
+            <div>
+              <div className="text-2xl lg:text-3xl font-light text-neutral-900 mb-2">60s</div>
+              <div className="text-sm text-neutral-500">Setup Time</div>
+            </div>
+            <div>
+              <div className="text-2xl lg:text-3xl font-light text-neutral-900 mb-2">24/7</div>
+              <div className="text-sm text-neutral-500">Available</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

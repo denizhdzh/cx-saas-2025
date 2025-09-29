@@ -39,16 +39,6 @@ export default function Header() {
               Features
             </a>
             <a 
-              href="#how-it-works" 
-              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
-              onClick={(e) => {
-                e.preventDefault();
-                document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              How it Works
-            </a>
-            <a 
               href="#pricing" 
               className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
               onClick={(e) => {
@@ -58,6 +48,12 @@ export default function Header() {
             >
               Pricing
             </a>
+            <Link 
+              to="/blog" 
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              Blog
+            </Link>
           </nav>
           
           {/* Join Waitlist Button */}

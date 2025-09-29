@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { addToWaitlist } from '../utils/firebaseFunctions';
+import { addToWaitlist } from '../../utils/firebaseFunctions';
 
 export default function CTA() {
   const [email, setEmail] = useState('');

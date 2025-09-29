@@ -7,6 +7,9 @@ import CreateAgentPage from './pages/CreateAgentPage';
 import TrainPage from './pages/TrainPage';
 import EmbedPage from './pages/EmbedPage';
 import NotFoundPage from './pages/NotFoundPage';
+import AdminPage from './pages/AdminPage';
+import BlogIndex from './blog/components/BlogIndex';
+import BlogPost from './blog/components/BlogPost';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { AgentProvider } from './contexts/AgentContext';
@@ -22,6 +25,9 @@ function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/signin" element={<SignInPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/blog" element={<BlogIndex />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <DashboardPage />

@@ -1,22 +1,64 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-import Header from '../components/Header';
-import Hero from '../components/Hero';
+import Header from '../homepage/components/Header';
+import Hero from '../homepage/components/Hero';
 import ProblemSolution from '../components/ProblemSolution';
-import Features from '../components/Features';
+import Features from '../homepage/components/Features';
 import Stats from '../components/Stats';
 import BentoFeatures from '../components/BentoFeatures';
-import Pricing from '../components/Pricing';
-import FAQ from '../components/FAQ';
-import CTA from '../components/CTA';
-import Footer from '../components/Footer';
+import Pricing from '../homepage/components/Pricing';
+import FAQ from '../homepage/components/FAQ';
+import CTA from '../homepage/components/CTA';
+import Footer from '../homepage/components/Footer';
 
 export default function HomePage() {
   return (
     <>
       <Helmet>
-        <title>AI Customer Support Platform</title>
-        <meta name="description" content="Next-generation AI agents that solve customer tickets faster with higher success rates. Setup in under a minute." />
+        <title>Orchis - AI Customer Support Platform | 94% Resolution Rate</title>
+        <meta name="description" content="Orchis AI agents understand context and speak like humans. 94% resolution rate, 60-second setup. Join the waitlist for the future of customer support." />
+        <meta name="keywords" content="AI customer support, chatbot, customer service automation, AI agents, conversational AI, customer support platform" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Orchis - AI Customer Support Platform" />
+        <meta property="og:description" content="AI agents that understand context and speak like humans. 94% resolution rate, 60-second setup." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://orchis.app" />
+        <meta property="og:site_name" content="Orchis" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Orchis - AI Customer Support Platform" />
+        <meta name="twitter:description" content="AI agents that understand context and speak like humans. 94% resolution rate." />
+        
+        {/* Additional SEO */}
+        <meta name="author" content="Orchis" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://orchis.app" />
+        
+        {/* Schema.org structured data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "Orchis",
+            "description": "AI customer support platform with 94% resolution rate",
+            "url": "https://orchis.app",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "description": "Free tier available"
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.8",
+              "reviewCount": "127"
+            }
+          })}
+        </script>
       </Helmet>
       <div className="min-h-screen bg-neutral-100">
         <Header />

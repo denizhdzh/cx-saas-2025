@@ -88,7 +88,7 @@ export default function Hero() {
                       </div>
                       <button 
                         type="submit"
-                        className="px-6 py-3 text-sm font-medium transition-colors rounded-xl text-white hover:opacity-90 whitespace-nowrap"
+                        className="px-6 py-3 text-sm font-medium transition-colors rounded-xl text-white hover:opacity-90 whitespace-nowrap cursor-pointer"
                         style={{
                           borderWidth: '0.5px',
                           borderStyle: 'solid',
