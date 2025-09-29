@@ -11,7 +11,7 @@ export default function Stats() {
         <div className="mx-4 sm:mx-6">
           {/* Question-based narrative */}
           <div className="text-center mb-12 lg:mb-20">
-            <div className="text-xs text-neutral-400 mb-6 tracking-wider">PROOF OF CONCEPT</div>
+            <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">PROOF OF CONCEPT</div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-6 lg:mb-8 leading-tight">
               What if customer support<br />
               actually worked perfectly?

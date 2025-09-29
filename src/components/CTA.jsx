@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { addToWaitlist } from '../utils/firebaseFunctions';
 
 export default function CTA() {
   const [email, setEmail] = useState('');
@@ -10,7 +11,7 @@ export default function CTA() {
     return emailRegex.test(email);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -24,8 +25,14 @@ export default function CTA() {
       return;
     }
 
-    setIsSubmitted(true);
-    console.log('Email submitted:', email);
+    try {
+      await addToWaitlist(email);
+      setIsSubmitted(true);
+      console.log('Email submitted to Firestore:', email);
+    } catch (error) {
+      setError('Failed to join waitlist. Please try again.');
+      console.error('Error submitting email:', error);
+    }
   };
 
   return (
@@ -40,7 +47,7 @@ export default function CTA() {
         
         <div className="mx-6">
           <div className="text-center">
-            <div className="text-xs text-neutral-400 mb-6 tracking-wider">
+            <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">
               COMING SOON
             </div>
             <h2 className="text-3xl lg:text-4xl font-thin text-neutral-900 mb-6 leading-tight max-w-3xl mx-auto">

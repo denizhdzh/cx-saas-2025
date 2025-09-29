@@ -13,7 +13,7 @@ export default function ProblemSolution() {
           <div className="space-y-20 lg:space-y-32">
             {/* Problem narrative */}
             <div className="text-center">
-              <div className="text-xs text-neutral-400 mb-6 tracking-wider">THE REALITY</div>
+              <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">THE REALITY</div>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-8 lg:mb-12 leading-tight">
                 Your support team is drowning<br />
                 in repetitive tickets
@@ -60,7 +60,7 @@ export default function ProblemSolution() {
 
             {/* Solution narrative */}
             <div className="text-center">
-              <div className="text-xs text-neutral-400 mb-6 tracking-wider">THE SOLUTION</div>
+              <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">THE SOLUTION</div>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-8 lg:mb-12 leading-tight">
                 AI agents that know your<br />
                 SaaS inside and out

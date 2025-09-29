@@ -11,7 +11,7 @@ export default function BentoFeatures() {
         
         <div className="mx-4 sm:mx-6">
           <div className="text-center mb-16 lg:mb-24">
-            <div className="text-xs text-neutral-400 mb-6 tracking-wider">HOW IT WORKS</div>
+            <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">HOW IT WORKS</div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-6 lg:mb-8 leading-tight">
               Three simple steps to<br />
               intelligent customer support
@@ -21,79 +21,67 @@ export default function BentoFeatures() {
             </p>
           </div>
           
-          {/* Three steps grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+          {/* Three steps */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
             
-            {/* Step 1: Upload */}
+            {/* Step 1 */}
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-neutral-900 text-white flex items-center justify-center text-lg font-medium mx-auto mb-6">
+              <div className="w-12 h-12 bg-neutral-900 text-white rounded-full flex items-center justify-center text-lg font-medium mx-auto mb-6">
                 1
               </div>
               <h3 className="text-xl font-thin text-neutral-900 mb-4">Upload your content</h3>
-              <p className="text-neutral-600 font-light mb-6">
+              <p className="text-neutral-600 font-light mb-8">
                 Drag and drop your docs. Our AI understands everything instantly.
               </p>
               
-              {/* Minimal dark upload interface */}
-              <div className="bg-neutral-900 rounded-2xl p-6 border border-neutral-800">
-                <div className="space-y-4">
-                  {/* Simple file list */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-xl">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span className="text-white text-sm">support-guide.pdf</span>
-                      <span className="text-neutral-400 text-xs ml-auto">2.4 MB</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 p-3 bg-neutral-800/30 rounded-xl">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span className="text-neutral-300 text-sm">product-manual.docx</span>
-                      <span className="text-neutral-500 text-xs ml-auto">1.8 MB</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 p-3 bg-neutral-800/20 rounded-xl">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span className="text-neutral-400 text-sm">faqs.txt</span>
-                      <span className="text-neutral-600 text-xs ml-auto">124 KB</span>
-                    </div>
+              <div className="bg-neutral-900 rounded-xl p-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-xl">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-white text-sm">support-guide.pdf</span>
+                    <span className="text-neutral-400 text-xs ml-auto">2.4 MB</span>
                   </div>
-                  
-                  {/* Status */}
-                  <div className="flex items-center justify-center gap-2 pt-2">
-                    <div className="w-1 h-1 bg-green-400 rounded-full"></div>
-                    <span className="text-green-400 text-xs">3 files processed</span>
+                  <div className="flex items-center gap-3 p-3 bg-neutral-800/30 rounded-xl">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-neutral-300 text-sm">product-manual.docx</span>
+                    <span className="text-neutral-500 text-xs ml-auto">1.8 MB</span>
                   </div>
+                  <div className="flex items-center gap-3 p-3 bg-neutral-800/20 rounded-xl">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-neutral-400 text-sm">faqs.txt</span>
+                    <span className="text-neutral-600 text-xs ml-auto">124 KB</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 pt-2 mt-4 border-t border-neutral-700">
+                  <div className="w-1 h-1 bg-green-400 rounded-full"></div>
+                  <span className="text-green-400 text-xs">3 files processed</span>
                 </div>
               </div>
             </div>
 
-            {/* Step 2: Set Live Activities */}
-            <div>
-              <div className="w-12 h-12 rounded-full bg-neutral-900 text-white flex items-center justify-center text-lg font-medium mx-auto mb-6">
+            {/* Step 2 */}
+            <div className="text-center">
+              <div className="w-12 h-12 bg-neutral-900 text-white rounded-full flex items-center justify-center text-lg font-medium mx-auto mb-6">
                 2
               </div>
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-thin text-neutral-900 mb-4">Set live activities</h3>
-                <p className="text-neutral-600 font-light">
-                  Configure notifications and real-time updates for your users.
-                </p>
-              </div>
+              <h3 className="text-xl font-thin text-neutral-900 mb-4">Set live activities</h3>
+              <p className="text-neutral-600 font-light mb-8">
+                Configure notifications and real-time updates for your users.
+              </p>
               
-              {/* Live Activities preview */}
               <LiveActivitiesDemo />
             </div>
 
-            {/* Step 3: Deploy */}
+            {/* Step 3 */}
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-neutral-900 text-white flex items-center justify-center text-lg font-medium mx-auto mb-6">
+              <div className="w-12 h-12 bg-neutral-900 text-white rounded-full flex items-center justify-center text-lg font-medium mx-auto mb-6">
                 3
               </div>
               <h3 className="text-xl font-thin text-neutral-900 mb-4">Add to website</h3>
-              <p className="text-neutral-600 font-light mb-6">
+              <p className="text-neutral-600 font-light mb-8">
                 Copy one line of code. Your AI goes live instantly.
               </p>
               
-              {/* Code deployment */}
               <div className="space-y-4">
                 <div className="bg-neutral-900 rounded-xl p-4 text-left">
                   <div className="flex items-center gap-2 mb-2">
@@ -109,7 +97,7 @@ export default function BentoFeatures() {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2 text-green-600 text-sm">
+                <div className="flex items-center justify-center gap-2 text-green-600 text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="font-medium">Live in 60 seconds</span>
                 </div>

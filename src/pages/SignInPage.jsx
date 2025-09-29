@@ -23,8 +23,8 @@ export default function SignInPage() {
   return (
     <>
       <Helmet>
-        <title>Sign In - Candela AI</title>
-        <meta name="description" content="Sign in to Candela AI customer support platform" />
+        <title>Sign In - ORCHIS AI</title>
+        <meta name="description" content="Sign in to ORCHIS AI customer support platform" />
       </Helmet>
       <div className="min-h-screen bg-white">
         {/* Grid Layout */}
@@ -35,7 +35,7 @@ export default function SignInPage() {
               {/* Minimal Brand */}
               <div className="mb-16">
                 <div className="text-xs text-neutral-400 mb-8">
-                  Candela
+                  ORCHIS
                 </div>
                 <h1 className="text-7xl font-thin text-neutral-900 leading-[0.9] mb-12">
                   AI that<br />

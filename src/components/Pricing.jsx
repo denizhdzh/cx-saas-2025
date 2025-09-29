@@ -83,7 +83,7 @@ export default function Pricing() {
         
         <div className="mx-4 sm:mx-6">
           <div className="text-center mb-12 lg:mb-20">
-            <div className="text-xs text-neutral-400 mb-6 tracking-wider">PRICING</div>
+            <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">PRICING</div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-6 lg:mb-8 leading-tight">
               Transparent pricing<br />
               for when we launch

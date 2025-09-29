@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ToastDemo from './ToastDemo';
+import { addToWaitlist } from '../utils/firebaseFunctions';
 
 export default function Hero() {
   const [email, setEmail] = useState('');
@@ -11,7 +12,7 @@ export default function Hero() {
     return emailRegex.test(email);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -25,8 +26,14 @@ export default function Hero() {
       return;
     }
 
-    setIsSubmitted(true);
-    console.log('Email submitted:', email);
+    try {
+      await addToWaitlist(email);
+      setIsSubmitted(true);
+      console.log('Email submitted to Firestore:', email);
+    } catch (error) {
+      setError('Failed to join waitlist. Please try again.');
+      console.error('Error submitting email:', error);
+    }
   };
 
   return (
@@ -37,10 +44,10 @@ export default function Hero() {
         <div className="hidden lg:block absolute right-6 top-0 bottom-0 w-px bg-neutral-200"></div>
         
         <div className="mx-4 sm:mx-6">
-          <div className="lg:grid lg:grid-cols-2 lg:gap-16 lg:items-end lg:min-h-[70vh]">
+          <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-end lg:min-h-[70vh]">
             {/* Left side - Content */}
-            <div className="text-center lg:text-left">
-              <div className="text-xs text-neutral-400 mb-6 lg:mb-8 tracking-wider">
+            <div className="text-center lg:text-left pl-6">
+              <div className="text-sm font-bold text-orange-600 mb-6 lg:mb-8 tracking-wider">
                 ORCHIS
               </div>
               
