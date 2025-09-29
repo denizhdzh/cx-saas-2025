@@ -1,4 +1,5 @@
-const functions = require('firebase-functions');
+const { onCall, onRequest } = require('firebase-functions/v2/https');
+const { setGlobalOptions } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
@@ -6,10 +7,24 @@ const OpenAI = require('openai');
 
 admin.initializeApp();
 
-// Initialize OpenAI with rate limiting
-const openai = new OpenAI({
-  apiKey: functions.config().openai.key, // Set with: firebase functions:config:set openai.key="your-api-key"
+// Set global options for v2 functions
+setGlobalOptions({
+  region: 'us-central1'
 });
+
+// Initialize OpenAI lazily
+let openaiInstance = null;
+function getOpenAI() {
+  if (!openaiInstance) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is required');
+    }
+    openaiInstance = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openaiInstance;
+}
 
 // Rate limiting helper
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -75,14 +90,17 @@ async function extractTextFromFile(buffer, mimeType, filename) {
 }
 
 // Create and train agent
-exports.trainAgent = functions.https.onCall(async (data, context) => {
+exports.trainAgent = onCall({
+  timeoutSeconds: 540,
+  memory: '2GiB'
+}, async (request) => {
   // Check authentication
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  if (!request.auth) {
+    throw new Error('User must be authenticated');
   }
 
-  const { agentId, documents, agentConfig } = data;
-  const userId = context.auth.uid;
+  const { agentId, documents, agentConfig } = request.data;
+  const userId = request.auth.uid;
   
   try {
     console.log('🚀 Starting agent training for user:', userId);
@@ -130,10 +148,10 @@ exports.trainAgent = functions.https.onCall(async (data, context) => {
             if (timeSinceLastCall < MIN_API_INTERVAL) {
               await delay(MIN_API_INTERVAL - timeSinceLastCall);
             }
-            lastApiCall = Date.now();
+            lastApiCall = now;
             
             // Generate embedding with OpenAI
-            const embeddingResponse = await openai.embeddings.create({
+            const embeddingResponse = await getOpenAI().embeddings.create({
               model: "text-embedding-ada-002",
               input: chunk,
             });
@@ -174,7 +192,7 @@ exports.trainAgent = functions.https.onCall(async (data, context) => {
               await delay(2000); // Wait 2 seconds
               
               try {
-                const retryResponse = await openai.embeddings.create({
+                const retryResponse = await getOpenAI().embeddings.create({
                   model: "text-embedding-ada-002",
                   input: chunk,
                 });
@@ -274,18 +292,21 @@ exports.trainAgent = functions.https.onCall(async (data, context) => {
       console.error('Error updating agent status:', updateError);
     }
     
-    throw new functions.https.HttpsError('internal', `Training failed: ${error.message}`);
+    throw new Error(`Training failed: ${error.message}`);
   }
 });
 
 // Process uploaded document
-exports.processDocument = functions.https.onCall(async (data, context) => {
+exports.processDocument = onCall({
+  timeoutSeconds: 300,
+  memory: '1GiB'
+}, async (request) => {
   // Check authentication
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  if (!request.auth) {
+    throw new Error('User must be authenticated');
   }
 
-  const { agentId, fileName, fileUrl } = data;
+  const { agentId, fileName, fileUrl } = request.data;
   
   try {
     // Download file from storage
@@ -302,7 +323,7 @@ exports.processDocument = functions.https.onCall(async (data, context) => {
     // Store chunks in Firestore using correct user structure
     const batch = db.batch();
     const chunksData = [];
-    const agentRef = db.collection('users').doc(context.auth.uid).collection('agents').doc(agentId);
+    const agentRef = db.collection('users').doc(request.auth.uid).collection('agents').doc(agentId);
     
     chunks.forEach((chunk, index) => {
       const chunkDoc = agentRef.collection('chunks').doc();
@@ -343,7 +364,7 @@ exports.processDocument = functions.https.onCall(async (data, context) => {
     
   } catch (error) {
     console.error('Error processing document:', error);
-    throw new functions.https.HttpsError('internal', 'Failed to process document');
+    throw new Error('Failed to process document');
   }
 });
 
@@ -356,13 +377,16 @@ function cosineSimilarity(vecA, vecB) {
 }
 
 // Chat with agent using similarity search
-exports.chatWithAgent = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+exports.chatWithAgent = onCall({
+  timeoutSeconds: 120,
+  memory: '512MiB'
+}, async (request) => {
+  if (!request.auth) {
+    throw new Error('User must be authenticated');
   }
 
-  const { agentId, message, sessionId } = data;
-  const userId = context.auth.uid;
+  const { agentId, message, sessionId } = request.data;
+  const userId = request.auth.uid;
   
   try {
     console.log(`💬 Processing chat for agent ${agentId}: "${message}"`);
@@ -376,7 +400,7 @@ exports.chatWithAgent = functions.https.onCall(async (data, context) => {
     lastApiCall = Date.now();
     
     // Generate embedding for user's question
-    const questionEmbedding = await openai.embeddings.create({
+    const questionEmbedding = await getOpenAI().embeddings.create({
       model: "text-embedding-ada-002",
       input: message,
     });
@@ -419,7 +443,7 @@ exports.chatWithAgent = functions.https.onCall(async (data, context) => {
     const context = topChunks.map(chunk => chunk.content).join('\n\n');
     
     // Generate response using OpenAI
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
@@ -467,29 +491,28 @@ ${context}`
     
   } catch (error) {
     console.error('❌ Error in chat:', error);
-    throw new functions.https.HttpsError('internal', `Chat failed: ${error.message}`);
+    throw new Error(`Chat failed: ${error.message}`);
   }
 });
 
 // Generate embed code
-exports.generateEmbedCode = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+exports.generateEmbedCode = onCall(async (request) => {
+  if (!request.auth) {
+    throw new Error('User must be authenticated');
   }
 
-  const { agentId } = data;
+  const { agentId } = request.data;
   
   try {
     // Get agent data (using user structure)
-    const agentDoc = await db.collection('users').doc(context.auth.uid).collection('agents').doc(agentId).get();
+    const agentDoc = await db.collection('users').doc(request.auth.uid).collection('agents').doc(agentId).get();
     if (!agentDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'Agent not found');
+      throw new Error('Agent not found');
     }
     
     const agent = agentDoc.data();
     
-    const embedCode = `
-<!-- Orchis Chatbot -->
+    const embedCode = `<!-- Orchis Chatbot -->
 <div id="orchis-chatbot-${agentId}"></div>
 <script>
   (function() {
@@ -513,6 +536,83 @@ exports.generateEmbedCode = functions.https.onCall(async (data, context) => {
     
   } catch (error) {
     console.error('Error generating embed code:', error);
-    throw new functions.https.HttpsError('internal', 'Failed to generate embed code');
+    throw new Error('Failed to generate embed code');
+  }
+});
+
+// Generate dynamic sitemap
+exports.generateSitemap = onRequest({
+  timeoutSeconds: 60,
+  memory: '256MiB'
+}, async (request, response) => {
+  try {
+    // Set content type for XML
+    response.set('Content-Type', 'application/xml');
+    
+    // Static pages
+    const staticPages = [
+      { url: 'https://orchis.app/', priority: '1.0', changefreq: 'weekly' },
+      { url: 'https://orchis.app/blog', priority: '0.8', changefreq: 'daily' }
+    ];
+    
+    // Get published blog posts
+    const blogPosts = [];
+    try {
+      const postsSnapshot = await db.collection('admin/blog/posts')
+        .where('published', '==', true)
+        .orderBy('createdAt', 'desc')
+        .get();
+      
+      postsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.slug) {
+          blogPosts.push({
+            url: `https://orchis.app/blog/${data.slug}`,
+            priority: '0.7',
+            changefreq: 'monthly',
+            lastmod: data.updatedAt ? new Date(data.updatedAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+          });
+        }
+      });
+    } catch (blogError) {
+      console.error('Error fetching blog posts for sitemap:', blogError);
+    }
+    
+    // Generate XML sitemap
+    let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+    
+    // Add static pages
+    staticPages.forEach(page => {
+      sitemap += `
+  <url>
+    <loc>${page.url}</loc>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+  </url>`;
+    });
+    
+    // Add blog posts
+    blogPosts.forEach(post => {
+      sitemap += `
+  <url>
+    <loc>${post.url}</loc>
+    <changefreq>${post.changefreq}</changefreq>
+    <priority>${post.priority}</priority>
+    <lastmod>${post.lastmod}</lastmod>
+  </url>`;
+    });
+    
+    sitemap += `
+</urlset>`;
+    
+    // Cache for 1 hour
+    response.set('Cache-Control', 'public, max-age=3600');
+    response.status(200).send(sitemap);
+    
+  } catch (error) {
+    console.error('Error generating sitemap:', error);
+    response.status(500).send('Error generating sitemap');
   }
 });

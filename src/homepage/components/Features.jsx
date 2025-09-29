@@ -74,7 +74,7 @@ export default function Features() {
                     Contextual understanding that actually solves problems
                   </div>
                   {/* Exact ToastDemo with our response */}
-                  <div className="bg-neutral-900 border border-neutral-700 rounded-3xl p-3 w-96" style={{boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'}}>
+                  <div className="bg-neutral-900 border border-neutral-700 rounded-3xl p-3 w-full max-w-sm sm:max-w-md lg:max-w-sm xl:max-w-md" style={{boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'}}>
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-6 h-6 bg-neutral-800 rounded-full flex items-center justify-center">
                         <img src="/logo.png" alt="Logo" className="w-4 h-4 object-contain" />
@@ -140,7 +140,7 @@ export default function Features() {
                     Elegant Live Activity-style interface that feels native to your website
                   </div>
                   {/* Live Activities discount offer */}
-                  <div className="bg-neutral-900 border border-neutral-700 rounded-3xl p-3 w-96" style={{boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'}}>
+                  <div className="bg-neutral-900 border border-neutral-700 rounded-3xl p-3 w-full max-w-sm sm:max-w-md lg:max-w-sm xl:max-w-md" style={{boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'}}>
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-6 h-6 bg-neutral-800 rounded-full flex items-center justify-center">
                         <img src="/logo.png" alt="Logo" className="w-4 h-4 object-contain" />
@@ -213,7 +213,7 @@ export default function Features() {
                     One line of code, live in 60 seconds
                   </div>
                   {/* Simple code block */}
-                  <div className="bg-neutral-900 rounded-xl p-4 max-w-sm">
+                  <div className="bg-neutral-900 rounded-xl p-4 w-full max-w-xs sm:max-w-sm">
                     <div className="text-green-400 font-mono text-sm leading-relaxed">
                       &lt;script src="orchis.ai/widget.js"<br />
                       &nbsp;&nbsp;data-key="your-key"&gt;<br />

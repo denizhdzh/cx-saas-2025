@@ -2,10 +2,10 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import Header from '../homepage/components/Header';
 import Hero from '../homepage/components/Hero';
-import ProblemSolution from '../components/ProblemSolution';
+import ProblemSolution from '../homepage/components/ProblemSolution';
 import Features from '../homepage/components/Features';
-import Stats from '../components/Stats';
-import BentoFeatures from '../components/BentoFeatures';
+import Stats from '../homepage/components/Stats';
+import BentoFeatures from '../homepage/components/BentoFeatures';
 import Pricing from '../homepage/components/Pricing';
 import FAQ from '../homepage/components/FAQ';
 import CTA from '../homepage/components/CTA';
@@ -22,6 +22,7 @@ export default function HomePage() {
         {/* Open Graph */}
         <meta property="og:title" content="Orchis - AI Customer Support Platform" />
         <meta property="og:description" content="AI agents that understand context and speak like humans. 94% resolution rate, 60-second setup." />
+        <meta property="og:image" content="https://orchis.app/og-image.jpg" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://orchis.app" />
         <meta property="og:site_name" content="Orchis" />
@@ -30,6 +31,7 @@ export default function HomePage() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Orchis - AI Customer Support Platform" />
         <meta name="twitter:description" content="AI agents that understand context and speak like humans. 94% resolution rate." />
+        <meta name="twitter:image" content="https://orchis.app/og-image.jpg" />
         
         {/* Additional SEO */}
         <meta name="author" content="Orchis" />

@@ -2,19 +2,18 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://toolslash.com/sitemap.xml
-
-# Crawl-delay - reduced for better crawling
-Crawl-delay: 0.5
+Sitemap: https://orchis.app/sitemap.xml
 
 # Disallow admin and private pages
 Disallow: /admin
 Disallow: /admin/*
-Disallow: /payment-success*
-Disallow: /payment-cancel*
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /settings
+Disallow: /create-agent
+Disallow: /train-agent
+Disallow: /embed
 
-# Allow specific important pages
-Allow: /search
-Allow: /browse
-Allow: /tool/*
-Allow: /category/* 
+# Allow public pages
+Allow: /blog
+Allow: /blog/* 
