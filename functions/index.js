@@ -309,15 +309,35 @@ exports.processDocument = onCall({
   const { agentId, fileName, fileUrl } = request.data;
   
   try {
+    // Extract file path from download URL
+    const urlParts = fileUrl.split('/o/')[1].split('?')[0];
+    const filePath = decodeURIComponent(urlParts);
+    
     // Download file from storage
-    const file = storage.bucket().file(fileUrl);
+    const file = storage.bucket().file(filePath);
     const [fileBuffer] = await file.download();
     const [metadata] = await file.getMetadata();
     
     // Extract text from file
     const text = await extractTextFromFile(fileBuffer, metadata.contentType, fileName);
     
-    // Create chunks
+    // For temp processing, just return the text content
+    if (agentId === 'temp') {
+      // Delete temp file after processing
+      try {
+        await file.delete();
+      } catch (deleteError) {
+        console.log('Temp file already deleted or not found');
+      }
+      
+      return {
+        success: true,
+        textContent: text,
+        message: 'Text extracted successfully'
+      };
+    }
+    
+    // Create chunks for real agents
     const chunks = chunkText(text);
     
     // Store chunks in Firestore using correct user structure
@@ -358,6 +378,7 @@ exports.processDocument = onCall({
     
     return {
       success: true,
+      textContent: text,
       chunksCreated: chunks.length,
       chunks: chunksData
     };
@@ -448,7 +469,18 @@ exports.chatWithAgent = onCall({
       messages: [
         {
           role: "system",
-          content: `You are a helpful AI assistant. Answer the user's question based on the provided context. If the context doesn't contain relevant information, say so politely. Keep your response concise and helpful.
+          content: `You are a friendly, helpful AI assistant. Be conversational and personable while providing accurate information from the knowledge base.
+
+Guidelines:
+- Respond in the same language the user is communicating in
+- Answer casual questions like "how are you", "hello", "what's up" in a friendly way even if not in the knowledge base
+- If user mentions their name, remember and use it naturally throughout the conversation
+- Ask follow-up questions to better help users and keep the conversation engaging
+- Be concise but friendly - aim for 1-3 sentences unless more detail is needed
+- If you don't have specific information in the knowledge base, acknowledge this but still try to be helpful with general guidance
+- Use a warm, professional tone and show genuine interest in helping
+- Avoid refusing to answer unless the question is inappropriate or harmful
+- Be more engaging and show personality while staying professional
 
 Context from knowledge base:
 ${context}`

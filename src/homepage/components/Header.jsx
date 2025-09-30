@@ -49,6 +49,12 @@ export default function Header() {
               Pricing
             </a>
             <Link 
+              to="/roadmap"
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              Roadmap
+            </Link>
+            <Link 
               to="/blog" 
               className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
             >

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { adminLogout, getWaitlistStats } from '../../utils/firebaseFunctions';
 import BlogManager from './BlogManager';
+import RoadmapManager from './RoadmapManager';
+import { seedDataFromAdmin } from '../seedRoadmapData';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('stats');
@@ -30,6 +32,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'stats', label: 'Dashboard', icon: '📊' },
     { id: 'blog', label: 'Blog Posts', icon: '📝' },
+    { id: 'roadmap', label: 'Roadmap', icon: '🗺️' },
   ];
 
   return (
@@ -148,6 +151,15 @@ export default function AdminDashboard() {
                 </button>
 
                 <button
+                  onClick={() => setActiveTab('roadmap')}
+                  className="p-4 border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-left cursor-pointer"
+                >
+                  <div className="text-2xl mb-2">🗺️</div>
+                  <div className="font-medium text-neutral-900">Manage Roadmap</div>
+                  <div className="text-sm text-neutral-500">Update product roadmap</div>
+                </button>
+
+                <button
                   onClick={() => window.open('/', '_blank')}
                   className="p-4 border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-left cursor-pointer"
                 >
@@ -155,12 +167,22 @@ export default function AdminDashboard() {
                   <div className="font-medium text-neutral-900">View Homepage</div>
                   <div className="text-sm text-neutral-500">Check the main site</div>
                 </button>
+
+                <button
+                  onClick={seedDataFromAdmin}
+                  className="p-4 border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-left cursor-pointer"
+                >
+                  <div className="text-2xl mb-2">🌱</div>
+                  <div className="font-medium text-neutral-900">Seed Data</div>
+                  <div className="text-sm text-neutral-500">Add sample roadmap data</div>
+                </button>
               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'blog' && <BlogManager />}
+        {activeTab === 'roadmap' && <RoadmapManager />}
       </div>
     </div>
   );

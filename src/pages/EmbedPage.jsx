@@ -64,11 +64,10 @@ export default function EmbedPage() {
         <div className="ml-64 p-6">
           <div className="max-w-4xl mx-auto space-y-8">
             {/* Header */}
-            <div className="border-b border-neutral-200 pb-8">
+            <div className="pb-8">
               <div className="text-xs text-neutral-400 mb-8">Integration</div>
               <h1 className="text-2xl font-thin text-neutral-900">Embed Chatbot</h1>
-              <div className="w-12 h-px bg-neutral-900 mt-4 mb-6"></div>
-              <p className="text-neutral-600 text-sm leading-relaxed font-light">
+              <p className="text-neutral-600 text-sm leading-relaxed font-light mt-6">
                 Add your trained chatbot to any website with a simple code snippet.
               </p>
             </div>
@@ -210,6 +209,7 @@ export default function EmbedPage() {
             <ChatWidget 
               agentId={selectedAgent.id}
               projectName={selectedAgent.projectName}
+              logoUrl={selectedAgent.logoUrl}
               primaryColor="#2563eb"
               position="bottom-right"
             />

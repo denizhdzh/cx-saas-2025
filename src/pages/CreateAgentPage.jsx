@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAgent } from '../contexts/AgentContext';
 import Sidebar from '../components/Sidebar';
 import { storage, functions } from '../firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { 
   CloudArrowUpIcon, 
@@ -90,8 +90,8 @@ export default function CreateAgentPage() {
             : f
         ));
 
-        // Read file content directly
-        const fileContent = await readFileContent(fileObj.file);
+        // Process file with backend
+        const fileContent = await processFileWithBackend(fileObj.file);
         
         setUploadedFiles(prev => prev.map(f => 
           f.id === fileObj.id 
@@ -112,36 +112,31 @@ export default function CreateAgentPage() {
     });
   };
 
-  // Read file content directly in browser
-  const readFileContent = async (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+  // Upload file to storage and get text content from backend
+  const processFileWithBackend = async (file) => {
+    try {
+      // Upload to Firebase Storage
+      const storageRef = ref(storage, `temp/${user.uid}/${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
       
-      reader.onload = async (e) => {
-        try {
-          const arrayBuffer = e.target.result;
-          
-          if (file.type === 'text/plain') {
-            const text = new TextDecoder().decode(arrayBuffer);
-            resolve(text);
-          } else if (file.type === 'application/pdf') {
-            // For PDF, we'll need to use pdf-lib or similar
-            // For now, just indicate it needs backend processing
-            resolve(`[PDF Content from ${file.name} - ${file.size} bytes]`);
-          } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-            // For DOCX, needs backend processing
-            resolve(`[DOCX Content from ${file.name} - ${file.size} bytes]`);
-          } else {
-            reject(new Error('Unsupported file type'));
-          }
-        } catch (error) {
-          reject(error);
-        }
-      };
+      await uploadTask;
+      const downloadURL = await getDownloadURL(storageRef);
       
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsArrayBuffer(file);
-    });
+      // Call backend function to extract text
+      const processDocument = httpsCallable(functions, 'processDocument');
+      const result = await processDocument({
+        fileName: file.name,
+        fileUrl: downloadURL,
+        agentId: 'temp' // Temporary agent ID for processing
+      });
+      
+      // Backend already deletes temp file
+      return result.data.textContent || 'No text extracted';
+      
+    } catch (error) {
+      console.error('Backend processing error:', error);
+      throw error;
+    }
   };
 
   const handleDragOver = (e) => {

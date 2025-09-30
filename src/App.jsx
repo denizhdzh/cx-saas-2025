@@ -6,6 +6,7 @@ import SignInPage from './pages/SignInPage';
 import CreateAgentPage from './pages/CreateAgentPage';
 import TrainPage from './pages/TrainPage';
 import EmbedPage from './pages/EmbedPage';
+import RoadmapPage from './pages/RoadmapPage';
 import NotFoundPage from './pages/NotFoundPage';
 import AdminPage from './pages/AdminPage';
 import BlogIndex from './blog/components/BlogIndex';
@@ -26,6 +27,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/signin" element={<SignInPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/roadmap" element={<RoadmapPage />} />
               <Route path="/blog" element={<BlogIndex />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/dashboard" element={
