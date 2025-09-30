@@ -3,7 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   Squares2X2Icon, 
   ArrowRightStartOnRectangleIcon, 
-  CogIcon
+  CogIcon,
+  RectangleGroupIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useAgent } from '../contexts/AgentContext';
@@ -58,14 +60,14 @@ export default function Sidebar() {
   const menuItems = [
     { 
       path: '/dashboard', 
-      icon: Squares2X2Icon, 
+      icon: RectangleGroupIcon, 
       label: 'Dashboard',
       description: 'Overview & analytics',
       badge: null
     },
     { 
       path: '/embed', 
-      icon: Squares2X2Icon, 
+      icon: SparklesIcon, 
       label: 'Embed Code',
       description: 'Get integration code',
       badge: null

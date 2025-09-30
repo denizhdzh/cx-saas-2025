@@ -8,7 +8,7 @@ import {
 import { functions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 
-export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl = null, primaryColor = "#2563eb", position = "bottom-right" }) {
+export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl = null, primaryColor = "#2563eb", position }) {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -99,10 +99,17 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
         ? `User ${userName} asks: ${userMessageContent}`
         : userMessageContent;
 
+      // Send last 6 messages (3 Q&A pairs) for context
+      const recentMessages = messages.slice(-6).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
       const result = await chatWithAgent({
         agentId,
         message: enhancedMessage,
-        sessionId
+        sessionId,
+        conversationHistory: recentMessages
       });
 
       // Add empty assistant message first, then type it out
@@ -141,7 +148,7 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
     'top-left': 'top-4 left-4'
   };
 
-  const chatPosition = positionClasses[position] || positionClasses['bottom-right'];
+  const chatPosition = position ? positionClasses[position] || positionClasses['bottom-right'] : '';
 
   // Calculate dynamic height based on messages
   const calculateHeight = () => {
@@ -154,8 +161,11 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
     return baseHeight + extraHeight;
   };
 
+  // If no position is provided, render as static (for preview)
+  const isPreview = !position;
+  
   return (
-    <div className={`fixed ${chatPosition} z-50`} style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className={isPreview ? '' : `fixed ${chatPosition} z-50`} style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Toast-style Chat Widget with dynamic height */}
       <div 
         className="bg-neutral-900 border border-neutral-700 rounded-3xl w-full max-w-md overflow-hidden transition-all duration-700 ease-out" 
@@ -168,9 +178,9 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
           
           {/* Header with agent logo and customer name */}
           <div className="flex items-center gap-3 p-4">
-            <div className="w-8 h-8 bg-neutral-800 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden" style={{backgroundColor: logoUrl ? 'transparent' : '#262626'}}>
               {logoUrl ? (
-                <img src={logoUrl} alt={projectName} className="w-6 h-6 object-contain" />
+                <img src={logoUrl} alt={projectName} className="w-8 h-8 object-cover rounded-xl" />
               ) : (
                 <SparklesIcon className="w-4 h-4 text-white" />
               )}
@@ -185,41 +195,43 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
           </div>
           
           {/* Messages Area - Q&A Format */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message, index) => (
-              <div key={message.id} className="space-y-2">
-                {message.role === 'user' && (
-                  <div>
-                    <div className="text-xs text-neutral-400 mb-1 font-medium">You</div>
-                    <div className="text-white text-sm font-medium">
-                      {message.content}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-3">
+              {messages.map((message, index) => (
+                <div key={message.id} className="space-y-1">
+                  {message.role === 'user' && (
+                    <div>
+                      <div className="text-xs text-neutral-400 mb-1 font-medium">You</div>
+                      <div className="text-white text-sm font-medium">
+                        {message.content}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {message.role === 'assistant' && (
-                  <div>
-                    <div className="text-xs text-neutral-400 mb-1 font-medium">{projectName} AI</div>
-                    <div className="text-neutral-200 text-sm leading-relaxed">
-                      {message.content}
-                      {isTyping && messages[messages.length - 1].id === message.id && (
-                        <span className="animate-pulse">|</span>
-                      )}
+                  )}
+                  {message.role === 'assistant' && (
+                    <div>
+                      <div className="text-xs text-neutral-400 mb-1 font-medium">{projectName} AI</div>
+                      <div className="text-neutral-200 text-sm leading-relaxed">
+                        {message.content}
+                        {isTyping && messages[messages.length - 1].id === message.id && (
+                          <span className="animate-pulse">|</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {isLoading && (
-              <div>
-                <div className="text-xs text-neutral-400 mb-2 font-medium">{projectName} AI</div>
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  )}
                 </div>
-              </div>
-            )}
+              ))}
+              
+              {isLoading && (
+                <div>
+                  <div className="text-xs text-neutral-400 mb-2 font-medium">{projectName} AI</div>
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                </div>
+              )}
+            </div>
             <div ref={messagesEndRef} />
           </div>
 

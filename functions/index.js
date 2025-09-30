@@ -406,7 +406,7 @@ exports.chatWithAgent = onCall({
     throw new Error('User must be authenticated');
   }
 
-  const { agentId, message, sessionId } = request.data;
+  const { agentId, message, sessionId, conversationHistory = [] } = request.data;
   const userId = request.auth.uid;
   
   try {
@@ -463,13 +463,11 @@ exports.chatWithAgent = onCall({
     // Build context from relevant chunks
     const context = topChunks.map(chunk => chunk.content).join('\n\n');
     
-    // Generate response using OpenAI
-    const completion = await getOpenAI().chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are a friendly, helpful AI assistant. Be conversational and personable while providing accurate information from the knowledge base.
+    // Build conversation messages with history
+    const messages = [
+      {
+        role: "system",
+        content: `You are a friendly, helpful AI assistant. Be conversational and personable while providing accurate information from the knowledge base.
 
 Guidelines:
 - Respond in the same language the user is communicating in
@@ -484,12 +482,27 @@ Guidelines:
 
 Context from knowledge base:
 ${context}`
-        },
-        {
-          role: "user",
-          content: message
-        }
-      ],
+      }
+    ];
+
+    // Add conversation history for context
+    conversationHistory.forEach(msg => {
+      messages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    });
+
+    // Add current user message
+    messages.push({
+      role: "user",
+      content: message
+    });
+
+    // Generate response using OpenAI
+    const completion = await getOpenAI().chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: messages,
       max_tokens: 500,
       temperature: 0.7,
     });
