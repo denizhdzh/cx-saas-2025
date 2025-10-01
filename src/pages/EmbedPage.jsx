@@ -366,6 +366,16 @@ export default function EmbedPage() {
               {/* Background Pattern */}
               <div className="absolute inset-0 h-full w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_60%,transparent_100%)]"></div>
               
+              {/* Try Here Message */}
+              <div className="absolute top-20 left-8 z-10">
+                <div className="flex items-center gap-2 text-neutral-500">
+                  <span className="text-sm font-medium">Try here</span>
+                  <svg className="w-5 h-5 transform rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </div>
+              </div>
+              
               {/* Preview Content */}
               <div className="relative h-full p-6 flex items-center justify-center">
                 {/* Chat Widget */}

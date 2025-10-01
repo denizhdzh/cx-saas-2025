@@ -168,7 +168,7 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
     <div className={isPreview ? '' : `fixed ${chatPosition} z-50`} style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Toast-style Chat Widget with dynamic height */}
       <div 
-        className="bg-neutral-900 border border-neutral-700 rounded-3xl w-full max-w-md overflow-hidden transition-all duration-700 ease-out" 
+        className="bg-stone-900 border border-stone-700 rounded-3xl w-full max-w-md overflow-hidden transition-all duration-700 ease-out" 
         style={{
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
           height: `${calculateHeight() * 4}px` // Convert h units to px
@@ -189,7 +189,7 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
               <div className="text-white text-xs font-medium">
                 {projectName} AI{userName && ` & ${userName.charAt(0).toUpperCase() + userName.slice(1)}`}
               </div>
-              <div className="text-neutral-400 text-xs">Online now</div>
+              <div className="text-stone-400 text-xs">Online now</div>
             </div>
             <div className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
           </div>
@@ -201,7 +201,7 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
                 <div key={message.id} className="space-y-1">
                   {message.role === 'user' && (
                     <div>
-                      <div className="text-xs text-neutral-400 mb-1 font-medium">You</div>
+                      <div className="text-xs text-stone-400 mb-1 font-medium">You</div>
                       <div className="text-white text-sm font-medium">
                         {message.content}
                       </div>
@@ -209,8 +209,8 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
                   )}
                   {message.role === 'assistant' && (
                     <div>
-                      <div className="text-xs text-neutral-400 mb-1 font-medium">{projectName} AI</div>
-                      <div className="text-neutral-200 text-sm leading-relaxed">
+                      <div className="text-xs text-stone-400 mb-1 font-medium">{projectName} AI</div>
+                      <div className="text-stone-200 text-sm leading-relaxed">
                         {message.content}
                         {isTyping && messages[messages.length - 1].id === message.id && (
                           <span className="animate-pulse">|</span>
@@ -223,11 +223,11 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
               
               {isLoading && (
                 <div>
-                  <div className="text-xs text-neutral-400 mb-2 font-medium">{projectName} AI</div>
+                  <div className="text-xs text-stone-400 mb-2 font-medium">{projectName} AI</div>
                   <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-stone-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-stone-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-stone-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                   </div>
                 </div>
               )}
@@ -237,8 +237,8 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
 
           {/* Input Section like ToastDemo */}
           <div className="p-4">
-            <div className="border border-neutral-800 rounded-xl p-4">
-              <div className="text-xs text-neutral-400 mb-2 font-medium">Ask {projectName} AI</div>
+            <div className="border border-stone-800 rounded-xl p-4">
+              <div className="text-xs text-stone-400 mb-2 font-medium">Ask {projectName} AI</div>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -246,13 +246,13 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
                   placeholder={`Ask anything about ${projectName}...`}
-                  className="flex-1 px-3 py-2 text-sm bg-neutral-800 text-white placeholder-neutral-500 border border-neutral-700 rounded-lg focus:outline-none"
+                  className="flex-1 px-3 py-2 text-sm bg-stone-800 text-white placeholder-stone-500 border border-stone-700 rounded-lg focus:outline-none"
                   disabled={isLoading || isTyping}
                 />
                 <button
                   onClick={sendMessage}
                   disabled={!inputMessage.trim() || isLoading || isTyping}
-                  className="p-2 text-white bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors disabled:opacity-50"
+                  className="p-2 text-white bg-stone-700 hover:bg-stone-600 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <PaperAirplaneIcon className="w-4 h-4" />
                 </button>
