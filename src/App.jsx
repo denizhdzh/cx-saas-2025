@@ -22,7 +22,7 @@ function App() {
       <AuthProvider>
         <AgentProvider>
           <BrowserRouter>
-          <div className="min-h-screen bg-neutral-100">
+          <div className="min-h-screen bg-stone-100">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/signin" element={<SignInPage />} />
@@ -31,6 +31,11 @@ function App() {
               <Route path="/blog" element={<BlogIndex />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard/:agentId" element={
                 <ProtectedRoute>
                   <DashboardPage />
                 </ProtectedRoute>

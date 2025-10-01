@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { useAgent } from '../contexts/AgentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { functions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
-import Navbar from '../components/Navbar';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { 
-  CodeBracketIcon, 
-  ClipboardDocumentIcon, 
-  CheckIcon,
-  PencilIcon,
-  PhotoIcon
-} from '@heroicons/react/24/outline';
-import ChatWidget from '../components/ChatWidget';
+  BinaryCodeIcon, 
+  AirplayLineIcon, 
+  Tick01Icon,
+  PencilEdit01Icon,
+  Store01Icon,
+  Copy01Icon,
+  ArrowLeft01Icon
+} from '@hugeicons/core-free-icons';
+import ChatWidget from './ChatWidget';
 
-export default function EmbedPage() {
-  const { selectedAgent, updateAgent } = useAgent();
+export default function EmbedView({ agent, onBack }) {
+  const { updateAgent } = useAgent();
   const { user } = useAuth();
   const [embedCode, setEmbedCode] = useState('');
   const [copied, setCopied] = useState(false);
@@ -33,23 +34,23 @@ export default function EmbedPage() {
   const generateEmbedCode = httpsCallable(functions, 'generateEmbedCode');
 
   useEffect(() => {
-    if (selectedAgent) {
+    if (agent) {
       handleGenerateEmbed();
       setEditForm({
-        name: selectedAgent.name || '',
-        projectName: selectedAgent.projectName || '',
-        logoUrl: selectedAgent.logoUrl || ''
+        name: agent.name || '',
+        projectName: agent.projectName || '',
+        logoUrl: agent.logoUrl || ''
       });
-      setLogoPreview(selectedAgent.logoUrl || null);
+      setLogoPreview(agent.logoUrl || null);
     }
-  }, [selectedAgent]);
+  }, [agent]);
 
   const handleGenerateEmbed = async () => {
-    if (!selectedAgent) return;
+    if (!agent) return;
     
     setIsLoading(true);
     try {
-      const result = await generateEmbedCode({ agentId: selectedAgent.id });
+      const result = await generateEmbedCode({ agentId: agent.id });
       setEmbedCode(result.data.embedCode);
     } catch (error) {
       console.error('Error generating embed code:', error);
@@ -87,7 +88,7 @@ export default function EmbedPage() {
       console.log('Updating agent with:', updatedAgentData);
       
       // Update the agent using the context function
-      await updateAgent(selectedAgent.id, updatedAgentData);
+      await updateAgent(agent.id, updatedAgentData);
       
       setIsEditing(false);
       setNewLogo(null);
@@ -114,42 +115,19 @@ export default function EmbedPage() {
 
   const handleEditCancel = () => {
     setEditForm({
-      name: selectedAgent.name || '',
-      projectName: selectedAgent.projectName || '',
-      logoUrl: selectedAgent.logoUrl || ''
+      name: agent.name || '',
+      projectName: agent.projectName || '',
+      logoUrl: agent.logoUrl || ''
     });
     setNewLogo(null);
-    setLogoPreview(selectedAgent.logoUrl || null);
+    setLogoPreview(agent.logoUrl || null);
     setIsEditing(false);
   };
 
-  if (!selectedAgent) {
-    return (
-      <>
-        <Helmet>
-          <title>Embed Code - Orchis</title>
-          <meta name="description" content="Get embed code for your chatbot" />
-        </Helmet>
-        
-        <div className="min-h-screen bg-stone-100">
-          <Navbar />
-          
-          <div className="flex items-center justify-center h-screen">
-            <div className="text-center">
-              <CodeBracketIcon className="w-16 h-16 text-stone-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-stone-900 mb-2">No Agent Selected</h2>
-              <p className="text-stone-600">Please select an agent to generate embed code.</p>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   const sections = [
-    { id: 'branding', title: 'Branding', icon: PhotoIcon },
-    { id: 'embed', title: 'Embed Code', icon: CodeBracketIcon },
-    { id: 'preview', title: 'Preview', icon: ClipboardDocumentIcon }
+    { id: 'branding', title: 'Branding', icon: Store01Icon },
+    { id: 'embed', title: 'Embed Code', icon: BinaryCodeIcon },
+    { id: 'preview', title: 'Preview', icon: AirplayLineIcon }
   ];
 
   const renderBrandingSection = () => (
@@ -157,22 +135,22 @@ export default function EmbedPage() {
       {!isEditing ? (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {selectedAgent.logoUrl ? (
+            {agent.logoUrl ? (
               <img 
-                src={selectedAgent.logoUrl} 
-                alt={selectedAgent.projectName}
+                src={agent.logoUrl} 
+                alt={agent.projectName}
                 className="w-12 h-12 rounded-lg object-cover border border-stone-200"
               />
             ) : (
               <div className="w-12 h-12 bg-stone-100 rounded-lg flex items-center justify-center">
-                <CodeBracketIcon className="w-6 h-6 text-stone-400" />
+                <HugeiconsIcon icon={BinaryCodeIcon} className="w-6 h-6 text-stone-400" />
               </div>
             )}
             <div>
-              <h2 className="text-lg font-medium text-stone-900">{selectedAgent.name}</h2>
-              <p className="text-stone-600 text-sm">{selectedAgent.projectName}</p>
+              <h2 className="text-lg font-medium text-stone-900">{agent.name}</h2>
+              <p className="text-stone-600 text-sm">{agent.projectName}</p>
               <p className="text-xs text-stone-500 mt-1">
-                {selectedAgent.documentCount} documents • {selectedAgent.trainingStatus}
+                {agent.documentCount} documents • {agent.trainingStatus}
               </p>
             </div>
           </div>
@@ -181,7 +159,7 @@ export default function EmbedPage() {
             className="p-2 text-stone-400 hover:text-stone-600 transition-colors"
             title="Edit agent settings"
           >
-            <PencilIcon className="w-4 h-4" />
+            <HugeiconsIcon icon={PencilEdit01Icon} className="w-4 h-4" />
           </button>
         </div>
       ) : (
@@ -237,7 +215,7 @@ export default function EmbedPage() {
                 htmlFor="logo-upload-edit"
                 className="btn-secondary inline-flex items-center gap-2 text-xs py-2 px-3"
               >
-                <PhotoIcon className="w-3 h-3" />
+                <HugeiconsIcon icon={Store01Icon} className="w-3 h-3" />
                 Upload Logo
               </label>
             </div>
@@ -277,12 +255,12 @@ export default function EmbedPage() {
         >
           {copied ? (
             <>
-              <CheckIcon className="w-4 h-4" />
+              <HugeiconsIcon icon={Tick01Icon} className="w-4 h-4" />
               Copied!
             </>
           ) : (
             <>
-              <ClipboardDocumentIcon className="w-4 h-4" />
+              <HugeiconsIcon icon={Copy01Icon} className="w-4 h-4" />
               Copy Embed Code
             </>
           )}
@@ -343,9 +321,9 @@ export default function EmbedPage() {
         <div className="relative h-full p-6 flex items-center justify-center">
           <div className="w-full max-w-md">
             <ChatWidget 
-              agentId={selectedAgent.id}
-              projectName={selectedAgent.projectName}
-              logoUrl={selectedAgent.logoUrl}
+              agentId={agent.id}
+              projectName={agent.projectName}
+              logoUrl={agent.logoUrl}
               primaryColor="#f97316"
             />
           </div>
@@ -354,64 +332,81 @@ export default function EmbedPage() {
     </div>
   );
 
+  if (!agent) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <HugeiconsIcon icon={BinaryCodeIcon} className="w-16 h-16 text-stone-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-stone-900 mb-2">No Agent Selected</h2>
+          <p className="text-stone-600">Please select an agent to generate embed code.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
-      <Helmet>
-        <title>Embed Code - Orchis</title>
-        <meta name="description" content="Get embed code for your chatbot" />
-      </Helmet>
-      
-      <div className="min-h-screen bg-stone-100">
-        <Navbar />
-        
-        <div className="max-w-5xl mx-auto px-6 py-6">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="text-xs text-stone-400 mb-2">Integration</div>
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-thin text-stone-900">Embed Chatbot</h1>
-                <div className="w-12 h-px bg-stone-900 mt-4"></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex gap-8">
-            {/* Left Sidebar - Section Navigation */}
-            <div className="w-64 space-y-2">
-              {sections.map((section) => {
-                const Icon = section.icon;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg transition-colors ${
-                      activeSection === section.id
-                        ? 'bg-transparent border border-stone-200 text-stone-900'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-sm font-medium">{section.title}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Right Content - Section Content */}
-            <div className="flex-1 bg-white rounded-xl border border-stone-200 p-6">
-              <h2 className="text-lg font-medium text-stone-900 mb-6">
-                {sections.find(s => s.id === activeSection)?.title}
-              </h2>
-              
-              {activeSection === 'branding' && renderBrandingSection()}
-              {activeSection === 'embed' && renderEmbedSection()}
-              {activeSection === 'preview' && renderPreviewSection()}
-            </div>
+    <div className="max-w-5xl mx-auto px-6 py-6">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 p-2 text-stone-400 hover:text-stone-600 transition-colors rounded-lg hover:bg-stone-200 cursor-pointer"
+            title="Back to Analytics"
+          >
+            <HugeiconsIcon icon={ArrowLeft01Icon} className="w-4 h-4" />
+            <span className="text-xs text-stone-400">Back</span>
+          </button>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-thin text-stone-900">Embed Settings</h1>
+            <div className="w-12 h-px bg-stone-900 mt-4"></div>
           </div>
         </div>
       </div>
-    </>
+
+      {/* Main Content */}
+      <div className="flex gap-8">
+        {/* Left Sidebar - Section Navigation */}
+        <div className="w-64 bg-transparent p-1">
+          <div className="space-y-1">
+            {sections.map((section) => {
+              const Icon = section.icon;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={`w-full flex items-center gap-1 px-4 py-2 text-left rounded-lg hover:bg-stone-800 hover:text-white transition-colors group ${
+                    activeSection === section.id ? 'bg-stone-800 text-white' : ''
+                  }`}
+                >
+                  <HugeiconsIcon 
+                    icon={Icon} 
+                    className={`w-4 h-4 transition-colors ${
+                      activeSection === section.id ? 'text-white' : 'text-stone-500 group-hover:text-white'
+                    }`} 
+                  />
+                  <span className={`text-sm font-medium transition-colors ${
+                    activeSection === section.id ? 'text-white' : 'text-stone-900 group-hover:text-white'
+                  }`}>{section.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right Content - Section Content */}
+        <div className="flex-1 bg-white rounded-xl border border-stone-200 p-6">
+          <h2 className="text-lg font-medium text-stone-900 mb-6">
+            {sections.find(s => s.id === activeSection)?.title}
+          </h2>
+          
+          {activeSection === 'branding' && renderBrandingSection()}
+          {activeSection === 'embed' && renderEmbedSection()}
+          {activeSection === 'preview' && renderPreviewSection()}
+        </div>
+      </div>
+    </div>
   );
 }

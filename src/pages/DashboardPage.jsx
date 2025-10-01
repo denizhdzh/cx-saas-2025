@@ -1,15 +1,35 @@
-import React, { useState } from 'react';
-import { PlusIcon, CpuChipIcon, DocumentTextIcon, ChartBarIcon, Cog6ToothIcon, TrashIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { PlusIcon, CpuChipIcon } from '@heroicons/react/24/outline';
 import { Helmet } from 'react-helmet-async';
-import Sidebar from '../components/Sidebar';
+import Navbar from '../components/Navbar';
+import AgentDashboard from '../components/AgentDashboard';
+import EmbedView from '../components/EmbedView';
+import PricingDashboard from '../components/PricingDashboard';
 import { useAgent } from '../contexts/AgentContext';
 
 export default function DashboardPage() {
-  const { agents, deleteAgent, selectAgent, loading } = useAgent();
+  const navigate = useNavigate();
+  const { agentId } = useParams();
+  const isBillingPage = agentId === 'billing';
+  const { agents, deleteAgent, selectAgent, selectedAgent, loading } = useAgent();
+  const [showEmbedView, setShowEmbedView] = useState(false);
+
+  // Find and select the agent based on URL parameter
+  useEffect(() => {
+    if (agentId && agents.length > 0 && agentId !== 'billing') {
+      const agent = agents.find(a => a.id === agentId);
+      if (agent && (!selectedAgent || selectedAgent.id !== agentId)) {
+        selectAgent(agent);
+      } else if (!agent) {
+        // Agent not found, redirect to dashboard
+        navigate('/dashboard');
+      }
+    }
+  }, [agentId, agents, selectedAgent, selectAgent, navigate]);
 
   const handleCreateAgent = () => {
-    // Navigate to create agent page
-    window.location.href = '/create-agent';
+    navigate('/create-agent');
   };
 
   const handleDeleteAgent = async (agentId, e) => {
@@ -23,35 +43,73 @@ export default function DashboardPage() {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'training': return 'bg-blue-100 text-blue-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const getTrainingStatusColor = (status) => {
     switch (status) {
       case 'trained': return 'bg-green-100 text-green-800';
       case 'training': return 'bg-blue-100 text-blue-800';
       case 'not_trained': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-stone-100 text-stone-800';
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
-        <Sidebar />
-        <div className="ml-64 flex items-center justify-center h-screen">
+      <div className="min-h-screen bg-stone-100">
+        <Navbar />
+        <div className="max-w-5xl mx-auto px-6 flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       </div>
     );
   }
 
+  // If billing page, show pricing dashboard
+  if (isBillingPage) {
+    return (
+      <>
+        <Helmet>
+          <title>Billing - Orchis</title>
+          <meta name="description" content="Manage your billing and subscription" />
+        </Helmet>
+        
+        <div className="min-h-screen bg-stone-100">
+          <Navbar />
+          <PricingDashboard />
+        </div>
+      </>
+    );
+  }
+
+  // If agentId exists in URL, show agent views
+  if (agentId) {
+    return (
+      <>
+        <Helmet>
+          <title>{selectedAgent?.name || 'Agent'} - Orchis</title>
+          <meta name="description" content="Manage your AI agent" />
+        </Helmet>
+        
+        <div className="min-h-screen bg-stone-100">
+          <Navbar />
+          
+          {/* View Content */}
+          {showEmbedView ? (
+            <EmbedView 
+              agent={selectedAgent} 
+              onBack={() => setShowEmbedView(false)}
+            />
+          ) : (
+            <AgentDashboard 
+              agent={selectedAgent} 
+              onShowEmbed={() => setShowEmbedView(true)}
+            />
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // Default dashboard view (grid of agents)
   return (
     <>
       <Helmet>
@@ -59,24 +117,21 @@ export default function DashboardPage() {
         <meta name="description" content="Manage and train your AI assistants" />
       </Helmet>
       
-      <div className="min-h-screen bg-white">
-        <Sidebar />
+      <div className="min-h-screen bg-stone-100">
+        <Navbar />
         
-        <div className="ml-64 flex h-screen">
-          {/* Left Sidebar - Agent List */}
-          <div className="w-80 border-r border-neutral-200 flex flex-col">
-            {/* Header */}
-            <div className="p-6 border-b border-gray-200">
-              <div className="text-xs text-neutral-400 mb-8">Dashboard</div>
-              <h1 className="text-2xl font-thin text-neutral-900">AI Agents</h1>
-              <div className="w-12 h-px bg-neutral-900 mt-4"></div>
-            </div>
-
-            {/* Create Button */}
-            <div className="p-4 border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="text-xs text-stone-400 mb-2">Dashboard</div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-thin text-stone-900">AI Agents</h1>
+                <div className="w-12 h-px bg-stone-900 mt-4"></div>
+              </div>
               <button
                 onClick={handleCreateAgent}
-                className="w-full px-6 py-3 text-sm font-medium transition-colors rounded-xl text-white flex items-center justify-center gap-3 hover:opacity-90 cursor-pointer"
+                className="px-6 py-2 text-sm font-medium transition-colors rounded-xl text-white flex items-center gap-3 hover:opacity-90 cursor-pointer"
                 style={{
                   borderWidth: '0.5px',
                   borderStyle: 'solid',
@@ -90,56 +145,53 @@ export default function DashboardPage() {
                 Create Agent
               </button>
             </div>
+          </div>
 
-            {/* Agent List */}
-            <div className="flex-1 overflow-y-auto">
-              {agents.length === 0 ? (
-                <div className="p-6 text-center">
-                  <CpuChipIcon className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                  <div className="text-sm font-medium text-gray-900 mb-1">No agents yet</div>
-                  <div className="text-xs text-gray-500">Create your first AI agent</div>
-                </div>
-              ) : (
-                <div className="p-2">
-                  {agents.map((agent) => (
-                    <div
-                      key={agent.id}
-                      className="p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors mb-1"
-                      onClick={() => {
-                        selectAgent(agent);
-                        window.location.href = '/train-agent';
-                      }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <CpuChipIcon className="w-4 h-4 text-gray-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 truncate">{agent.name}</div>
-                          <div className="text-xs text-gray-500 truncate mt-0.5">{agent.description}</div>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getTrainingStatusColor(agent.trainingStatus)}`}>
-                              {agent.trainingStatus?.replace('_', ' ')}
-                            </span>
-                            <span className="text-xs text-gray-400">{agent.documentCount || 0} docs</span>
-                          </div>
-                        </div>
+          {/* Agent Grid */}
+          {agents.length === 0 ? (
+            <div className="text-center py-12">
+              <CpuChipIcon className="w-12 h-12 text-stone-400 mx-auto mb-4" />
+              <div className="text-lg font-medium text-stone-900 mb-2">No agents yet</div>
+              <div className="text-stone-500">Create your first AI agent to get started</div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {agents.map((agent) => (
+                <div
+                  key={agent.id}
+                  className="p-6 border border-stone-200 rounded-xl hover:border-stone-300 cursor-pointer transition-colors bg-stone-50"
+                  onClick={() => {
+                    selectAgent(agent);
+                    navigate(`/dashboard/${agent.id}`);
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {agent.logoUrl ? (
+                        <img 
+                          src={agent.logoUrl} 
+                          alt={agent.name}
+                          className="w-10 h-10 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <CpuChipIcon className="w-5 h-5 text-stone-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-lg font-medium text-stone-900 truncate">{agent.name}</div>
+                      <div className="text-sm text-stone-500 truncate mt-1">{agent.description}</div>
+                      <div className="flex items-center gap-3 mt-3">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTrainingStatusColor(agent.trainingStatus)}`}>
+                          {agent.trainingStatus?.replace('_', ' ')}
+                        </span>
+                        <span className="text-sm text-stone-400">{agent.documentCount || 0} docs</span>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-          </div>
-
-          {/* Right Panel - Agent Details */}
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <CpuChipIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Select an agent</h3>
-              <p className="text-gray-600">Choose an agent from the list to view details and start training</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
