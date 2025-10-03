@@ -231,7 +231,8 @@
         this.queueAIAnalysis(message);
       }
       
-      // AI will handle all analysis - no need for manual keywords!
+      // Fallback keyword-based analysis (immediate)
+      this.performKeywordAnalysis(text);
     }
 
     shouldTriggerAIAnalysis(message) {
@@ -315,59 +316,44 @@
       return { shouldCreate: false, reason: 'no_trigger' };
     }
 
+    performKeywordAnalysis(text) {
+      // Basic keyword analysis (AI will do the heavy lifting)
+      const negativeWords = ['bad', 'terrible', 'awful', 'hate', 'worst', 'disappointed', 'frustrated', 'angry'];
+      
+      if (negativeWords.some(word => text.includes(word))) {
+        this.sessionData.sentiment = 'negative';
+      }
+      
+      // Basic topic detection
+      this.sessionData.topic = this.detectTopic(text);
+    }
 
     detectTopic(text) {
-      if (text.includes('pricing') || text.includes('cost') || text.includes('plan')) return 'pricing';
-      if (text.includes('features') || text.includes('functionality')) return 'features';
-      if (text.includes('integration') || text.includes('api')) return 'integration';
-      if (text.includes('support') || text.includes('help')) return 'support';
-      if (text.includes('security') || text.includes('privacy')) return 'security';
-      if (text.includes('setup') || text.includes('installation')) return 'setup';
-      return null;
-    }
+        this.sessionData.sentiment = 'positive';
+      } else if (negativeWords.some(word => text.includes(word))) {
+        this.sessionData.sentiment = 'negative';
+      } else if (confusedWords.some(word => text.includes(word))) {
+        this.sessionData.sentiment = 'confused';
+        this.sessionData.qualityMetrics.clarificationNeeded++;
+      }
 
-    createTicket() {
-      this.sessionData.ticketCreated = true;
-      this.sessionData.ticketId = 'TKT_' + Date.now() + '_' + Math.random().toString(36).substring(7);
-      this.sessionData.ticketStatus = 'open';
-      
-      console.log('🎫 Auto-created ticket:', this.sessionData.ticketId, 'for session:', this.sessionData.sessionId);
-      this.saveSession();
-    }
+      // Urgency detection
+      if (urgentWords.some(word => text.includes(word))) {
+        this.sessionData.qualityMetrics.urgencyLevel = 'high';
+      } else if (text.includes('when possible') || text.includes('no rush')) {
+        this.sessionData.qualityMetrics.urgencyLevel = 'low';
+      }
 
-    createSmartTicket(analysis) {
-      this.sessionData.ticketCreated = true;
-      this.sessionData.ticketId = 'TKT_' + Date.now() + '_' + Math.random().toString(36).substring(7);
-      this.sessionData.ticketStatus = 'open';
-      this.sessionData.ticketPriority = analysis.urgency;
-      this.sessionData.ticketReason = analysis.ticketReason;
-      this.sessionData.aiAnalysis = analysis;
-      
-      console.log('🎫 AI-powered ticket created:', this.sessionData.ticketId, 'Reason:', analysis.ticketReason);
-      this.saveSession();
-    }
+      // Topic detection and switching
+      const currentTopic = this.detectTopic(text);
+      if (currentTopic && this.sessionData.topic && currentTopic !== this.sessionData.topic) {
+        this.sessionData.qualityMetrics.topicSwitchCount++;
+      }
+      if (currentTopic) {
+        this.sessionData.topic = currentTopic;
+      }
 
-    updateLeadQuality(text) {
-      // AI handles all analysis now - no manual keywords needed
-      return;
-    }
-
-    queueAIAnalysis(message) {
-      // Debounce AI calls to avoid too many requests
-      clearTimeout(this.aiAnalysisTimeout);
-      this.aiAnalysisTimeout = setTimeout(() => {
-        this.performAIAnalysis(message);
-      }, 2000); // Wait 2 seconds before AI analysis
-    }
-
-    async performAIAnalysis(message) {
-      // AI analysis now happens in the main chat response
-      // This is just for backward compatibility
-      console.log('🤖 AI Analysis called for:', message.substring(0, 50));
-      return;
-    }
-
-    getExistingCategories() {
+      // Business intelligence - Enhanced
       const competitors = ['chatbase', 'intercom', 'zendesk', 'crisp', 'tidio', 'drift', 'hubspot'];
       if (competitors.some(comp => text.includes(comp)) || text.includes('competitor') || text.includes('alternative')) {
         this.sessionData.businessMetrics.competitorMentioned = true;
@@ -776,7 +762,6 @@ Provide JSON with:
     this.isLoading = false;
     this.isTyping = false;
     this.userName = localStorage.getItem(`chatbot_user_${this.config.agentId}`) || '';
-    this.agentData = null; // Store agent data for logo
     
     // Domain validation
     const currentDomain = window.location.hostname;
@@ -815,19 +800,15 @@ Provide JSON with:
         .orchis-position-top-left { top: 20px; left: 20px; }
         
         .orchis-chat-widget {
-          background: rgba(25, 25, 25, 0.7);
-          backdrop-filter: saturate(180%) blur(20px);
-          -webkit-backdrop-filter: saturate(180%) blur(10px);
-          border: 0.5px solid rgba(80, 80, 80, 0.3);
-          border-radius: 20px;
+          background: #1c1917;
+          border: 1px solid #44403c;
+          border-radius: 24px;
           width: 100%;
-          max-width: 26rem;
+          max-width: 28rem;
           overflow: hidden;
-          box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15),
-                      0 2px 8px rgba(31, 38, 135, 0.08),
-                      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
           height: auto;
-          min-height: 250px;
+          min-height: 288px;
           max-height: 480px;
           display: flex;
           flex-direction: column;
@@ -851,9 +832,8 @@ Provide JSON with:
           align-items: center;
           gap: 12px;
           padding: 16px;
-          background: rgba(255, 255, 255, 0);
         }
-
+        
         .orchis-agent-avatar {
           width: 32px;
           height: 32px;
@@ -862,7 +842,7 @@ Provide JSON with:
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          background: rgba(120, 120, 128, 0.16);
+          background: #262626;
           flex-shrink: 0;
         }
         
@@ -884,14 +864,13 @@ Provide JSON with:
         }
         
         .orchis-agent-name {
-          color: rgba(255, 255, 255, 0.85);
+          color: white;
           font-size: 12px;
-          font-weight: 600;
-          letter-spacing: -0.02em;
+          font-weight: 500;
         }
-
+        
         .orchis-status {
-          color: rgba(255, 255, 255, 0.5);
+          color: #a8a29e;
           font-size: 12px;
         }
         
@@ -925,96 +904,87 @@ Provide JSON with:
         }
         
         .orchis-message {
-          margin-bottom: 0px;
+          margin-bottom: 12px;
         }
         
         .orchis-message-label {
-          color: rgba(255, 255, 255, 0.45);
-          font-size: 11px;
-          font-weight: 600;
+          color: #a8a29e;
+          font-size: 12px;
+          font-weight: 500;
           margin-bottom: 4px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
         }
-
+        
         .orchis-message-content {
           font-size: 14px;
           line-height: 1.5;
         }
-
+        
         .orchis-assistant-message .orchis-message-content {
-          color: rgba(255, 255, 255, 0.75);
+          color: #e7e5e4;
         }
-
+        
         .orchis-user-message .orchis-message-content {
-          color: rgba(255, 255, 255, 0.85);
+          color: white;
           font-weight: 500;
         }
         
         .orchis-input-section {
-          padding: 4px;
-          background: rgba(255, 255, 255, 0);
+          padding: 16px;
         }
-
+        
         .orchis-input-container {
-          background: rgba(255, 255, 255, 0);
-          border: 0.5px solid rgba(255, 255, 255, 0.1);
-          border-radius: 20px;
-          padding: 12px;
+          border: 1px solid #44403c;
+          border-radius: 12px;
+          padding: 16px;
         }
-
+        
         .orchis-input-label {
-          color: rgba(255, 255, 255, 1);
-          font-size: 11px;
-          font-weight: 600;
+          color: #a8a29e;
+          font-size: 12px;
+          font-weight: 500;
           margin-bottom: 8px;
-          letter-spacing: 0.3px;
         }
-
+        
         .orchis-input-row {
           display: flex;
           align-items: center;
           gap: 8px;
         }
-
+        
         .orchis-input {
           flex: 1;
           padding: 8px 12px;
           font-size: 14px;
-          background: rgba(255, 255, 255, 0);
-          color: rgba(0, 0, 0, 0.85);
-          border: 0.5px solid rgba(255, 255, 255, 0.7);
+          background: #44403c;
+          color: white;
+          border: 1px solid #57534e;
           border-radius: 8px;
           outline: none;
-          transition: all 0.2s ease;
         }
-
+        
         .orchis-input::placeholder {
-          color: rgba(255, 255, 255, 0.35);
+          color: #78716c;
         }
-
+        
         .orchis-input:focus {
-          background: rgba(255, 255, 255, 0);
-          border-color: rgba(255, 255, 255, 1);
-          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+          border-color: #68544f;
         }
-
+        
         .orchis-send-button {
           padding: 8px;
-          color: black;
-          background: rgba(255, 255, 255, 0.9);
+          color: white;
+          background: #57534e;
           border: none;
           border-radius: 8px;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: background-color 0.2s;
           display: flex;
           align-items: center;
           justify-content: center;
         }
-
+        
         .orchis-send-button:hover {
-          background: rgba(188, 188, 188, 1);
-          transform: scale(1.02);
+          background: #68544f;
         }
         
         .orchis-send-button:disabled {
@@ -1034,7 +1004,7 @@ Provide JSON with:
         .orchis-dot {
           width: 8px;
           height: 8px;
-          background: rgba(0, 0, 0, 0.3);
+          background: #78716c;
           border-radius: 50%;
           animation: orchis-bounce 1.4s ease-in-out infinite both;
         }

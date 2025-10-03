@@ -21,11 +21,13 @@ export default function EmbedView({ agent, onBack }) {
   const [embedCode, setEmbedCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
+  const [brandingForm, setBrandingForm] = useState({
     name: '',
     projectName: '',
     logoUrl: ''
+  });
+  const [securityForm, setSecurityForm] = useState({
+    allowedDomains: ''
   });
   const [newLogo, setNewLogo] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -35,11 +37,13 @@ export default function EmbedView({ agent, onBack }) {
 
   useEffect(() => {
     if (agent) {
-      handleGenerateEmbed();
-      setEditForm({
+      setBrandingForm({
         name: agent.name || '',
         projectName: agent.projectName || '',
         logoUrl: agent.logoUrl || ''
+      });
+      setSecurityForm({
+        allowedDomains: agent.allowedDomains ? agent.allowedDomains.join('\n') : ''
       });
       setLogoPreview(agent.logoUrl || null);
     }
@@ -52,8 +56,10 @@ export default function EmbedView({ agent, onBack }) {
     try {
       const result = await generateEmbedCode({ agentId: agent.id });
       setEmbedCode(result.data.embedCode);
+      alert('✅ Embed code generated successfully!');
     } catch (error) {
       console.error('Error generating embed code:', error);
+      alert('Error generating embed code: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -69,37 +75,57 @@ export default function EmbedView({ agent, onBack }) {
     }
   };
 
-  const handleEditSubmit = async () => {
+  const handleBrandingSave = async () => {
     try {
-      let logoUrlToSave = editForm.logoUrl;
+      let logoUrlToSave = brandingForm.logoUrl;
       
       // If user uploaded a new logo, use the preview (base64)
       if (newLogo && logoPreview) {
         logoUrlToSave = logoPreview;
       }
-      
+
       const updatedAgentData = {
-        name: editForm.name,
-        projectName: editForm.projectName,
+        name: brandingForm.name,
+        projectName: brandingForm.projectName,
         logoUrl: logoUrlToSave,
         updatedAt: new Date().toISOString()
       };
       
-      console.log('Updating agent with:', updatedAgentData);
+      // Update the agent using the context function
+      await updateAgent(agent.id, updatedAgentData);
+      
+      setNewLogo(null);
+      setEmbedCode(''); // Clear old embed code
+      
+      alert('✅ Branding updated successfully!');
+    } catch (error) {
+      console.error('❌ Error updating branding:', error);
+      alert('Error updating branding: ' + error.message);
+    }
+  };
+
+  const handleSecuritySave = async () => {
+    try {
+      // Process allowed domains
+      const allowedDomains = securityForm.allowedDomains
+        .split('\n')
+        .map(domain => domain.trim())
+        .filter(domain => domain.length > 0);
+
+      const updatedAgentData = {
+        allowedDomains: allowedDomains,
+        updatedAt: new Date().toISOString()
+      };
       
       // Update the agent using the context function
       await updateAgent(agent.id, updatedAgentData);
       
-      setIsEditing(false);
-      setNewLogo(null);
+      setEmbedCode(''); // Clear old embed code
       
-      // Regenerate embed code with new data
-      await handleGenerateEmbed();
-      
-      alert('✅ Agent updated successfully!');
+      alert('✅ Security settings updated successfully!');
     } catch (error) {
-      console.error('❌ Error updating agent:', error);
-      alert('Error updating agent: ' + error.message);
+      console.error('❌ Error updating security settings:', error);
+      alert('Error updating security settings: ' + error.message);
     }
   };
 
@@ -113,163 +139,165 @@ export default function EmbedView({ agent, onBack }) {
     }
   };
 
-  const handleEditCancel = () => {
-    setEditForm({
-      name: agent.name || '',
-      projectName: agent.projectName || '',
-      logoUrl: agent.logoUrl || ''
-    });
-    setNewLogo(null);
-    setLogoPreview(agent.logoUrl || null);
-    setIsEditing(false);
-  };
 
   const sections = [
     { id: 'branding', title: 'Branding', icon: Store01Icon },
-    { id: 'embed', title: 'Embed Code', icon: BinaryCodeIcon },
+    { id: 'security', title: 'Security', icon: BinaryCodeIcon },
+    { id: 'embed', title: 'Embed Code', icon: Copy01Icon },
     { id: 'preview', title: 'Preview', icon: AirplayLineIcon }
   ];
 
   const renderBrandingSection = () => (
     <div className="space-y-6">
-      {!isEditing ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {agent.logoUrl ? (
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-stone-600 mb-1">
+            Agent Name
+          </label>
+          <input
+            type="text"
+            value={brandingForm.name}
+            onChange={(e) => setBrandingForm({...brandingForm, name: e.target.value})}
+            className="form-input text-sm"
+            placeholder="Customer Support Bot"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-stone-600 mb-1">
+            Project Name
+          </label>
+          <input
+            type="text"
+            value={brandingForm.projectName}
+            onChange={(e) => setBrandingForm({...brandingForm, projectName: e.target.value})}
+            className="form-input text-sm"
+            placeholder="My Company"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-stone-600 mb-2">
+            Project Logo
+          </label>
+          <div className="flex items-center space-x-3">
+            {logoPreview && (
               <img 
-                src={agent.logoUrl} 
-                alt={agent.projectName}
-                className="w-12 h-12 rounded-lg object-cover border border-stone-200"
+                src={logoPreview} 
+                alt="Logo preview" 
+                className="w-10 h-10 rounded-lg object-cover border border-stone-200"
               />
-            ) : (
-              <div className="w-12 h-12 bg-stone-100 rounded-lg flex items-center justify-center">
-                <HugeiconsIcon icon={BinaryCodeIcon} className="w-6 h-6 text-stone-400" />
-              </div>
             )}
-            <div>
-              <h2 className="text-lg font-medium text-stone-900">{agent.name}</h2>
-              <p className="text-stone-600 text-sm">{agent.projectName}</p>
-              <p className="text-xs text-stone-500 mt-1">
-                {agent.documentCount} documents • {agent.trainingStatus}
-              </p>
-            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="hidden"
+              id="logo-upload-branding"
+            />
+            <label
+              htmlFor="logo-upload-branding"
+              className="btn-secondary inline-flex items-center gap-2 text-xs py-2 px-3"
+            >
+              <HugeiconsIcon icon={Store01Icon} className="w-3 h-3" />
+              Upload Logo
+            </label>
           </div>
+        </div>
+
+        <div className="pt-4">
           <button
-            onClick={() => setIsEditing(true)}
-            className="p-2 text-stone-400 hover:text-stone-600 transition-colors"
-            title="Edit agent settings"
+            onClick={handleBrandingSave}
+            className="btn-primary text-sm py-2 px-4"
           >
-            <HugeiconsIcon icon={PencilEdit01Icon} className="w-4 h-4" />
+            Save Branding
           </button>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-stone-700">Edit Agent Settings</h3>
-          
-          <div>
-            <label className="block text-xs font-medium text-stone-600 mb-1">
-              Agent Name
-            </label>
-            <input
-              type="text"
-              value={editForm.name}
-              onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-              className="form-input text-sm"
-              placeholder="Customer Support Bot"
-            />
-          </div>
+      </div>
+    </div>
+  );
 
-          <div>
-            <label className="block text-xs font-medium text-stone-600 mb-1">
-              Project Name
-            </label>
-            <input
-              type="text"
-              value={editForm.projectName}
-              onChange={(e) => setEditForm({...editForm, projectName: e.target.value})}
-              className="form-input text-sm"
-              placeholder="My Company"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-stone-600 mb-2">
-              Project Logo
-            </label>
-            <div className="flex items-center space-x-3">
-              {logoPreview && (
-                <img 
-                  src={logoPreview} 
-                  alt="Logo preview" 
-                  className="w-10 h-10 rounded-lg object-cover border border-stone-200"
-                />
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLogoChange}
-                className="hidden"
-                id="logo-upload-edit"
-              />
-              <label
-                htmlFor="logo-upload-edit"
-                className="btn-secondary inline-flex items-center gap-2 text-xs py-2 px-3"
-              >
-                <HugeiconsIcon icon={Store01Icon} className="w-3 h-3" />
-                Upload Logo
-              </label>
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={handleEditSubmit}
-              className="btn-primary text-xs py-2 px-3 flex-1"
-            >
-              Save Changes
-            </button>
-            <button
-              onClick={handleEditCancel}
-              className="btn-secondary text-xs py-2 px-3 flex-1"
-            >
-              Cancel
-            </button>
-          </div>
+  const renderSecuritySection = () => (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-stone-600 mb-1">
+            Allowed Domains
+          </label>
+          <textarea
+            value={securityForm.allowedDomains}
+            onChange={(e) => setSecurityForm({...securityForm, allowedDomains: e.target.value})}
+            className="form-textarea text-sm h-24"
+            placeholder="example.com&#10;mysite.org&#10;*.mydomain.com"
+            rows={4}
+          />
+          <p className="text-xs text-stone-500 mt-1">
+            One domain per line. Use * for subdomains (*.example.com). Leave empty to allow all domains.
+          </p>
         </div>
-      )}
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-blue-800 mb-2">🔒 Security Features</h4>
+          <ul className="text-xs text-blue-700 space-y-1">
+            <li>• <strong>Domain Restriction:</strong> Widget only works on allowed domains</li>
+            <li>• <strong>HMAC Security:</strong> Cryptographic signatures prevent unauthorized use</li>
+            <li>• <strong>Replay Protection:</strong> Requests expire after 5 minutes</li>
+          </ul>
+        </div>
+
+        <div className="pt-4">
+          <button
+            onClick={handleSecuritySave}
+            className="btn-primary text-sm py-2 px-4"
+          >
+            Save Security Settings
+          </button>
+        </div>
+      </div>
     </div>
   );
 
   const renderEmbedSection = () => (
     <div className="space-y-6">
-      {/* Copy Button */}
-      {isLoading ? (
-        <div className="bg-stone-50 rounded-lg p-4 text-center">
-          <div className="animate-spin w-6 h-6 border-2 border-stone-300 border-t-stone-600 rounded-full mx-auto mb-2"></div>
-          <p className="text-stone-600 text-sm">Generating...</p>
-        </div>
-      ) : embedCode ? (
+      {/* Generate Button */}
+      <div className="flex gap-3">
         <button
-          onClick={copyToClipboard}
-          className="btn-primary w-full flex items-center justify-center gap-2"
+          onClick={handleGenerateEmbed}
+          disabled={isLoading}
+          className="btn-secondary flex items-center gap-2"
         >
-          {copied ? (
+          {isLoading ? (
             <>
-              <HugeiconsIcon icon={Tick01Icon} className="w-4 h-4" />
-              Copied!
+              <div className="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full"></div>
+              Generating...
             </>
           ) : (
             <>
-              <HugeiconsIcon icon={Copy01Icon} className="w-4 h-4" />
-              Copy Embed Code
+              <HugeiconsIcon icon={BinaryCodeIcon} className="w-4 h-4" />
+              Generate Embed Code
             </>
           )}
         </button>
-      ) : (
-        <div className="bg-stone-50 rounded-lg p-4 text-center">
-          <p className="text-stone-600 text-sm">Ready to copy embed code</p>
-        </div>
-      )}
+        
+        {embedCode && (
+          <button
+            onClick={copyToClipboard}
+            className="btn-primary flex items-center gap-2"
+          >
+            {copied ? (
+              <>
+                <HugeiconsIcon icon={Tick01Icon} className="w-4 h-4" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <HugeiconsIcon icon={Copy01Icon} className="w-4 h-4" />
+                Copy Code
+              </>
+            )}
+          </button>
+        )}
+      </div>
 
       {/* Code Display */}
       {embedCode && (
@@ -403,6 +431,7 @@ export default function EmbedView({ agent, onBack }) {
           </h2>
           
           {activeSection === 'branding' && renderBrandingSection()}
+          {activeSection === 'security' && renderSecuritySection()}
           {activeSection === 'embed' && renderEmbedSection()}
           {activeSection === 'preview' && renderPreviewSection()}
         </div>

@@ -105,6 +105,10 @@ exports.trainAgent = onCall({
   try {
     console.log('🚀 Starting agent training for user:', userId);
     
+    // Generate secret key for HMAC if not exists
+    const crypto = require('crypto');
+    const secretKey = crypto.randomBytes(32).toString('hex');
+
     // Create/update agent in users/{userId}/agents/{agentId}
     const agentRef = db.collection('users').doc(userId).collection('agents').doc(agentId);
     const agentData = {
@@ -113,6 +117,7 @@ exports.trainAgent = onCall({
       userId,
       trainingStatus: 'training',
       documentCount: documents.length,
+      secretKey: secretKey, // For HMAC verification
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
@@ -397,7 +402,7 @@ function cosineSimilarity(vecA, vecB) {
   return dotProduct / (magnitudeA * magnitudeB);
 }
 
-// Chat with agent using similarity search
+// Chat with agent using similarity search (authenticated)
 exports.chatWithAgent = onCall({
   timeoutSeconds: 120,
   memory: '512MiB'
@@ -408,7 +413,111 @@ exports.chatWithAgent = onCall({
 
   const { agentId, message, sessionId, conversationHistory = [] } = request.data;
   const userId = request.auth.uid;
-  
+
+  return await processChatMessage(agentId, message, sessionId, conversationHistory, userId);
+});
+
+// Chat with agent for external widgets (HMAC authenticated)
+exports.chatWithAgentExternal = onRequest({
+  timeoutSeconds: 120,
+  memory: '512MiB',
+  cors: true
+}, async (request, response) => {
+  // Set CORS headers
+  response.set('Access-Control-Allow-Origin', '*');
+  response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight requests
+  if (request.method === 'OPTIONS') {
+    response.status(204).send('');
+    return;
+  }
+
+  if (request.method !== 'POST') {
+    response.status(405).send('Method not allowed');
+    return;
+  }
+
+  try {
+    console.log('🔍 Incoming request body:', JSON.stringify(request.body, null, 2));
+    console.log('🔍 Request headers:', JSON.stringify(request.headers, null, 2));
+    
+    const { agentId, message, sessionId, anonymousUserId, conversationHistory = [], sessionData, hmac, timestamp } = request.body.data || request.body;
+    
+    // Get agent to verify HMAC - need to find agent across all users
+    let agentDoc = null;
+    let agent = null;
+    
+    // Search for agent across all users (inefficient but works for now)
+    console.log('🔍 Searching for agentId:', agentId);
+    
+    // Debug: Check what collections exist
+    try {
+      const collections = await db.listCollections();
+      console.log('🔍 Available collections:', collections.map(c => c.id));
+    } catch (error) {
+      console.log('🔍 Could not list collections:', error.message);
+    }
+    
+    const usersSnapshot = await db.collection('users').get();
+    console.log('🔍 Found', usersSnapshot.docs.length, 'users');
+    
+    for (const userDoc of usersSnapshot.docs) {
+      console.log('🔍 Checking user:', userDoc.id);
+      const agentRef = await db.collection('users').doc(userDoc.id).collection('agents').doc(agentId).get();
+      if (agentRef.exists) {
+        console.log('✅ Found agent in user:', userDoc.id);
+        agentDoc = agentRef;
+        agent = agentRef.data();
+        break;
+      }
+    }
+    
+    if (!agentDoc || !agent) {
+      console.log('❌ Agent not found:', agentId);
+      response.status(404).json({ error: 'Agent not found' });
+      return;
+    }
+    
+    console.log('✅ Using agent:', agent.id || agentId);
+    
+    // Verify HMAC if enabled
+    if (agent.secretKey && hmac) {
+      const crypto = require('crypto');
+      const payload = `${agentId}:${message}:${timestamp}`;
+      const expectedHmac = crypto.createHmac('sha256', agent.secretKey).update(payload).digest('hex');
+      
+      if (hmac !== expectedHmac) {
+        response.status(401).json({ error: 'Invalid HMAC signature' });
+        return;
+      }
+      
+      // Check timestamp (prevent replay attacks)
+      const now = Date.now();
+      if (Math.abs(now - timestamp) > 300000) { // 5 minutes
+        response.status(401).json({ error: 'Request timestamp expired' });
+        return;
+      }
+    }
+    
+    const result = await processChatMessage(agentId, message, sessionId, conversationHistory, agent.userId);
+    
+    // Save comprehensive session data if provided
+    if (sessionData && anonymousUserId) {
+      await saveSessionAnalytics(agent.userId, agentId, sessionData);
+    }
+    
+    response.status(200).json({ data: result });
+    
+  } catch (error) {
+    console.error('External chat error:', error);
+    response.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Shared chat processing function
+async function processChatMessage(agentId, message, sessionId, conversationHistory, userId) {
   try {
     console.log(`💬 Processing chat for agent ${agentId}: "${message}"`);
     
@@ -467,18 +576,36 @@ exports.chatWithAgent = onCall({
     const messages = [
       {
         role: "system",
-        content: `You are a friendly, helpful AI assistant. Be conversational and personable while providing accurate information from the knowledge base.
+        content: `You are a friendly, helpful AI assistant. Respond with JSON containing both the chat response and conversation analysis.
 
-Guidelines:
+IMPORTANT: Always respond with valid JSON in this exact format:
+{
+  "response": "Your friendly chat response here",
+  "analysis": {
+    "intent": "support|sales|information|general",
+    "sentiment": "positive|negative|neutral|confused|frustrated",
+    "urgency": "low|medium|high",
+    "needsTicket": true|false,
+    "ticketReason": "billing_issue|technical_problem|urgent_request|negative_feedback|unresolved|null",
+    "category": "support|sales|information|complaint|question",
+    "topic": "pricing|features|integration|billing|technical|general"
+  }
+}
+
+Chat Guidelines:
+- Be conversational and personable while providing accurate information
 - Respond in the same language the user is communicating in
-- Answer casual questions like "how are you", "hello", "what's up" in a friendly way even if not in the knowledge base
-- If user mentions their name, remember and use it naturally throughout the conversation
+- Answer casual questions like "how are you", "hello", "what's up" in a friendly way
+- If user mentions their name, remember and use it naturally
 - Ask follow-up questions to better help users and keep the conversation engaging
 - Be concise but friendly - aim for 1-3 sentences unless more detail is needed
-- If you don't have specific information in the knowledge base, acknowledge this but still try to be helpful with general guidance
 - Use a warm, professional tone and show genuine interest in helping
-- Avoid refusing to answer unless the question is inappropriate or harmful
-- Be more engaging and show personality while staying professional
+
+Analysis Guidelines:
+- Set needsTicket: true for: billing issues, technical problems, urgent requests, strong negative sentiment, or complaints
+- Set needsTicket: false for: general questions, feature inquiries, casual conversation, positive interactions
+- Be accurate with sentiment and intent detection
+- Choose the most relevant topic and category
 
 Context from knowledge base:
 ${context}`
@@ -507,15 +634,35 @@ ${context}`
       temperature: 0.7,
     });
     
-    const response = completion.choices[0].message.content;
+    const aiResponse = completion.choices[0].message.content;
     
-    // Store conversation
+    // Parse JSON response
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(aiResponse);
+    } catch (error) {
+      console.log('❌ Failed to parse AI JSON response:', aiResponse);
+      // Fallback to simple response
+      parsedResponse = {
+        response: aiResponse,
+        analysis: {
+          intent: "general",
+          sentiment: "neutral",
+          urgency: "low",
+          needsTicket: false,
+          ticketReason: null,
+          category: "question",
+          topic: "general"
+        }
+      };
+    }
+    
+    // Store conversation with analysis under agent
     const conversationData = {
-      agentId,
       sessionId: sessionId || `session_${Date.now()}`,
-      userId,
       message,
-      response,
+      response: parsedResponse.response,
+      analysis: parsedResponse.analysis,
       relevantChunks: topChunks.map(chunk => ({
         content: chunk.content.substring(0, 100) + '...',
         similarity: chunk.similarity,
@@ -524,12 +671,15 @@ ${context}`
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     };
     
-    await db.collection('conversations').add(conversationData);
+    await db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('conversations').add(conversationData);
     
-    console.log(`✅ Generated response: ${response.substring(0, 100)}...`);
+    console.log(`✅ Generated response: ${parsedResponse.response.substring(0, 100)}...`);
     
     return {
-      response,
+      response: parsedResponse.response,
+      analysis: parsedResponse.analysis,
       sessionId: conversationData.sessionId,
       relevantSources: topChunks.map(c => c.source)
     };
@@ -538,7 +688,7 @@ ${context}`
     console.error('❌ Error in chat:', error);
     throw new Error(`Chat failed: ${error.message}`);
   }
-});
+}
 
 // Generate embed code
 exports.generateEmbedCode = onCall(async (request) => {
@@ -557,24 +707,32 @@ exports.generateEmbedCode = onCall(async (request) => {
     
     const agent = agentDoc.data();
     
+    // Generate embed code with optional HMAC
+    const hasHMAC = agent.secretKey && agent.allowedDomains && agent.allowedDomains.length > 0;
+    
     const embedCode = `<!-- Orchis Chatbot -->
-<div id="orchis-chatbot-${agentId}"></div>
 <script>
-  (function() {
+(function(){
+  if(!window.OrchisChatbot){
     const chatbotConfig = {
       agentId: '${agentId}',
       projectName: '${agent.projectName || 'Chatbot'}',
-      primaryColor: '#2563eb',
-      position: 'bottom-right'
+      logoUrl: '${agent.logoUrl || ''}',
+      primaryColor: '#f97316',
+      position: 'bottom-right',
+      allowedDomains: ${JSON.stringify(agent.allowedDomains || [])}${hasHMAC ? `,\n      secretKey: '${agent.secretKey}'` : ''}
     };
     
     const script = document.createElement('script');
-    script.src = 'https://your-domain.com/chatbot-widget.js';
+    script.src = 'https://orchis.app/chatbot-widget.js';
     script.onload = function() {
-      OrchisChatbot.init(chatbotConfig);
+      if(window.OrchisChatbot) {
+        window.OrchisChatbot.init(chatbotConfig);
+      }
     };
     document.head.appendChild(script);
-  })();
+  }
+})();
 </script>`;
 
     return { embedCode };
@@ -661,3 +819,200 @@ exports.generateSitemap = onRequest({
     response.status(500).send('Error generating sitemap');
   }
 });
+
+// Save comprehensive session analytics to Firebase
+async function saveSessionAnalytics(userId, agentId, sessionData) {
+  try {
+    console.log('📊 Saving session analytics for agent:', agentId);
+    
+    const now = new Date();
+    const todayString = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Save detailed session data under agent
+    await db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('analytics')
+      .doc('sessions')
+      .collection('detailed')
+      .doc(sessionData.sessionId)
+      .set({
+        ...sessionData,
+        savedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    
+    // Update daily aggregated analytics under agent
+    const dailyStatsRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('analytics')
+      .doc('daily')
+      .collection('stats')
+      .doc(todayString);
+    
+    await db.runTransaction(async (transaction) => {
+      const dailyDoc = await transaction.get(dailyStatsRef);
+      
+      if (dailyDoc.exists) {
+        const currentStats = dailyDoc.data();
+        
+        transaction.update(dailyStatsRef, {
+          totalSessions: (currentStats.totalSessions || 0) + 1,
+          totalMessages: (currentStats.totalMessages || 0) + sessionData.messageCount,
+          avgResponseTime: calculateNewAverage(
+            currentStats.avgResponseTime || 0,
+            currentStats.totalSessions || 0,
+            sessionData.avgResponseTime
+          ),
+          [`sentimentCounts.${sessionData.sentiment}`]: 
+            ((currentStats.sentimentCounts?.[sessionData.sentiment]) || 0) + 1,
+          [`engagementLevels.${sessionData.behaviorMetrics.engagementLevel}`]: 
+            ((currentStats.engagementLevels?.[sessionData.behaviorMetrics.engagementLevel]) || 0) + 1,
+          [`deviceTypes.${sessionData.behaviorMetrics.deviceType}`]: 
+            ((currentStats.deviceTypes?.[sessionData.behaviorMetrics.deviceType]) || 0) + 1,
+          [`intents.${sessionData.intentDetection || 'unknown'}`]: 
+            ((currentStats.intents?.[sessionData.intentDetection || 'unknown']) || 0) + 1,
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        transaction.set(dailyStatsRef, {
+          date: todayString,
+          totalSessions: 1,
+          totalMessages: sessionData.messageCount,
+          avgResponseTime: sessionData.avgResponseTime,
+          sentimentCounts: { [sessionData.sentiment]: 1 },
+          engagementLevels: { [sessionData.behaviorMetrics.engagementLevel]: 1 },
+          deviceTypes: { [sessionData.behaviorMetrics.deviceType]: 1 },
+          intents: { [sessionData.intentDetection || 'unknown']: 1 },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    });
+    
+    // Save user behavior patterns under agent
+    if (sessionData.anonymousUserId) {
+      await db.collection('users').doc(userId)
+        .collection('agents').doc(agentId)
+        .collection('analytics')
+        .doc('user_patterns')
+        .collection('anonymous_users')
+        .doc(sessionData.anonymousUserId)
+        .set({
+          lastSession: sessionData.sessionId,
+          totalSessions: admin.firestore.FieldValue.increment(1),
+          totalMessages: admin.firestore.FieldValue.increment(sessionData.messageCount),
+          lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+          userAgent: sessionData.userLocation.userAgent,
+          timezone: sessionData.userLocation.timezone,
+          isReturnVisitor: sessionData.behaviorMetrics.returnVisitor,
+          avgEngagementLevel: sessionData.behaviorMetrics.engagementLevel,
+          preferredTopics: sessionData.topic ? [sessionData.topic] : []
+        }, { merge: true });
+    }
+    
+    console.log('✅ Session analytics saved successfully');
+    
+  } catch (error) {
+    console.error('❌ Error saving session analytics:', error);
+    // Don't throw error to avoid breaking the chat flow
+  }
+}
+
+// Helper function to calculate new running average
+function calculateNewAverage(currentAvg, currentCount, newValue) {
+  if (currentCount === 0) return newValue;
+  return Math.round(((currentAvg * currentCount) + newValue) / (currentCount + 1));
+}
+
+// AI-powered message analysis endpoint
+exports.analyzeMessage = onRequest({
+  timeoutSeconds: 60,
+  memory: '512MiB',
+  cors: true
+}, async (request, response) => {
+  // Set CORS headers
+  response.set('Access-Control-Allow-Origin', '*');
+  response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight requests
+  if (request.method === 'OPTIONS') {
+    response.status(204).send('');
+    return;
+  }
+
+  if (request.method !== 'POST') {
+    response.status(405).send('Method not allowed');
+    return;
+  }
+
+  try {
+    const { agentId, message, sessionId, analysisMode } = request.body.data || request.body;
+    
+    if (!analysisMode) {
+      response.status(400).json({ error: 'Analysis mode required' });
+      return;
+    }
+
+    // Get agent data for context
+    let agent = null;
+    const usersSnapshot = await db.collection('users').get();
+    for (const userDoc of usersSnapshot.docs) {
+      const agentRef = await db.collection('users').doc(userDoc.id).collection('agents').doc(agentId).get();
+      if (agentRef.exists) {
+        agent = agentRef.data();
+        break;
+      }
+    }
+
+    if (!agent) {
+      response.status(404).json({ error: 'Agent not found' });
+      return;
+    }
+
+    // Create analysis-focused prompt
+    const analysisPrompt = `You are an AI customer service analyst. Your job is to analyze conversations and categorize them for business intelligence.
+
+${message}
+
+Respond with valid JSON only. Be precise and consistent with categorization.`;
+
+    // Rate limiting
+    const now = Date.now();
+    const timeSinceLastCall = now - lastApiCall;
+    if (timeSinceLastCall < MIN_API_INTERVAL) {
+      await delay(MIN_API_INTERVAL - timeSinceLastCall);
+    }
+    lastApiCall = Date.now();
+
+    // Call OpenAI for analysis
+    const completion = await getOpenAI().chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a customer service conversation analyzer. Always respond with valid JSON containing conversation analysis. Be consistent with categorization."
+        },
+        {
+          role: "user",
+          content: analysisPrompt
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.1, // Low temperature for consistent categorization
+    });
+
+    const analysisResult = completion.choices[0].message.content;
+    
+    response.status(200).json({ 
+      data: { 
+        response: analysisResult,
+        sessionId: sessionId
+      } 
+    });
+    
+  } catch (error) {
+    console.error('Message analysis error:', error);
+    response.status(500).json({ error: 'Analysis failed' });
+  }
+});
+

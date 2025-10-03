@@ -2,11 +2,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDownIcon, DocumentArrowUpIcon, CogIcon } from '@heroicons/react/24/outline';
 import TicketChart from './TicketChart';
+import CategoryDonutChart from './CategoryDonutChart';
+import SentimentChart from './SentimentChart';
+import UserWorldMap from './UserWorldMap';
 import { useAgent } from '../contexts/AgentContext';
+import { useAuth } from '../contexts/AuthContext';
 import { getTicketAnalytics, getRecentActivity } from '../utils/ticketFunctions';
 
 export default function AgentDashboard({ agent, onShowEmbed }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { agents, selectAgent, selectedAgent } = useAgent();
   const [isAgentDropdownOpen, setIsAgentDropdownOpen] = useState(false);
   const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
@@ -40,12 +45,12 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
   // Load analytics data when agent changes or timeRange changes
   useEffect(() => {
     const loadAnalytics = async () => {
-      if (!agent?.id) return;
+      if (!agent?.id || !user?.uid) return;
       
       setAnalyticsLoading(true);
       try {
         const [analytics, activity] = await Promise.all([
-          getTicketAnalytics(agent.id, timeRange),
+          getTicketAnalytics(agent.id, timeRange, user.uid),
           getRecentActivity(agent.id, 5)
         ]);
         
@@ -59,7 +64,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     };
 
     loadAnalytics();
-  }, [agent?.id, timeRange]);
+  }, [agent?.id, timeRange, user?.uid]);
 
   const handleAgentSelect = (selectedAgent) => {
     selectAgent(selectedAgent);
@@ -308,6 +313,42 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
               timeRange={timeRange}
             />
           )}
+        </div>
+      </div>
+
+      {/* Bottom Analytics Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* Intent Categories Donut Chart */}
+        <div className="bg-transparent rounded-xl border border-stone-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-stone-900">Conversation Categories</h3>
+            <div className="text-sm text-stone-500">AI Analysis</div>
+          </div>
+          <div className="h-64">
+            <CategoryDonutChart data={analyticsData?.categoryData || []} />
+          </div>
+        </div>
+
+        {/* Sentiment Analysis */}
+        <div className="bg-transparent rounded-xl border border-stone-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-stone-900">Sentiment Analysis</h3>
+            <div className="text-sm text-stone-500">User Mood</div>
+          </div>
+          <div className="h-64">
+            <SentimentChart data={analyticsData?.sentimentData || []} />
+          </div>
+        </div>
+      </div>
+
+      {/* World Map */}
+      <div className="bg-transparent rounded-xl border border-stone-200 p-6 mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-stone-900">User Locations</h3>
+          <div className="text-sm text-stone-500">{analyticsData?.totalUsers || 0} total users</div>
+        </div>
+        <div className="h-96">
+          <UserWorldMap data={analyticsData?.locationData || []} />
         </div>
       </div>
     </div>

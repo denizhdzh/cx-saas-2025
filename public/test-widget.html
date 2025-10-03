@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Test Page</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px;
+            background: #f8fafc;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+        .test-info {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        code {
+            background: #1f2937;
+            color: #10b981;
+            padding: 12px;
+            border-radius: 6px;
+            display: block;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌸 Orchis Widget Test Page</h1>
+        <p>This page tests the Orchis chatbot widget integration. The widget should appear as a floating button in the bottom-right corner.</p>
+        
+        <h2>Features to test:</h2>
+        <ul>
+            <li>✨ Floating chat button appears</li>
+            <li>💬 Click to open/close chat window</li>
+            <li>🤖 Send a test message</li>
+            <li>⚡ Typing animation works</li>
+            <li>👤 Name recognition feature</li>
+            <li>📱 Mobile responsiveness</li>
+        </ul>
+
+        <h2>🧠 AI Analytics Features:</h2>
+        <ul>
+            <li>🎯 <strong>Intent Detection</strong>: support, sales, information</li>
+            <li>📊 <strong>Sentiment Analysis</strong>: positive, negative, confused, frustrated</li>
+            <li>🏷️ <strong>AI Categorization</strong>: Consistent with previous sessions</li>
+            <li>🎫 <strong>Auto-Ticket Creation</strong>: For support/negative sentiment</li>
+            <li>💰 <strong>Lead Scoring</strong>: High/medium/low quality leads</li>
+            <li>📈 <strong>Engagement Tracking</strong>: Scroll, clicks, time on page</li>
+            <li>🔍 <strong>Topic Detection</strong>: pricing, features, integration, etc.</li>
+            <li>⚡ <strong>Real-time Analytics</strong>: Every message analyzed</li>
+        </ul>
+
+        <h2>🧪 Test Messages:</h2>
+        <div style="background: #f9fafb; padding: 15px; border-radius: 8px; font-size: 14px;">
+            <p><strong>Support:</strong> "I have a problem with billing"</p>
+            <p><strong>Sales:</strong> "How much does the enterprise plan cost?"</p>
+            <p><strong>Negative:</strong> "This is terrible and doesn't work"</p>
+            <p><strong>Competitor:</strong> "How are you different from Chatbase?"</p>
+            <p><strong>Integration:</strong> "Can I integrate this with my API?"</p>
+        </div>
+
+        <div class="test-info">
+            <h3>Widget Code:</h3>
+            <code>
+&lt;script&gt;
+(function(){
+  if(!window.OrchisChatbot){
+    const chatbotConfig = {
+      agentId: 'srqL7gsfl3kdEZcyWc3P',
+      projectName: 'Test Company',
+      logoUrl: '',
+      primaryColor: '#f97316',
+      position: 'bottom-right'
+    };
+    
+    const script = document.createElement('script');
+    script.src = 'https://orchis.app/chatbot-widget.js';
+    script.onload = function() {
+      if(window.OrchisChatbot) {
+        window.OrchisChatbot.init(chatbotConfig);
+      }
+    };
+    document.head.appendChild(script);
+  }
+})();
+&lt;/script&gt;
+            </code>
+        </div>
+
+        <p style="margin-top: 30px; font-size: 14px; color: #9ca3af;">
+            <strong>Note:</strong> This is a test page for development purposes. 
+            The chatbot will attempt to connect to the production API.
+        </p>
+    </div>
+
+    <!-- Orchis Chatbot Widget -->
+    <script>
+    (function(){
+      if(!window.OrchisChatbot){
+        const chatbotConfig = {
+          agentId: 'srqL7gsfl3kdEZcyWc3P',
+          projectName: 'ORCHIS',
+          logoUrl: '',
+          primaryColor: '#f97316',
+          position: 'bottom-right'
+        };
+        
+        const script = document.createElement('script');
+        script.src = './chatbot-widget.js'; // Local for testing
+        script.onload = function() {
+          if(window.OrchisChatbot) {
+            window.OrchisChatbot.init(chatbotConfig);
+          }
+        };
+        document.head.appendChild(script);
+      }
+    })();
+    </script>
+</body>
+</html>
