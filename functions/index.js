@@ -707,27 +707,20 @@ exports.generateEmbedCode = onCall(async (request) => {
     
     const agent = agentDoc.data();
     
-    // Generate embed code with optional HMAC
+    // Generate simple embed code - widget fetches config from database automatically
     const hasHMAC = agent.secretKey && agent.allowedDomains && agent.allowedDomains.length > 0;
-    
+
     const embedCode = `<!-- Orchis Chatbot -->
 <script>
 (function(){
   if(!window.OrchisChatbot){
-    const chatbotConfig = {
-      agentId: '${agentId}',
-      projectName: '${agent.projectName || 'Chatbot'}',
-      logoUrl: '${agent.logoUrl || ''}',
-      primaryColor: '#f97316',
-      position: 'bottom-right',
-      allowedDomains: ${JSON.stringify(agent.allowedDomains || [])}${hasHMAC ? `,\n      secretKey: '${agent.secretKey}'` : ''}
-    };
-    
     const script = document.createElement('script');
     script.src = 'https://orchis.app/chatbot-widget.js';
     script.onload = function() {
       if(window.OrchisChatbot) {
-        window.OrchisChatbot.init(chatbotConfig);
+        window.OrchisChatbot.init({
+          agentId: '${agentId}'${hasHMAC ? `,\n          allowedDomains: ${JSON.stringify(agent.allowedDomains)},\n          secretKey: '${agent.secretKey}'` : ''}
+        });
       }
     };
     document.head.appendChild(script);

@@ -792,11 +792,76 @@ Provide JSON with:
   }
 
   OrchisChatWidget.prototype = {
-    init: function() {
+    init: async function() {
+      // Fetch agent config from database
+      await this.fetchAgentConfig();
+
       this.injectStyles();
       this.createWidget();
       this.bindEvents();
       this.addWelcomeMessage();
+    },
+
+    fetchAgentConfig: async function() {
+      try {
+        // Import Firebase dynamically
+        if (!window.firebase) {
+          await this.loadFirebase();
+        }
+
+        const db = firebase.firestore();
+
+        // Search for agent across all users
+        const usersSnapshot = await db.collection('users').get();
+
+        for (const userDoc of usersSnapshot.docs) {
+          const agentRef = await db.collection('users').doc(userDoc.id)
+            .collection('agents').doc(this.config.agentId).get();
+
+          if (agentRef.exists) {
+            const agentData = agentRef.data();
+
+            // Update config with database values
+            this.config.projectName = agentData.projectName || agentData.name || this.config.projectName;
+            this.config.logoUrl = agentData.logoUrl || this.config.logoUrl;
+            this.config.primaryColor = agentData.primaryColor || this.config.primaryColor;
+
+            console.log('✅ Agent config loaded:', this.config.projectName);
+            break;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch agent config, using defaults:', error);
+      }
+    },
+
+    loadFirebase: async function() {
+      return new Promise((resolve, reject) => {
+        // Load Firebase SDK
+        const script1 = document.createElement('script');
+        script1.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
+        script1.onload = () => {
+          const script2 = document.createElement('script');
+          script2.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js';
+          script2.onload = () => {
+            // Initialize Firebase
+            firebase.initializeApp({
+              apiKey: "AIzaSyBZi6AjqTkvU-v16ZcYr3T73u7u3SiIMpM",
+              authDomain: "candelaai.firebaseapp.com",
+              projectId: "candelaai",
+              storageBucket: "candelaai.firebasestorage.app",
+              messagingSenderId: "726655160481",
+              appId: "1:726655160481:web:4e133e5bea62b12e7eead0",
+              measurementId: "G-LVYP7E1ZTY"
+            });
+            resolve();
+          };
+          script2.onerror = reject;
+          document.head.appendChild(script2);
+        };
+        script1.onerror = reject;
+        document.head.appendChild(script1);
+      });
     },
 
     injectStyles: function() {
