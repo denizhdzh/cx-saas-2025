@@ -4,16 +4,47 @@ import { useAuth } from '../contexts/AuthContext';
 import { functions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { 
-  BinaryCodeIcon, 
-  AirplayLineIcon, 
+import {
+  BinaryCodeIcon,
+  AirplayLineIcon,
   Tick01Icon,
   PencilEdit01Icon,
   Store01Icon,
   Copy01Icon,
-  ArrowLeft01Icon
+  ArrowLeft01Icon,
+  SuperMarioToadIcon,
+  Sheriff01Icon,
+  PokemonIcon,
+  Pacman02Icon,
+  Pacman01Icon,
+  OctopusIcon,
+  MonsterIcon,
+  MachineRobotIcon,
+  LookTopIcon,
+  HorseHeadIcon,
+  GreekHelmetIcon,
+  CowboyHatIcon,
+  AnonymousIcon,
+  Alien02Icon
 } from '@hugeicons/core-free-icons';
 import ChatWidget from './ChatWidget';
+
+const userIconOptions = [
+  { id: 'alien', name: 'Alien', icon: Alien02Icon },
+  { id: 'robot', name: 'Robot', icon: MachineRobotIcon },
+  { id: 'monster', name: 'Monster', icon: MonsterIcon },
+  { id: 'octopus', name: 'Octopus', icon: OctopusIcon },
+  { id: 'pokemon', name: 'Pokemon', icon: PokemonIcon },
+  { id: 'super-mario-toad', name: 'Super Mario Toad', icon: SuperMarioToadIcon },
+  { id: 'pacman-1', name: 'Pac-Man', icon: Pacman01Icon },
+  { id: 'pacman-2', name: 'Pac-Man Ghost', icon: Pacman02Icon },
+  { id: 'cowboy', name: 'Cowboy', icon: CowboyHatIcon },
+  { id: 'sheriff', name: 'Sheriff', icon: Sheriff01Icon },
+  { id: 'greek-helmet', name: 'Greek Warrior', icon: GreekHelmetIcon },
+  { id: 'horse', name: 'Horse', icon: HorseHeadIcon },
+  { id: 'anonymous', name: 'Anonymous', icon: AnonymousIcon },
+  { id: 'look-top', name: 'Look Up', icon: LookTopIcon }
+];
 
 export default function EmbedView({ agent, onBack }) {
   const { updateAgent } = useAgent();
@@ -24,7 +55,8 @@ export default function EmbedView({ agent, onBack }) {
   const [brandingForm, setBrandingForm] = useState({
     name: '',
     projectName: '',
-    logoUrl: ''
+    logoUrl: '',
+    userIcon: 'alien'
   });
   const [securityForm, setSecurityForm] = useState({
     allowedDomains: ''
@@ -40,7 +72,8 @@ export default function EmbedView({ agent, onBack }) {
       setBrandingForm({
         name: agent.name || '',
         projectName: agent.projectName || '',
-        logoUrl: agent.logoUrl || ''
+        logoUrl: agent.logoUrl || '',
+        userIcon: agent.userIcon || 'alien'
       });
       setSecurityForm({
         allowedDomains: agent.allowedDomains ? agent.allowedDomains.join('\n') : ''
@@ -78,7 +111,7 @@ export default function EmbedView({ agent, onBack }) {
   const handleBrandingSave = async () => {
     try {
       let logoUrlToSave = brandingForm.logoUrl;
-      
+
       // If user uploaded a new logo, use the preview (base64)
       if (newLogo && logoPreview) {
         logoUrlToSave = logoPreview;
@@ -88,15 +121,16 @@ export default function EmbedView({ agent, onBack }) {
         name: brandingForm.name,
         projectName: brandingForm.projectName,
         logoUrl: logoUrlToSave,
+        userIcon: brandingForm.userIcon,
         updatedAt: new Date().toISOString()
       };
-      
+
       // Update the agent using the context function
       await updateAgent(agent.id, updatedAgentData);
-      
+
       setNewLogo(null);
       setEmbedCode(''); // Clear old embed code
-      
+
       alert('✅ Branding updated successfully!');
     } catch (error) {
       console.error('❌ Error updating branding:', error);
@@ -182,9 +216,9 @@ export default function EmbedView({ agent, onBack }) {
           </label>
           <div className="flex items-center space-x-3">
             {logoPreview && (
-              <img 
-                src={logoPreview} 
-                alt="Logo preview" 
+              <img
+                src={logoPreview}
+                alt="Logo preview"
                 className="w-10 h-10 rounded-lg object-cover border border-stone-200"
               />
             )}
@@ -203,6 +237,40 @@ export default function EmbedView({ agent, onBack }) {
               Upload Logo
             </label>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-stone-600 mb-2">
+            User Icon
+          </label>
+          <div className="grid grid-cols-7 gap-2">
+            {userIconOptions.map((option) => {
+              const IconComponent = option.icon;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setBrandingForm({...brandingForm, userIcon: option.id})}
+                  className={`p-3 rounded-lg border-2 transition-all hover:border-orange-400 hover:bg-orange-50 ${
+                    brandingForm.userIcon === option.id
+                      ? 'border-orange-500 bg-orange-50'
+                      : 'border-stone-200 bg-white'
+                  }`}
+                  title={option.name}
+                >
+                  <HugeiconsIcon
+                    icon={IconComponent}
+                    className={`w-5 h-5 ${
+                      brandingForm.userIcon === option.id ? 'text-orange-500' : 'text-stone-600'
+                    }`}
+                  />
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-stone-500 mt-2">
+            Choose an icon to represent users in chat messages
+          </p>
         </div>
 
         <div className="pt-4">
@@ -348,10 +416,11 @@ export default function EmbedView({ agent, onBack }) {
         {/* Preview Content */}
         <div className="relative h-full p-6 flex items-center justify-center">
           <div className="w-full max-w-md">
-            <ChatWidget 
+            <ChatWidget
               agentId={agent.id}
               projectName={agent.projectName}
               logoUrl={agent.logoUrl}
+              userIcon={agent.userIcon || brandingForm.userIcon}
               primaryColor="#f97316"
             />
           </div>

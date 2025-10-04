@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-100">
+      <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
         <Navbar />
         <div className="max-w-5xl mx-auto px-6 flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -72,7 +72,7 @@ export default function DashboardPage() {
           <meta name="description" content="Manage your billing and subscription" />
         </Helmet>
         
-        <div className="min-h-screen bg-stone-100">
+        <div className="min-h-screen bg-stone-50">
           <Navbar />
           <PricingDashboard />
         </div>
@@ -89,7 +89,7 @@ export default function DashboardPage() {
           <meta name="description" content="Manage your AI agent" />
         </Helmet>
         
-        <div className="min-h-screen bg-stone-100">
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
           <Navbar />
           
           {/* View Content */}
@@ -117,7 +117,7 @@ export default function DashboardPage() {
         <meta name="description" content="Manage and train your AI assistants" />
       </Helmet>
       
-      <div className="min-h-screen bg-stone-100">
+      <div className="min-h-screen bg-stone-100 dark:bg-stone-900">
         <Navbar />
         
         <div className="max-w-5xl mx-auto px-6 py-8">
@@ -126,8 +126,8 @@ export default function DashboardPage() {
             <div className="text-xs text-stone-400 mb-2">Dashboard</div>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-thin text-stone-900">AI Agents</h1>
-                <div className="w-12 h-px bg-stone-900 mt-4"></div>
+                <h1 className="text-2xl font-thin text-stone-900 dark:text-stone-50">AI Agents</h1>
+                <div className="w-12 h-px bg-stone-900 dark:bg-stone-50 mt-4"></div>
               </div>
               <button
                 onClick={handleCreateAgent}
@@ -150,8 +150,8 @@ export default function DashboardPage() {
           {/* Agent Grid */}
           {agents.length === 0 ? (
             <div className="text-center py-12">
-              <CpuChipIcon className="w-12 h-12 text-stone-400 mx-auto mb-4" />
-              <div className="text-lg font-medium text-stone-900 mb-2">No agents yet</div>
+              <CpuChipIcon className="w-12 h-12 text-stone-400 dark:text-stone-50 mx-auto mb-4" />
+              <div className="text-lg font-medium text-stone-900 dark:text-stone-50 mb-2">No agents yet</div>
               <div className="text-stone-500">Create your first AI agent to get started</div>
             </div>
           ) : (
@@ -159,14 +159,14 @@ export default function DashboardPage() {
               {agents.map((agent) => (
                 <div
                   key={agent.id}
-                  className="p-6 border border-stone-200 rounded-xl hover:border-stone-300 cursor-pointer transition-colors bg-stone-50"
+                  className="p-6 border border-stone-200 dark:border-stone-800 rounded-xl hover:border-stone-300 cursor-pointer transition-colors bg-stone-50 dark:bg-stone-800/50"
                   onClick={() => {
                     selectAgent(agent);
                     navigate(`/dashboard/${agent.id}`);
                   }}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-10 h-10 bg-stone-100 dark:bg-stone-900 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {agent.logoUrl ? (
                         <img 
                           src={agent.logoUrl} 
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-lg font-medium text-stone-900 truncate">{agent.name}</div>
+                      <div className="text-lg font-medium text-stone-900 dark:text-stone-50 truncate">{agent.name}</div>
                       <div className="text-sm text-stone-500 truncate mt-1">{agent.description}</div>
                       <div className="flex items-center gap-3 mt-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTrainingStatusColor(agent.trainingStatus)}`}>

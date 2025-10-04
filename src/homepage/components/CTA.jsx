@@ -30,7 +30,11 @@ export default function CTA() {
       setIsSubmitted(true);
       console.log('Email submitted to Firestore:', email);
     } catch (error) {
-      setError('Failed to join waitlist. Please try again.');
+      if (error.message === 'DUPLICATE_EMAIL') {
+        setError('You\'re already on the waitlist! We\'ll notify you when we launch.');
+      } else {
+        setError('Failed to join waitlist. Please try again.');
+      }
       console.error('Error submitting email:', error);
     }
   };

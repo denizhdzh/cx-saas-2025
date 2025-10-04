@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ComposableMap,
   Geographies,
@@ -11,6 +11,18 @@ const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 export default function UserWorldMap({ data }) {
   const [hoveredCountry, setHoveredCountry] = useState(null);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const checkDark = () => setIsDark(document.documentElement.classList.contains('dark') || mediaQuery.matches);
+
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
   
   // Transform data to country codes and counts
   const countryData = data.reduce((acc, item) => {
@@ -52,14 +64,14 @@ export default function UserWorldMap({ data }) {
     const countryCode = Object.keys(countryCodeMap).find(
       key => countryCodeMap[key] === geoId
     );
-    
+
     if (!countryCode || !countryData[countryCode]) {
-      return '#f8fafc'; // Default light color
+      return isDark ? '#44403c' : '#d6d3d1'; // stone-700 dark : stone-300 light
     }
-    
+
     const count = countryData[countryCode];
     const intensity = count / maxCount;
-    
+
     if (intensity > 0.8) return '#ea580c'; // orange-600
     if (intensity > 0.6) return '#f97316'; // orange-500
     if (intensity > 0.4) return '#fb923c'; // orange-400
@@ -90,8 +102,8 @@ export default function UserWorldMap({ data }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 text-sm">No location data available</div>
-          <div className="text-stone-300 text-xs mt-1">User locations will appear here</div>
+          <div className="text-stone-400 dark:text-stone-500 text-sm">No location data available</div>
+          <div className="text-stone-400 dark:text-stone-600 text-xs mt-1">User locations will appear here</div>
         </div>
       </div>
     );
@@ -120,7 +132,7 @@ export default function UserWorldMap({ data }) {
                     key={geo.rsmKey}
                     geography={geo}
                     fill={getCountryColor(geo.id, geo.properties)}
-                    stroke="#ffffff"
+                    stroke={isDark ? '#57534e' : '#ffffff'}
                     strokeWidth={0.5}
                     onMouseEnter={() => {
                       if (countryInfo) {
@@ -148,7 +160,7 @@ export default function UserWorldMap({ data }) {
         
         {/* Hover tooltip */}
         {hoveredCountry && (
-          <div className="absolute top-3 left-3 bg-black/80 rounded-md px-2 py-1 pointer-events-none">
+          <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-sm rounded-md px-2 py-1 pointer-events-none">
             <div className="text-sm font-medium text-white">
               {hoveredCountry}
             </div>
@@ -159,7 +171,7 @@ export default function UserWorldMap({ data }) {
         )}
         
         {/* Legend */}
-        <div className="absolute bottom-3 left-3 bg-black/70 rounded-md px-2 py-2">
+        <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm rounded-md px-2 py-2">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-orange-200 rounded-full"></div>
             <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
@@ -169,7 +181,7 @@ export default function UserWorldMap({ data }) {
         </div>
 
         {/* Stats overlay */}
-        <div className="absolute top-3 right-3 bg-black/80 rounded-md px-3 py-2">
+        <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-sm rounded-md px-3 py-2">
           <div className="text-lg font-bold text-white">
             {Object.values(countryData).reduce((sum, count) => sum + count, 0)}
           </div>

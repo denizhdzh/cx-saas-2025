@@ -1,14 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  ChatBubbleLeftRightIcon, 
-  XMarkIcon, 
+import {
+  ChatBubbleLeftRightIcon,
+  XMarkIcon,
   PaperAirplaneIcon,
-  SparklesIcon 
+  SparklesIcon
 } from '@heroicons/react/24/outline';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  SuperMarioToadIcon,
+  Sheriff01Icon,
+  PokemonIcon,
+  Pacman02Icon,
+  Pacman01Icon,
+  OctopusIcon,
+  MonsterIcon,
+  MachineRobotIcon,
+  LookTopIcon,
+  HorseHeadIcon,
+  GreekHelmetIcon,
+  CowboyHatIcon,
+  AnonymousIcon,
+  Alien02Icon
+} from '@hugeicons/core-free-icons';
 import { functions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 
-export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl = null, primaryColor = "#2563eb", position }) {
+const userIcons = {
+  'super-mario-toad': SuperMarioToadIcon,
+  'sheriff': Sheriff01Icon,
+  'pokemon': PokemonIcon,
+  'pacman-2': Pacman02Icon,
+  'pacman-1': Pacman01Icon,
+  'octopus': OctopusIcon,
+  'monster': MonsterIcon,
+  'robot': MachineRobotIcon,
+  'look-top': LookTopIcon,
+  'horse': HorseHeadIcon,
+  'greek-helmet': GreekHelmetIcon,
+  'cowboy': CowboyHatIcon,
+  'anonymous': AnonymousIcon,
+  'alien': Alien02Icon
+};
+
+export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl = null, userIcon = "alien", primaryColor = "#2563eb", position }) {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -176,54 +210,59 @@ export default function ChatWidget({ agentId, projectName = "Assistant", logoUrl
       >
         <div className="h-full flex flex-col">
           
-          {/* Header with agent logo and customer name */}
-          <div className="flex items-center gap-3 p-4">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden" style={{backgroundColor: logoUrl ? 'transparent' : '#262626'}}>
-              {logoUrl ? (
-                <img src={logoUrl} alt={projectName} className="w-8 h-8 object-cover rounded-xl" />
-              ) : (
-                <SparklesIcon className="w-4 h-4 text-white" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-white text-xs font-medium">
-                {projectName} AI{userName && ` & ${userName.charAt(0).toUpperCase() + userName.slice(1)}`}
-              </div>
-              <div className="text-stone-400 text-xs">Online now</div>
-            </div>
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
-          </div>
-          
           {/* Messages Area - Q&A Format */}
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-3">
-              {messages.map((message, index) => (
-                <div key={message.id} className="space-y-1">
-                  {message.role === 'user' && (
-                    <div>
-                      <div className="text-xs text-stone-400 mb-1 font-medium">You</div>
-                      <div className="text-white text-sm font-medium">
-                        {message.content}
+              {messages.map((message, index) => {
+                const UserIconComponent = userIcons[userIcon] || Alien02Icon;
+
+                return (
+                  <div key={message.id} className="space-y-1">
+                    {message.role === 'user' && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <div className="w-4 h-4 bg-orange-500 rounded flex items-center justify-center flex-shrink-0">
+                            <HugeiconsIcon icon={UserIconComponent} className="w-2.5 h-2.5 text-white" />
+                          </div>
+                          <div className="text-xs text-stone-400 font-medium">You</div>
+                        </div>
+                        <div className="text-white text-sm font-medium">
+                          {message.content}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {message.role === 'assistant' && (
-                    <div>
-                      <div className="text-xs text-stone-400 mb-1 font-medium">{projectName} AI</div>
-                      <div className="text-stone-200 text-sm leading-relaxed">
-                        {message.content}
-                        {isTyping && messages[messages.length - 1].id === message.id && (
-                          <span className="animate-pulse">|</span>
-                        )}
+                    )}
+                    {message.role === 'assistant' && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {logoUrl ? (
+                            <img src={logoUrl} alt={projectName} className="w-3 h-3 object-cover rounded-sm" />
+                          ) : (
+                            <SparklesIcon className="w-3 h-3 text-stone-400" />
+                          )}
+                          <div className="text-xs text-stone-400 font-medium">{projectName} AI</div>
+                        </div>
+                        <div className="text-stone-200 text-sm leading-relaxed">
+                          {message.content}
+                          {isTyping && messages[messages.length - 1].id === message.id && (
+                            <span className="animate-pulse">|</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
               
               {isLoading && (
                 <div>
-                  <div className="text-xs text-stone-400 mb-2 font-medium">{projectName} AI</div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt={projectName} className="w-3 h-3 object-cover rounded-sm" />
+                    ) : (
+                      <SparklesIcon className="w-3 h-3 text-stone-400" />
+                    )}
+                    <div className="text-xs text-stone-400 font-medium">{projectName} AI</div>
+                  </div>
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-stone-500 rounded-full animate-bounce"></div>
                     <div className="w-2 h-2 bg-stone-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>

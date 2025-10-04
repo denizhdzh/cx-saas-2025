@@ -126,7 +126,7 @@ export default function TicketChart({
           }}
           className="text-stone-500 [&_.recharts-text]:text-xs focus:outline-none [&>*]:focus:outline-none"
         >
-          <CartesianGrid vertical={false} stroke="currentColor" className="text-stone-200" />
+          <CartesianGrid vertical={false} stroke="currentColor" className="text-stone-200 dark:text-stone-800" />
           
           <XAxis
             axisLine={false}

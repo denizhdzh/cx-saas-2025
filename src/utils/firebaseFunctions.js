@@ -32,8 +32,19 @@ export const deleteDocument = httpsCallable(functions, 'deleteDocument');
 // Add email to waitlist
 export const addToWaitlist = async (email) => {
   try {
+    // Check if email already exists
+    const q = query(
+      collection(db, 'waitlist'),
+      where('email', '==', email.toLowerCase().trim())
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      throw new Error('DUPLICATE_EMAIL');
+    }
+
     const docRef = await addDoc(collection(db, 'waitlist'), {
-      email: email,
+      email: email.toLowerCase().trim(),
       timestamp: serverTimestamp(),
       source: 'website'
     });

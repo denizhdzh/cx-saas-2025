@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 
-export default function CategoryDonutChart({ data }) {
+export default function LanguageChart({ data = {} }) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -15,14 +15,19 @@ export default function CategoryDonutChart({ data }) {
     return () => observer.disconnect();
   }, []);
 
-  const total = data?.reduce((sum, item) => sum + item.count, 0) || 0;
+  const chartDataArray = Object.entries(data).map(([lang, count]) => ({
+    category: lang.toUpperCase(),
+    count: count
+  })).filter(item => item.count > 0);
 
-  const chartData = data?.map((item, index) => ({
-    category: item.category.replace(/_/g, ' '),
+  const total = chartDataArray.reduce((sum, item) => sum + item.count, 0);
+
+  const chartData = chartDataArray.map((item) => ({
+    category: item.category,
     count: item.count,
     percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : 0,
     fill: 'rgba(249, 115, 22, 0.1)' // orange-500 with 10% opacity
-  })) || [];
+  }));
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -35,11 +40,11 @@ export default function CategoryDonutChart({ data }) {
             border: `1px solid ${isDark ? '#44403c' : '#e7e5e4'}`
           }}
         >
-          <p className="text-sm font-semibold capitalize" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
+          <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
             {data.category}
           </p>
           <p className="text-xs mt-1" style={{ color: '#f97316' }}>
-            {data.count} conversations ({data.percentage}%)
+            {data.count} sessions ({data.percentage}%)
           </p>
         </div>
       );
@@ -47,11 +52,12 @@ export default function CategoryDonutChart({ data }) {
     return null;
   };
 
-  if (!data || data.length === 0) {
+  if (total === 0) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">No data available</div>
+          <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No language data yet</div>
+          <div className="text-stone-300 dark:text-stone-600 text-xs">Data will appear as users interact</div>
         </div>
       </div>
     );
@@ -90,7 +96,7 @@ export default function CategoryDonutChart({ data }) {
               position="insideLeft"
               offset={8}
               className="category-label"
-              style={{ fill: isDark ? '#ffffff' : '#1c1917', fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}
+              style={{ fill: isDark ? '#ffffff' : '#1c1917', fontSize: 12, fontWeight: 600 }}
             />
           </Bar>
         </BarChart>

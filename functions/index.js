@@ -583,7 +583,7 @@ IMPORTANT: Always respond with valid JSON in this exact format:
   "response": "Your friendly chat response here",
   "analysis": {
     "intent": "support|sales|information|general",
-    "sentiment": "positive|negative|neutral|confused|frustrated",
+    "sentimentScore": 1-10,
     "urgency": "low|medium|high",
     "needsTicket": true|false,
     "ticketReason": "billing_issue|technical_problem|urgent_request|negative_feedback|unresolved|null",
@@ -591,6 +591,14 @@ IMPORTANT: Always respond with valid JSON in this exact format:
     "topic": "pricing|features|integration|billing|technical|general"
   }
 }
+
+Sentiment Scoring (1-10):
+- 1-2: Very negative (angry, hostile)
+- 3-4: Negative (frustrated, disappointed)
+- 5: Neutral (informational, neither positive nor negative)
+- 6-7: Positive (satisfied, content)
+- 8-9: Very positive (happy, enthusiastic)
+- 10: Excellent (extremely satisfied, delighted)
 
 Chat Guidelines:
 - Be conversational and personable while providing accurate information
@@ -602,9 +610,9 @@ Chat Guidelines:
 - Use a warm, professional tone and show genuine interest in helping
 
 Analysis Guidelines:
-- Set needsTicket: true for: billing issues, technical problems, urgent requests, strong negative sentiment, or complaints
+- Set needsTicket: true for: billing issues, technical problems, urgent requests, strong negative sentiment (1-4), or complaints
 - Set needsTicket: false for: general questions, feature inquiries, casual conversation, positive interactions
-- Be accurate with sentiment and intent detection
+- Be accurate with sentiment scoring (1-10) and intent detection
 - Choose the most relevant topic and category
 
 Context from knowledge base:
@@ -647,7 +655,7 @@ ${context}`
         response: aiResponse,
         analysis: {
           intent: "general",
-          sentiment: "neutral",
+          sentimentScore: 5,
           urgency: "low",
           needsTicket: false,
           ticketReason: null,
@@ -847,7 +855,7 @@ async function saveSessionAnalytics(userId, agentId, sessionData) {
       if (dailyDoc.exists) {
         const currentStats = dailyDoc.data();
         
-        transaction.update(dailyStatsRef, {
+        const updateData = {
           totalSessions: (currentStats.totalSessions || 0) + 1,
           totalMessages: (currentStats.totalMessages || 0) + sessionData.messageCount,
           avgResponseTime: calculateNewAverage(
@@ -855,29 +863,55 @@ async function saveSessionAnalytics(userId, agentId, sessionData) {
             currentStats.totalSessions || 0,
             sessionData.avgResponseTime
           ),
-          [`sentimentCounts.${sessionData.sentiment}`]: 
-            ((currentStats.sentimentCounts?.[sessionData.sentiment]) || 0) + 1,
-          [`engagementLevels.${sessionData.behaviorMetrics.engagementLevel}`]: 
+          [`sentimentCounts.${sessionData.sentimentScore || sessionData.sentiment}`]:
+            ((currentStats.sentimentCounts?.[sessionData.sentimentScore || sessionData.sentiment]) || 0) + 1,
+          [`engagementLevels.${sessionData.behaviorMetrics.engagementLevel}`]:
             ((currentStats.engagementLevels?.[sessionData.behaviorMetrics.engagementLevel]) || 0) + 1,
-          [`deviceTypes.${sessionData.behaviorMetrics.deviceType}`]: 
+          [`deviceTypes.${sessionData.behaviorMetrics.deviceType}`]:
             ((currentStats.deviceTypes?.[sessionData.behaviorMetrics.deviceType]) || 0) + 1,
-          [`intents.${sessionData.intentDetection || 'unknown'}`]: 
+          [`intents.${sessionData.intentDetection || 'unknown'}`]:
             ((currentStats.intents?.[sessionData.intentDetection || 'unknown']) || 0) + 1,
           lastUpdated: admin.firestore.FieldValue.serverTimestamp()
-        });
+        };
+
+        // Add urgency if exists
+        if (sessionData.ticketPriority) {
+          updateData[`urgencyCounts.${sessionData.ticketPriority}`] =
+            ((currentStats.urgencyCounts?.[sessionData.ticketPriority]) || 0) + 1;
+        }
+
+        // Add topic if exists
+        if (sessionData.topic) {
+          updateData[`topicCounts.${sessionData.topic}`] =
+            ((currentStats.topicCounts?.[sessionData.topic]) || 0) + 1;
+        }
+
+        transaction.update(dailyStatsRef, updateData);
       } else {
-        transaction.set(dailyStatsRef, {
+        const newStats = {
           date: todayString,
           totalSessions: 1,
           totalMessages: sessionData.messageCount,
           avgResponseTime: sessionData.avgResponseTime,
-          sentimentCounts: { [sessionData.sentiment]: 1 },
+          sentimentCounts: { [sessionData.sentimentScore || sessionData.sentiment]: 1 },
           engagementLevels: { [sessionData.behaviorMetrics.engagementLevel]: 1 },
           deviceTypes: { [sessionData.behaviorMetrics.deviceType]: 1 },
           intents: { [sessionData.intentDetection || 'unknown']: 1 },
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           lastUpdated: admin.firestore.FieldValue.serverTimestamp()
-        });
+        };
+
+        // Add urgency if exists
+        if (sessionData.ticketPriority) {
+          newStats.urgencyCounts = { [sessionData.ticketPriority]: 1 };
+        }
+
+        // Add topic if exists
+        if (sessionData.topic) {
+          newStats.topicCounts = { [sessionData.topic]: 1 };
+        }
+
+        transaction.set(dailyStatsRef, newStats);
       }
     });
     
@@ -917,6 +951,60 @@ function calculateNewAverage(currentAvg, currentCount, newValue) {
 }
 
 // AI-powered message analysis endpoint
+// Get agent config (public endpoint - no auth required)
+exports.getAgentConfig = onRequest({
+  timeoutSeconds: 30,
+  memory: '256MiB',
+  cors: true
+}, async (request, response) => {
+  // Set CORS headers
+  response.set('Access-Control-Allow-Origin', '*');
+  response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight requests
+  if (request.method === 'OPTIONS') {
+    response.status(204).send('');
+    return;
+  }
+
+  try {
+    const { agentId } = request.query || request.body;
+
+    if (!agentId) {
+      response.status(400).json({ error: 'agentId is required' });
+      return;
+    }
+
+    // Search for agent across all users
+    const usersSnapshot = await db.collection('users').get();
+
+    for (const userDoc of usersSnapshot.docs) {
+      const agentRef = await db.collection('users').doc(userDoc.id)
+        .collection('agents').doc(agentId).get();
+
+      if (agentRef.exists) {
+        const agentData = agentRef.data();
+
+        // Return only safe, public fields
+        response.status(200).json({
+          projectName: agentData.projectName || agentData.name || 'Assistant',
+          logoUrl: agentData.logoUrl || null,
+          userIcon: agentData.userIcon || 'alien',
+          primaryColor: agentData.primaryColor || '#f97316'
+        });
+        return;
+      }
+    }
+
+    response.status(404).json({ error: 'Agent not found' });
+
+  } catch (error) {
+    console.error('Get agent config error:', error);
+    response.status(500).json({ error: 'Failed to get agent config' });
+  }
+});
+
 exports.analyzeMessage = onRequest({
   timeoutSeconds: 60,
   memory: '512MiB',

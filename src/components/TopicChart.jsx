@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 
-export default function CategoryDonutChart({ data }) {
+export default function TopicChart({ data = [] }) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -15,14 +15,21 @@ export default function CategoryDonutChart({ data }) {
     return () => observer.disconnect();
   }, []);
 
-  const total = data?.reduce((sum, item) => sum + item.count, 0) || 0;
+  const chartDataArray = data
+    .filter(item => item.count > 0)
+    .map(item => ({
+      category: item.topic.charAt(0).toUpperCase() + item.topic.slice(1),
+      count: item.count
+    }));
 
-  const chartData = data?.map((item, index) => ({
-    category: item.category.replace(/_/g, ' '),
+  const total = chartDataArray.reduce((sum, item) => sum + item.count, 0);
+
+  const chartData = chartDataArray.map((item) => ({
+    category: item.category,
     count: item.count,
     percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : 0,
     fill: 'rgba(249, 115, 22, 0.1)' // orange-500 with 10% opacity
-  })) || [];
+  }));
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -47,11 +54,12 @@ export default function CategoryDonutChart({ data }) {
     return null;
   };
 
-  if (!data || data.length === 0) {
+  if (total === 0) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">No data available</div>
+          <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No topic data yet</div>
+          <div className="text-stone-300 dark:text-stone-600 text-xs">Data will appear as conversations are analyzed</div>
         </div>
       </div>
     );

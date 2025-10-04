@@ -3,135 +3,557 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Widget Test Page</title>
+    <title>Velocity - Ship faster with AI-powered development</title>
     <style>
-        body {
-            font-family: system-ui, sans-serif;
-            line-height: 1.6;
+        * {
             margin: 0;
-            padding: 40px;
-            background: #f8fafc;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .container {
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 24px 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 26px;
+            font-weight: 800;
+            color: #0f0f0f;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        nav {
+            display: flex;
+            gap: 48px;
+            align-items: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #525252;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        nav a:hover {
+            color: #0f0f0f;
+        }
+
+        nav a:hover::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        .nav-cta {
+            background: #0f0f0f;
+            color: white !important;
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .nav-cta:hover {
+            background: #1a1a1a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-cta:hover::after {
+            display: none;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            padding: 140px 40px 100px;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.12), transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.12), transparent 40%),
+                radial-gradient(circle at 40% 20%, rgba(255, 107, 107, 0.08), transparent 30%),
+                #ffffff;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                linear-gradient(90deg, transparent 0%, rgba(102, 126, 234, 0.03) 50%, transparent 100%),
+                linear-gradient(0deg, transparent 0%, rgba(118, 75, 162, 0.03) 50%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            max-width: 1100px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.08));
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 100px;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.6;
+                transform: scale(0.95);
+            }
+        }
+
+        .hero h1 {
+            font-size: 84px;
+            font-weight: 800;
+            margin-bottom: 32px;
+            line-height: 1.05;
+            color: #0f0f0f;
+            letter-spacing: -0.03em;
+        }
+
+        .hero-gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 70%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            display: inline-block;
+        }
+
+        .hero p {
+            font-size: 22px;
+            color: #525252;
+            max-width: 720px;
+            margin: 0 auto 56px;
+            line-height: 1.7;
+            font-weight: 400;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 80px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px 48px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 17px;
+            transition: all 0.3s;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.35);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 36px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0f0f0f;
+            padding: 18px 48px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 17px;
+            border: 2px solid #e5e5e5;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: #fafafa;
+            border-color: #d4d4d4;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 80px;
+            justify-content: center;
+            padding: 40px 60px;
+            background: white;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
             max-width: 800px;
             margin: 0 auto;
-            background: white;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 42px;
+            font-weight: 800;
+            color: #0f0f0f;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 15px;
+            color: #737373;
+            font-weight: 500;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 120px 60px;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            background: #fafbff;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .section-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 100px;
+            color: #667eea;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .features h2 {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 32px;
+        }
+
+        .feature-card {
             padding: 40px;
+            border-radius: 20px;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
             border-radius: 12px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 24px;
         }
-        h1 {
-            color: #1f2937;
+
+        .feature-card h3 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: #666;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 120px 60px;
+            position: relative;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        .cta-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 80px 60px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.06));
+            border: 1px solid rgba(102, 126, 234, 0.15);
+            border-radius: 24px;
+        }
+
+        .cta-section h2 {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a1a;
             margin-bottom: 20px;
         }
-        p {
-            color: #6b7280;
-            margin-bottom: 20px;
+
+        .cta-section p {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
-        .test-info {
-            background: #f3f4f6;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 30px;
-        }
-        code {
-            background: #1f2937;
-            color: #10b981;
-            padding: 12px;
-            border-radius: 6px;
-            display: block;
-            font-size: 14px;
-            overflow-x: auto;
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                padding: 16px 24px;
+            }
+
+            nav {
+                display: none;
+            }
+
+            .hero {
+                padding: 100px 24px 60px;
+            }
+
+            .hero h1 {
+                font-size: 40px;
+            }
+
+            .hero p {
+                font-size: 18px;
+            }
+
+            .hero-stats {
+                flex-direction: column;
+                gap: 24px;
+            }
+
+            .features {
+                padding: 80px 24px;
+            }
+
+            .features h2, .cta-section h2 {
+                font-size: 32px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-section {
+                padding: 80px 24px;
+            }
+
+            .cta-container {
+                padding: 60px 32px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🌸 Orchis Widget Test Page</h1>
-        <p>This page tests the Orchis chatbot widget integration. The widget should appear as a floating button in the bottom-right corner.</p>
-        
-        <h2>Features to test:</h2>
-        <ul>
-            <li>✨ Floating chat button appears</li>
-            <li>💬 Click to open/close chat window</li>
-            <li>🤖 Send a test message</li>
-            <li>⚡ Typing animation works</li>
-            <li>👤 Name recognition feature</li>
-            <li>📱 Mobile responsiveness</li>
-        </ul>
-
-        <h2>🧠 AI Analytics Features:</h2>
-        <ul>
-            <li>🎯 <strong>Intent Detection</strong>: support, sales, information</li>
-            <li>📊 <strong>Sentiment Analysis</strong>: positive, negative, confused, frustrated</li>
-            <li>🏷️ <strong>AI Categorization</strong>: Consistent with previous sessions</li>
-            <li>🎫 <strong>Auto-Ticket Creation</strong>: For support/negative sentiment</li>
-            <li>💰 <strong>Lead Scoring</strong>: High/medium/low quality leads</li>
-            <li>📈 <strong>Engagement Tracking</strong>: Scroll, clicks, time on page</li>
-            <li>🔍 <strong>Topic Detection</strong>: pricing, features, integration, etc.</li>
-            <li>⚡ <strong>Real-time Analytics</strong>: Every message analyzed</li>
-        </ul>
-
-        <h2>🧪 Test Messages:</h2>
-        <div style="background: #f9fafb; padding: 15px; border-radius: 8px; font-size: 14px;">
-            <p><strong>Support:</strong> "I have a problem with billing"</p>
-            <p><strong>Sales:</strong> "How much does the enterprise plan cost?"</p>
-            <p><strong>Negative:</strong> "This is terrible and doesn't work"</p>
-            <p><strong>Competitor:</strong> "How are you different from Chatbase?"</p>
-            <p><strong>Integration:</strong> "Can I integrate this with my API?"</p>
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <div class="logo-icon"></div>
+            Velocity
         </div>
+        <nav>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#docs">Docs</a>
+            <a href="#blog">Blog</a>
+            <a href="#" class="nav-cta">Start Free Trial</a>
+        </nav>
+    </header>
 
-        <div class="test-info">
-            <h3>Widget Code:</h3>
-            <code>
-&lt;script&gt;
-(function(){
-  if(!window.OrchisChatbot){
-    const chatbotConfig = {
-      agentId: 'srqL7gsfl3kdEZcyWc3P',
-      projectName: 'Test Company',
-      logoUrl: '',
-      primaryColor: '#f97316',
-      position: 'bottom-right'
-    };
-    
-    const script = document.createElement('script');
-    script.src = 'https://orchis.app/chatbot-widget.js';
-    script.onload = function() {
-      if(window.OrchisChatbot) {
-        window.OrchisChatbot.init(chatbotConfig);
-      }
-    };
-    document.head.appendChild(script);
-  }
-})();
-&lt;/script&gt;
-            </code>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-dot"></span>
+                Now with AI-powered code generation
+            </div>
+            <h1>
+                Ship products<br>
+                <span class="hero-gradient-text">10x faster</span>
+            </h1>
+            <p>
+                The modern development platform that helps teams build, deploy, and scale applications with AI-powered tools and instant deployments.
+            </p>
+            <div class="hero-cta">
+                <a href="#" class="btn-primary">Get Started Free</a>
+                <a href="#" class="btn-secondary">Schedule Demo</a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat">
+                    <div class="stat-number">50K+</div>
+                    <div class="stat-label">Developers</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">2M+</div>
+                    <div class="stat-label">Deployments</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+            </div>
         </div>
+    </section>
 
-        <p style="margin-top: 30px; font-size: 14px; color: #9ca3af;">
-            <strong>Note:</strong> This is a test page for development purposes. 
-            The chatbot will attempt to connect to the production API.
-        </p>
-    </div>
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-header">
+            <div class="section-badge">Features</div>
+            <h2>Everything you need to ship faster</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Instant Deployments</h3>
+                <p>Deploy to production in seconds with our global edge network. Zero configuration required.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>AI-Powered Development</h3>
+                <p>Generate code, fix bugs, and optimize performance with our integrated AI assistant.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Enterprise Security</h3>
+                <p>SOC 2 Type II certified with end-to-end encryption and advanced DDoS protection.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Real-time Analytics</h3>
+                <p>Monitor your application performance with detailed insights and custom dashboards.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌍</div>
+                <h3>Global CDN</h3>
+                <p>Deliver content at lightning speed with our 200+ edge locations worldwide.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔄</div>
+                <h3>Automatic Scaling</h3>
+                <p>Scale from zero to millions of requests automatically without any configuration.</p>
+            </div>
+        </div>
+    </section>
 
-    <!-- Orchis Chatbot Widget -->
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-container">
+            <h2>Ready to ship faster?</h2>
+            <p>Join 50,000+ developers building the future with Velocity</p>
+            <a href="#" class="btn-primary">Start Building Now</a>
+        </div>
+    </section>
+
+    <!-- Orchis Chatbot -->
     <script>
     (function(){
       if(!window.OrchisChatbot){
-        const chatbotConfig = {
-          agentId: 'srqL7gsfl3kdEZcyWc3P',
-          projectName: 'ORCHIS',
-          logoUrl: '',
-          primaryColor: '#f97316',
-          position: 'bottom-right'
-        };
-        
         const script = document.createElement('script');
-        script.src = './chatbot-widget.js'; // Local for testing
+        script.src = './chatbot-widget.js';
         script.onload = function() {
           if(window.OrchisChatbot) {
-            window.OrchisChatbot.init(chatbotConfig);
+            window.OrchisChatbot.init({
+              agentId: 'srqL7gsfl3kdEZcyWc3P'
+            });
           }
         };
         document.head.appendChild(script);

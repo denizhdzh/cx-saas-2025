@@ -799,69 +799,29 @@ Provide JSON with:
       this.injectStyles();
       this.createWidget();
       this.bindEvents();
-      this.addWelcomeMessage();
     },
 
     fetchAgentConfig: async function() {
       try {
-        // Import Firebase dynamically
-        if (!window.firebase) {
-          await this.loadFirebase();
+        // Fetch from secure backend endpoint - NO Firebase credentials exposed!
+        const response = await fetch(`https://us-central1-candelaai.cloudfunctions.net/getAgentConfig?agentId=${this.config.agentId}`);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch agent config');
         }
 
-        const db = firebase.firestore();
+        const agentData = await response.json();
 
-        // Search for agent across all users
-        const usersSnapshot = await db.collection('users').get();
+        // Update config with backend values
+        this.config.projectName = agentData.projectName || this.config.projectName;
+        this.config.logoUrl = agentData.logoUrl || this.config.logoUrl;
+        this.config.userIcon = agentData.userIcon || 'alien';
+        this.config.primaryColor = agentData.primaryColor || this.config.primaryColor;
 
-        for (const userDoc of usersSnapshot.docs) {
-          const agentRef = await db.collection('users').doc(userDoc.id)
-            .collection('agents').doc(this.config.agentId).get();
-
-          if (agentRef.exists) {
-            const agentData = agentRef.data();
-
-            // Update config with database values
-            this.config.projectName = agentData.projectName || agentData.name || this.config.projectName;
-            this.config.logoUrl = agentData.logoUrl || this.config.logoUrl;
-            this.config.primaryColor = agentData.primaryColor || this.config.primaryColor;
-
-            console.log('✅ Agent config loaded:', this.config.projectName);
-            break;
-          }
-        }
+        console.log('✅ Agent config loaded securely from backend:', this.config.projectName);
       } catch (error) {
         console.warn('Failed to fetch agent config, using defaults:', error);
       }
-    },
-
-    loadFirebase: async function() {
-      return new Promise((resolve, reject) => {
-        // Load Firebase SDK
-        const script1 = document.createElement('script');
-        script1.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
-        script1.onload = () => {
-          const script2 = document.createElement('script');
-          script2.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js';
-          script2.onload = () => {
-            // Initialize Firebase
-            firebase.initializeApp({
-              apiKey: "AIzaSyBZi6AjqTkvU-v16ZcYr3T73u7u3SiIMpM",
-              authDomain: "candelaai.firebaseapp.com",
-              projectId: "candelaai",
-              storageBucket: "candelaai.firebasestorage.app",
-              messagingSenderId: "726655160481",
-              appId: "1:726655160481:web:4e133e5bea62b12e7eead0",
-              measurementId: "G-LVYP7E1ZTY"
-            });
-            resolve();
-          };
-          script2.onerror = reject;
-          document.head.appendChild(script2);
-        };
-        script1.onerror = reject;
-        document.head.appendChild(script1);
-      });
     },
 
     injectStyles: function() {
@@ -880,19 +840,18 @@ Provide JSON with:
         .orchis-position-top-left { top: 20px; left: 20px; }
         
         .orchis-chat-widget {
-          background: rgba(25, 25, 25, 0.7);
-          backdrop-filter: saturate(180%) blur(20px);
-          -webkit-backdrop-filter: saturate(180%) blur(10px);
-          border: 0.5px solid rgba(80, 80, 80, 0.3);
-          border-radius: 20px;
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(30px);
+          border: 0.5px solid rgba(80, 80, 80, 0.9);
+          border-radius: 25px;
           width: 100%;
-          max-width: 26rem;
+          max-width: 24rem;
+          min-width: 24rem;
           overflow: hidden;
-          box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15),
-                      0 2px 8px rgba(31, 38, 135, 0.08),
-                      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+          box-shadow: inset 1px 2px 1px 0 rgba(255, 255, 255, 0.08);
           height: auto;
-          min-height: 250px;
+          min-height: 50px;
           max-height: 480px;
           display: flex;
           flex-direction: column;
@@ -914,8 +873,8 @@ Provide JSON with:
         .orchis-chat-header {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 16px;
+          gap: 8px;
+          padding: 12px;
           background: rgba(255, 255, 255, 0);
         }
 
@@ -986,7 +945,12 @@ Provide JSON with:
         .orchis-messages {
           flex: 1;
           overflow-y: auto;
-          padding: 16px;
+          padding: 12px;
+          display: none;
+        }
+
+        .orchis-messages:not(:empty) {
+          display: block;
         }
         
         .orchis-message {
@@ -1022,10 +986,16 @@ Provide JSON with:
         }
 
         .orchis-input-container {
-          background: rgba(255, 255, 255, 0);
-          border: 0.5px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.05);
+          border: 0.5px solid rgba(255, 255, 255, 0.5);
           border-radius: 20px;
-          padding: 12px;
+          padding: 6px;
+          transition: all 0.2s ease;
+        }
+
+        .orchis-input-container:focus-within {
+          border-color: none;
+          box-shadow: none;
         }
 
         .orchis-input-label {
@@ -1047,34 +1017,29 @@ Provide JSON with:
           padding: 8px 12px;
           font-size: 14px;
           background: rgba(255, 255, 255, 0);
-          color: rgba(0, 0, 0, 0.85);
-          border: 0.5px solid rgba(255, 255, 255, 0.7);
+          color: rgba(255, 255, 255, 0.85);
+          border: none;
           border-radius: 8px;
           outline: none;
-          transition: all 0.2s ease;
         }
 
         .orchis-input::placeholder {
           color: rgba(255, 255, 255, 0.35);
         }
 
-        .orchis-input:focus {
-          background: rgba(255, 255, 255, 0);
-          border-color: rgba(255, 255, 255, 1);
-          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-        }
-
         .orchis-send-button {
-          padding: 8px;
+          padding: 8px 16px;
           color: black;
           background: rgba(255, 255, 255, 0.9);
           border: none;
-          border-radius: 8px;
+          border-radius: 100px;
           cursor: pointer;
           transition: all 0.2s ease;
           display: flex;
           align-items: center;
           justify-content: center;
+          font-size: 12px;
+          font-weight: 600;
         }
 
         .orchis-send-button:hover {
@@ -1086,7 +1051,34 @@ Provide JSON with:
           opacity: 0.5;
           cursor: not-allowed;
         }
-        
+
+        .orchis-powered-by {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 6px;
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .orchis-logo {
+          width: 16px;
+          height: 16px;
+          border-radius: 4px;
+        }
+
+        .orchis-link {
+          color: rgba(255, 255, 255, 0.7);
+          text-decoration: underline;
+          font-weight: 700;
+          transition: color 0.2s ease;
+        }
+
+        .orchis-link:hover {
+          color: rgba(255, 255, 255, 1);
+        }
+
         .orchis-loading {
           margin-bottom: 12px;
         }
@@ -1099,7 +1091,7 @@ Provide JSON with:
         .orchis-dot {
           width: 8px;
           height: 8px;
-          background: rgba(0, 0, 0, 0.3);
+          background: rgba(255, 255, 255, 0.3);
           border-radius: 50%;
           animation: orchis-bounce 1.4s ease-in-out infinite both;
         }
@@ -1171,38 +1163,24 @@ Provide JSON with:
     getWidgetHTML: function() {
       return `
         <div class="orchis-chat-widget">
-          <div class="orchis-chat-header">
-            <div class="orchis-agent-avatar">
-              ${this.config.logoUrl ? 
-                `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />` : 
-                '<div class="orchis-default-avatar">✨</div>'
-              }
-            </div>
-            <div class="orchis-agent-details">
-              <div class="orchis-agent-name">${this.config.projectName} AI${this.userName ? ` & ${this.userName.charAt(0).toUpperCase() + this.userName.slice(1)}` : ''}</div>
-              <div class="orchis-status">Online now</div>
-            </div>
-            <div class="orchis-status-dot"></div>
-          </div>
-          
           <div class="orchis-messages"></div>
           
           <div class="orchis-input-section">
             <div class="orchis-input-container">
-              <div class="orchis-input-label">Ask ${this.config.projectName} AI</div>
               <div class="orchis-input-row">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   class="orchis-input"
                   placeholder="Ask anything about ${this.config.projectName}..."
                 />
                 <button class="orchis-send-button">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22,2 15,22 11,13 2,9"></polygon>
-                  </svg>
+                  send
                 </button>
               </div>
+            </div>
+            <div class="orchis-powered-by">
+              <img src="https://orchis.app/logo.png" alt="Orchis" class="orchis-logo" />
+              <span>Powered by <a href="https://orchis.app" target="_blank" class="orchis-link">ORCHIS</a></span>
             </div>
           </div>
         </div>
@@ -1412,6 +1390,7 @@ Provide JSON with:
       this.updateMessages();
     },
 
+
     updateMessages: function() {
       const messagesContainer = this.container.querySelector('.orchis-messages');
       const html = this.messages.map(message => `
@@ -1420,7 +1399,7 @@ Provide JSON with:
           <div class="orchis-message-content">${message.content}${this.isTyping && this.messages[this.messages.length - 1].id === message.id ? '<span style="animation: blink 1s infinite;">|</span>' : ''}</div>
         </div>
       `).join('');
-      
+
       messagesContainer.innerHTML = html + (this.isLoading ? this.getLoadingHTML() : '');
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     },

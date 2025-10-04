@@ -2,7 +2,7 @@
 
 @layer base {
   body {
-    @apply bg-white text-neutral-900 antialiased;
+    @apply bg-stone-50 dark:bg-stone-900 text-neutral-900 antialiased;
     font-feature-settings: "kern", "liga", "clig", "calt";
   }
   

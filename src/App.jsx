@@ -22,7 +22,7 @@ function App() {
       <AuthProvider>
         <AgentProvider>
           <BrowserRouter>
-          <div className="min-h-screen bg-stone-100">
+          <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/signin" element={<SignInPage />} />

@@ -146,69 +146,425 @@ export const getTicketAnalytics = async (agentId, timeRange = 'daily', userId = 
         startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     }
 
-    // Get conversations from new structure: users/{userId}/agents/{agentId}/conversations/
-    let conversations = [];
-    let analytics = null;
-    
-    if (userId) {
+    if (!userId) {
+      console.log('No userId provided, returning empty analytics...');
+      return createEmptyAnalytics(timeRange);
+    }
+
+    // Get data from Firebase Analytics structure
+    try {
+      // Calculate how many days we need based on timeRange
+      let daysToFetch;
+      switch (timeRange) {
+        case 'weekly':
+          daysToFetch = 7;
+          break;
+        case 'monthly':
+          daysToFetch = 30;
+          break;
+        default: // daily
+          daysToFetch = 1;
+      }
+
+      // Path: users/{userId}/agents/{agentId}/analytics/daily/stats/{date}
+      const dailyStatsRef = collection(db, 'users', userId, 'agents', agentId, 'analytics', 'daily', 'stats');
+      const dailyStatsQuery = query(
+        dailyStatsRef,
+        orderBy('date', 'desc'),
+        limit(daysToFetch)
+      );
+      const dailyStatsSnapshot = await getDocs(dailyStatsQuery);
+      const dailyStats = dailyStatsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Path: users/{userId}/agents/{agentId}/analytics/sessions/detailed/{sessionId}
+      const sessionsRef = collection(db, 'users', userId, 'agents', agentId, 'analytics', 'sessions', 'detailed');
+      const sessionsQuery = query(
+        sessionsRef,
+        where('savedAt', '>=', Timestamp.fromDate(startDate)),
+        orderBy('savedAt', 'desc'),
+        limit(50) // Get last 50 sessions for detailed view
+      );
+      const sessionsSnapshot = await getDocs(sessionsQuery);
+      const sessions = sessionsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Path: users/{userId}/agents/{agentId}/conversations - Get actual AI analysis data
+      const conversationsRef = collection(db, 'users', userId, 'agents', agentId, 'conversations');
+      const conversationsQuery = query(
+        conversationsRef,
+        where('createdAt', '>=', Timestamp.fromDate(startDate)),
+        orderBy('createdAt', 'desc'),
+        limit(200) // Get last 200 conversations for analysis
+      );
+      const conversationsSnapshot = await getDocs(conversationsQuery);
+      const conversations = conversationsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Path: users/{userId}/agents/{agentId}/analytics/user_patterns/anonymous_users/{userId}
+      let userPatterns = [];
       try {
-        // Get conversations from new structure
-        const conversationsQuery = query(
-          collection(db, 'users', userId, 'agents', agentId, 'conversations'),
-          where('createdAt', '>=', Timestamp.fromDate(startDate)),
-          orderBy('createdAt', 'asc')
-        );
-        const conversationsSnapshot = await getDocs(conversationsQuery);
-        conversations = conversationsSnapshot.docs.map(doc => ({
+        const userPatternsRef = collection(db, 'users', userId, 'agents', agentId, 'analytics', 'user_patterns', 'anonymous_users');
+        const userPatternsSnapshot = await getDocs(userPatternsRef);
+        userPatterns = userPatternsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        console.log('Found conversations:', conversations.length, 'for agent:', agentId);
-
-        // Get analytics data from new structure
-        try {
-          const analyticsQuery = query(
-            collection(db, 'users', userId, 'agents', agentId, 'analytics', 'daily', 'stats'),
-            orderBy('date', 'desc'),
-            limit(30)
-          );
-          const analyticsSnapshot = await getDocs(analyticsQuery);
-          const analyticsData = analyticsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          console.log('Found analytics data:', analyticsData.length, 'records');
-          
-          if (analyticsData.length > 0) {
-            analytics = processNewAnalyticsData(analyticsData, conversations, timeRange);
-          }
-        } catch (analyticsError) {
-          console.log('No analytics data found, will use conversations only');
-        }
-      } catch (error) {
-        console.log('Error fetching from new structure:', error);
+      } catch (patternsError) {
+        console.log('Could not fetch user patterns:', patternsError);
       }
+
+      console.log('Found analytics:', {
+        dailyStats: dailyStats.length,
+        sessions: sessions.length,
+        conversations: conversations.length,
+        userPatterns: userPatterns.length
+      });
+
+      if (dailyStats.length > 0 || sessions.length > 0 || conversations.length > 0) {
+        console.log(`📊 Processing analytics for timeRange: ${timeRange}, ${sessions.length} sessions, ${conversations.length} conversations found`);
+        const analyticsData = processRealAnalyticsData(dailyStats, sessions, conversations, userPatterns, timeRange);
+        // Add detailed metrics and sessions list
+        analyticsData.detailedMetrics = calculateDetailedMetrics(sessions);
+        analyticsData.recentSessions = sessions.slice(0, 10); // Last 10 sessions
+        console.log('📊 Detailed metrics calculated:', analyticsData.detailedMetrics);
+        return analyticsData;
+      }
+    } catch (error) {
+      console.log('Error fetching analytics:', error);
     }
 
-    // If no data found, create demo data for testing
-    if (conversations.length === 0 && !analytics) {
-      console.log('No data found, creating demo data...');
-      return createDemoAnalytics(timeRange);
-    }
-
-    // Process data for analytics
-    if (analytics) {
-      return analytics;
-    } else {
-      return processConversationsData(conversations, timeRange);
-    }
+    // No data found - return empty analytics with zeros
+    console.log('No analytics data found, returning zeros...');
+    return createEmptyAnalytics(timeRange);
   } catch (error) {
     console.error('Error getting ticket analytics:', error);
     throw error;
   }
 };
 
-// Process analytics data from tickets and AI conversations  
+// Process real analytics data from Firebase
+const processRealAnalyticsData = (dailyStats, sessions, conversations, userPatterns, timeRange) => {
+  const groupedData = {};
+  const categoryData = {};
+  const sentimentData = {};
+  const locationData = {};
+  const urgencyData = {};
+  const topicData = {};
+  const engagementData = {};
+  const deviceData = {};
+  const referrerData = {};
+  const browserData = {};
+  const languageData = {};
+  const leadQualityData = {};
+
+  // Initialize ALL periods with zeros
+  const now = new Date();
+  let periods = [];
+  switch (timeRange) {
+    case 'weekly':
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        periods.push(date.toISOString().split('T')[0]);
+      }
+      break;
+    case 'monthly':
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        periods.push(date.toISOString().split('T')[0]);
+      }
+      break;
+    default: // daily
+      for (let i = 23; i >= 0; i--) {
+        const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+        periods.push(`${String(hour.getHours()).padStart(2, '0')}:00`);
+      }
+  }
+
+  // Initialize all periods with zero values
+  periods.forEach(period => {
+    groupedData[period] = { opened: 0, resolved: 0 };
+  });
+
+  // Aggregate from daily stats
+  let totalSessions = 0;
+  let totalMessages = 0;
+  let avgResponseTime = 0;
+
+  dailyStats.forEach(dayStat => {
+    const date = dayStat.date;
+    if (date && groupedData[date] !== undefined) {
+      groupedData[date] = {
+        opened: dayStat.totalSessions || 0,
+        resolved: Math.floor((dayStat.totalSessions || 0) * 0.8) // 80% resolution rate
+      };
+    }
+
+    totalSessions += dayStat.totalSessions || 0;
+    totalMessages += dayStat.totalMessages || 0;
+
+    // Aggregate engagement levels
+    if (dayStat.engagementLevels) {
+      Object.entries(dayStat.engagementLevels).forEach(([level, count]) => {
+        engagementData[level] = (engagementData[level] || 0) + count;
+      });
+    }
+
+    // Aggregate device types
+    if (dayStat.deviceTypes) {
+      Object.entries(dayStat.deviceTypes).forEach(([device, count]) => {
+        deviceData[device] = (deviceData[device] || 0) + count;
+      });
+    }
+  });
+
+  // Track unique anonymous users for location
+  const uniqueUsersByCountry = {};
+
+  // Aggregate from sessions for additional metrics
+  sessions.forEach(session => {
+    // Location data from userLocation - track unique users only
+    if (session.userLocation?.timezone && session.anonymousUserId) {
+      const country = timezoneToCountry(session.userLocation.timezone);
+      if (!uniqueUsersByCountry[country]) {
+        uniqueUsersByCountry[country] = new Set();
+      }
+      uniqueUsersByCountry[country].add(session.anonymousUserId);
+    }
+
+    // Referrer data
+    if (session.userLocation?.referrer) {
+      const referrer = session.userLocation.referrer;
+      referrerData[referrer] = (referrerData[referrer] || 0) + 1;
+    }
+
+    // Browser data
+    if (session.behaviorMetrics?.browserInfo) {
+      const browser = session.behaviorMetrics.browserInfo.toLowerCase();
+      browserData[browser] = (browserData[browser] || 0) + 1;
+    }
+
+    // Language data
+    if (session.language) {
+      const lang = session.language.split('-')[0]; // Convert en-US to en
+      languageData[lang] = (languageData[lang] || 0) + 1;
+    }
+
+    // Lead quality data
+    if (session.businessMetrics?.leadQuality) {
+      const quality = session.businessMetrics.leadQuality;
+      leadQualityData[quality] = (leadQualityData[quality] || 0) + 1;
+    }
+
+    if (session.avgResponseTime) {
+      avgResponseTime = session.avgResponseTime; // Use latest
+    }
+  });
+
+  // Convert unique users to counts
+  Object.entries(uniqueUsersByCountry).forEach(([country, userSet]) => {
+    locationData[country] = userSet.size;
+  });
+
+  // Aggregate from user patterns for UNIQUE users only
+  userPatterns.forEach(pattern => {
+    if (pattern.timezone) {
+      const country = timezoneToCountry(pattern.timezone);
+      locationData[country] = (locationData[country] || 0) + 1; // Count each pattern as 1 unique user
+    }
+  });
+
+  // Aggregate from CONVERSATIONS for AI analysis data (category, topic, sentiment, urgency)
+  console.log('📊 Processing conversations for AI analysis data:', conversations.length);
+  conversations.forEach(conversation => {
+    // Category from AI analysis
+    if (conversation.analysis?.category) {
+      const category = conversation.analysis.category;
+      categoryData[category] = (categoryData[category] || 0) + 1;
+    }
+
+    // Topic from AI analysis
+    if (conversation.analysis?.topic) {
+      const topic = conversation.analysis.topic;
+      topicData[topic] = (topicData[topic] || 0) + 1;
+    }
+
+    // Sentiment from AI analysis
+    if (conversation.analysis?.sentiment) {
+      const sentiment = conversation.analysis.sentiment;
+      sentimentData[sentiment] = (sentimentData[sentiment] || 0) + 1;
+    }
+
+    // Urgency from AI analysis
+    if (conversation.analysis?.urgency) {
+      const urgency = conversation.analysis.urgency;
+      urgencyData[urgency] = (urgencyData[urgency] || 0) + 1;
+    }
+  });
+
+  console.log('📊 Aggregated from conversations:', {
+    categories: Object.keys(categoryData),
+    topics: Object.keys(topicData),
+    sentiments: Object.keys(sentimentData),
+    urgencies: Object.keys(urgencyData)
+  });
+
+  // Convert to arrays with ALL categories/sentiments
+  const allCategories = ['support', 'sales', 'information', 'complaint', 'question', 'technical', 'other'];
+  const categoryArray = allCategories.map(category => ({
+    category,
+    count: categoryData[category] || categoryData['unknown'] || 0
+  }));
+
+  // Sentiment data - convert to 1-10 scoring system
+  const sentimentScoreData = {};
+
+  // Map old sentiment strings to scores 1-10
+  Object.entries(sentimentData).forEach(([sentiment, count]) => {
+    let score;
+    if (sentiment === 'positive') score = 8;
+    else if (sentiment === 'negative') score = 3;
+    else if (sentiment === 'neutral') score = 5;
+    else if (sentiment === 'frustrated') score = 2;
+    else if (sentiment === 'confused') score = 4;
+    else score = 5; // default
+
+    sentimentScoreData[score] = (sentimentScoreData[score] || 0) + count;
+  });
+
+  // Create array for all 10 sentiment scores
+  const sentimentArray = Array.from({ length: 10 }, (_, i) => ({
+    sentiment: i + 1,
+    count: sentimentScoreData[i + 1] || 0
+  }));
+
+  // Location data
+  const allLocations = ['US', 'CA', 'GB', 'DE', 'FR', 'AU', 'JP', 'TR'];
+  const locationArray = allLocations.map(country => ({
+    country,
+    count: locationData[country] || 0
+  }));
+
+  // Urgency data
+  console.log('📊 Raw urgency data:', urgencyData);
+  const allUrgencies = ['low', 'medium', 'high'];
+  const urgencyArray = allUrgencies.map(urgency => ({
+    urgency,
+    count: urgencyData[urgency] || 0
+  }));
+
+  // Topic data
+  console.log('📊 Raw topic data:', topicData);
+  const allTopics = ['pricing', 'features', 'integration', 'billing', 'technical', 'general'];
+  const topicArray = allTopics.map(topic => ({
+    topic,
+    count: topicData[topic] || 0
+  }));
+
+  console.log('📊 Final urgency array:', urgencyArray);
+  console.log('📊 Final topic array:', topicArray);
+  console.log('📊 Final engagement data:', engagementData);
+  console.log('📊 Final device data:', deviceData);
+  console.log('📊 Final referrer data:', referrerData);
+  console.log('📊 Final browser data:', browserData);
+  console.log('📊 Final language data:', languageData);
+
+  return {
+    chartData: groupedData,
+    categoryData: categoryArray,
+    sentimentData: sentimentArray,
+    locationData: locationArray,
+    urgencyData: urgencyArray,
+    topicData: topicArray,
+    engagementData: engagementData,
+    deviceData: deviceData,
+    referrerData: referrerData,
+    browserData: browserData,
+    languageData: languageData,
+    leadQualityData: leadQualityData,
+    totalUsers: Object.values(locationData).reduce((sum, count) => sum + count, 0),
+    summary: {
+      resolutionRate: 80,
+      openTickets: Math.floor(totalSessions * 0.2),
+      resolvedToday: Math.floor(totalSessions * 0.8),
+      avgResponseTime: avgResponseTime ? `${avgResponseTime}ms` : '2.3h'
+    }
+  };
+};
+
+// Calculate detailed metrics from sessions
+const calculateDetailedMetrics = (sessions) => {
+  if (!sessions || sessions.length === 0) {
+    return {
+      avgTimeOnPageBeforeChat: 0,
+      avgSessionDuration: 0,
+      avgScrollDepth: 0,
+      returnVisitorRate: 0,
+      avgMessagesPerSession: 0,
+      totalSessions: 0
+    };
+  }
+
+  let totalTimeBeforeChat = 0;
+  let totalDuration = 0;
+  let totalScrollDepth = 0;
+  let returnVisitors = 0;
+  let totalMessages = 0;
+
+  sessions.forEach(session => {
+    if (session.behaviorMetrics?.timeOnPageBeforeChat) {
+      totalTimeBeforeChat += session.behaviorMetrics.timeOnPageBeforeChat;
+    }
+    if (session.sessionDuration) {
+      totalDuration += session.sessionDuration;
+    }
+    if (session.behaviorMetrics?.scrollDepth) {
+      totalScrollDepth += session.behaviorMetrics.scrollDepth;
+    }
+    if (session.behaviorMetrics?.returnVisitor) {
+      returnVisitors++;
+    }
+    if (session.messageCount) {
+      totalMessages += session.messageCount;
+    }
+  });
+
+  const count = sessions.length;
+
+  return {
+    avgTimeOnPageBeforeChat: totalTimeBeforeChat / count,
+    avgSessionDuration: totalDuration / count,
+    avgScrollDepth: totalScrollDepth / count,
+    returnVisitorRate: (returnVisitors / count) * 100,
+    avgMessagesPerSession: totalMessages / count,
+    totalSessions: count
+  };
+};
+
+// Helper to map timezone to country
+const timezoneToCountry = (timezone) => {
+  const tzMap = {
+    'America/New_York': 'US',
+    'America/Los_Angeles': 'US',
+    'America/Chicago': 'US',
+    'America/Toronto': 'CA',
+    'Europe/London': 'GB',
+    'Europe/Berlin': 'DE',
+    'Europe/Paris': 'FR',
+    'Europe/Istanbul': 'TR',
+    'Australia/Sydney': 'AU',
+    'Asia/Tokyo': 'JP'
+  };
+  return tzMap[timezone] || 'US';
+};
+
+// Process analytics data from tickets and AI conversations
 const processAnalyticsData = (tickets, conversations, timeRange) => {
   const groupedData = {};
   const categoryData = {};
@@ -311,62 +667,93 @@ const processNewAnalyticsData = (analyticsData, conversations, timeRange) => {
   const categoryData = {};
   const sentimentData = {};
   const locationData = {};
-  
+
+  // First, initialize ALL periods with zeros
+  const now = new Date();
+  let periods = [];
+  switch (timeRange) {
+    case 'weekly':
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        periods.push(date.toISOString().split('T')[0]);
+      }
+      break;
+    case 'monthly':
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        periods.push(date.toISOString().split('T')[0]);
+      }
+      break;
+    default: // daily
+      for (let i = 23; i >= 0; i--) {
+        const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+        periods.push(`${String(hour.getHours()).padStart(2, '0')}:00`);
+      }
+  }
+
+  // Initialize all periods with zero values
+  periods.forEach(period => {
+    groupedData[period] = { opened: 0, resolved: 0 };
+  });
+
   // Aggregate data from daily stats
   let totalSessions = 0;
   let totalMessages = 0;
   let avgResponseTime = 0;
-  
+
   analyticsData.forEach(dayData => {
     if (dayData.totalSessions) totalSessions += dayData.totalSessions;
     if (dayData.totalMessages) totalMessages += dayData.totalMessages;
     if (dayData.avgResponseTime) avgResponseTime = dayData.avgResponseTime; // Use latest
-    
+
     // Aggregate sentiment data
     if (dayData.sentimentCounts) {
       Object.entries(dayData.sentimentCounts).forEach(([sentiment, count]) => {
         sentimentData[sentiment] = (sentimentData[sentiment] || 0) + count;
       });
     }
-    
+
     // Aggregate intent/category data
     if (dayData.intents) {
       Object.entries(dayData.intents).forEach(([intent, count]) => {
         categoryData[intent] = (categoryData[intent] || 0) + count;
       });
     }
-    
+
     // For chart data, create time-based grouping
     const date = dayData.date;
-    if (date) {
+    if (date && groupedData[date]) {
       groupedData[date] = {
         opened: dayData.totalSessions || 0,
         resolved: Math.floor((dayData.totalSessions || 0) * 0.7) // Mock resolution rate
       };
     }
   });
-  
-  // Convert objects to arrays for charts
-  const categoryArray = Object.entries(categoryData).map(([category, count]) => ({
+
+  // Convert objects to arrays for charts - always show all categories
+  const allCategories = ['support', 'sales', 'information', 'complaint', 'question', 'technical', 'other'];
+  const categoryArray = allCategories.map(category => ({
     category,
-    count
+    count: categoryData[category] || 0
   }));
 
-  const sentimentArray = Object.entries(sentimentData).map(([sentiment, count]) => ({
+  // Always show all sentiments
+  const allSentiments = ['positive', 'neutral', 'negative'];
+  const sentimentArray = allSentiments.map(sentiment => ({
     sentiment,
-    count
+    count: sentimentData[sentiment] || 0
   }));
 
-  // Mock location data for now
+  // Mock location data for now - always show all locations
   const locationArray = [
-    { country: 'US', count: Math.floor(totalSessions * 0.4) },
-    { country: 'CA', count: Math.floor(totalSessions * 0.2) },
-    { country: 'GB', count: Math.floor(totalSessions * 0.15) },
-    { country: 'DE', count: Math.floor(totalSessions * 0.1) },
-    { country: 'FR', count: Math.floor(totalSessions * 0.08) },
-    { country: 'AU', count: Math.floor(totalSessions * 0.05) },
-    { country: 'JP', count: Math.floor(totalSessions * 0.02) }
-  ].filter(item => item.count > 0);
+    { country: 'US', count: Math.floor(totalSessions * 0.4) || 0 },
+    { country: 'CA', count: Math.floor(totalSessions * 0.2) || 0 },
+    { country: 'GB', count: Math.floor(totalSessions * 0.15) || 0 },
+    { country: 'DE', count: Math.floor(totalSessions * 0.1) || 0 },
+    { country: 'FR', count: Math.floor(totalSessions * 0.08) || 0 },
+    { country: 'AU', count: Math.floor(totalSessions * 0.05) || 0 },
+    { country: 'JP', count: Math.floor(totalSessions * 0.02) || 0 }
+  ];
 
   return {
     chartData: groupedData,
@@ -389,7 +776,35 @@ const processConversationsData = (conversations, timeRange) => {
   const categoryData = {};
   const sentimentData = {};
   const locationData = {};
-  
+
+  // First, initialize ALL periods with zeros
+  const now = new Date();
+  let periods = [];
+  switch (timeRange) {
+    case 'weekly':
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        periods.push(date.toISOString().split('T')[0]);
+      }
+      break;
+    case 'monthly':
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        periods.push(date.toISOString().split('T')[0]);
+      }
+      break;
+    default: // daily
+      for (let i = 23; i >= 0; i--) {
+        const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+        periods.push(`${String(hour.getHours()).padStart(2, '0')}:00`);
+      }
+  }
+
+  // Initialize all periods with zero values
+  periods.forEach(period => {
+    groupedData[period] = { opened: 0, resolved: 0 };
+  });
+
   // Process conversations
   conversations.forEach(conversation => {
     const date = conversation.createdAt.toDate();
@@ -401,18 +816,16 @@ const processConversationsData = (conversations, timeRange) => {
         dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
         break;
       case 'monthly':
-        dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD for monthly too
         break;
       default: // daily
         dateKey = `${String(date.getHours()).padStart(2, '0')}:00`;
     }
 
-    if (!groupedData[dateKey]) {
-      groupedData[dateKey] = { opened: 0, resolved: 0 };
+    if (groupedData[dateKey]) {
+      groupedData[dateKey].opened++;
+      groupedData[dateKey].resolved = Math.floor(groupedData[dateKey].opened * 0.7); // Mock resolution
     }
-
-    groupedData[dateKey].opened++;
-    groupedData[dateKey].resolved = Math.floor(groupedData[dateKey].opened * 0.7); // Mock resolution
     
     // Category analysis from AI
     if (conversation.analysis?.category) {
@@ -432,20 +845,25 @@ const processConversationsData = (conversations, timeRange) => {
     locationData[randomLocation] = (locationData[randomLocation] || 0) + 1;
   });
 
-  // Convert objects to arrays for charts
-  const categoryArray = Object.entries(categoryData).map(([category, count]) => ({
+  // Convert objects to arrays for charts - always show all categories
+  const allCategories = ['support', 'sales', 'information', 'complaint', 'question', 'technical', 'other'];
+  const categoryArray = allCategories.map(category => ({
     category,
-    count
+    count: categoryData[category] || 0
   }));
 
-  const sentimentArray = Object.entries(sentimentData).map(([sentiment, count]) => ({
+  // Always show all sentiments
+  const allSentiments = ['positive', 'neutral', 'negative'];
+  const sentimentArray = allSentiments.map(sentiment => ({
     sentiment,
-    count
+    count: sentimentData[sentiment] || 0
   }));
 
-  const locationArray = Object.entries(locationData).map(([country, count]) => ({
+  // Always show all locations
+  const allLocations = ['US', 'CA', 'GB', 'DE', 'FR', 'AU', 'JP', 'IN'];
+  const locationArray = allLocations.map(country => ({
     country,
-    count
+    count: locationData[country] || 0
   }));
 
   const totalConversations = conversations.length;
@@ -555,11 +973,12 @@ export const getRecentActivity = async (agentId, limitCount = 10) => {
 };
 
 // Create demo analytics data for testing
-const createDemoAnalytics = (timeRange) => {
+// Create empty analytics with all zeros
+const createEmptyAnalytics = (timeRange) => {
   const now = new Date();
   const groupedData = {};
-  
-  // Generate demo data based on time range
+
+  // Generate periods based on time range
   let periods = [];
   switch (timeRange) {
     case 'weekly':
@@ -571,58 +990,91 @@ const createDemoAnalytics = (timeRange) => {
     case 'monthly':
       for (let i = 29; i >= 0; i--) {
         const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        if (!periods.includes(monthKey)) periods.push(monthKey);
+        periods.push(date.toISOString().split('T')[0]);
       }
       break;
-    default: // daily
+    default: // daily (last 24 hours)
       for (let i = 23; i >= 0; i--) {
-        periods.push(`${String(i).padStart(2, '0')}:00`);
+        const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+        periods.push(`${String(hour.getHours()).padStart(2, '0')}:00`);
       }
   }
-  
+
+  // Create all periods with zero values
   periods.forEach(period => {
-    groupedData[period] = {
-      opened: Math.floor(Math.random() * 20) + 5,
-      resolved: Math.floor(Math.random() * 15) + 3
-    };
+    groupedData[period] = { opened: 0, resolved: 0 };
   });
-  
-  const categoryData = [
-    { category: 'support', count: 45 },
-    { category: 'sales', count: 32 },
-    { category: 'information', count: 28 },
-    { category: 'complaint', count: 12 },
-    { category: 'question', count: 18 }
-  ];
-  
-  const sentimentData = [
-    { sentiment: 'positive', count: 78 },
-    { sentiment: 'neutral', count: 45 },
-    { sentiment: 'negative', count: 12 }
-  ];
-  
-  const locationData = [
-    { country: 'US', count: 42 },
-    { country: 'CA', count: 28 },
-    { country: 'GB', count: 19 },
-    { country: 'DE', count: 15 },
-    { country: 'FR', count: 12 },
-    { country: 'AU', count: 8 },
-    { country: 'JP', count: 5 }
-  ];
-  
+
+  // All categories with zero counts
+  const allCategories = ['support', 'sales', 'information', 'complaint', 'question', 'technical', 'other'];
+  const categoryData = allCategories.map(category => ({
+    category,
+    count: 0
+  }));
+
+  // All sentiments with zero counts (1-10 scoring)
+  const sentimentData = Array.from({ length: 10 }, (_, i) => ({
+    sentiment: i + 1,
+    count: 0
+  }));
+
+  // All locations with zero counts
+  const allLocations = ['US', 'CA', 'GB', 'DE', 'FR', 'AU', 'JP', 'TR'];
+  const locationData = allLocations.map(country => ({
+    country,
+    count: 0
+  }));
+
+  // All urgencies with zero counts
+  const allUrgencies = ['low', 'medium', 'high'];
+  const urgencyData = allUrgencies.map(urgency => ({
+    urgency,
+    count: 0
+  }));
+
+  // All topics with zero counts
+  const allTopics = ['pricing', 'features', 'integration', 'billing', 'technical', 'general'];
+  const topicData = allTopics.map(topic => ({
+    topic,
+    count: 0
+  }));
+
+  // Empty engagement and device data
+  const engagementData = {};
+  const deviceData = {};
+  const referrerData = {};
+  const browserData = {};
+  const languageData = {};
+  const leadQualityData = {};
+
   return {
     chartData: groupedData,
     categoryData,
     sentimentData,
     locationData,
-    totalUsers: locationData.reduce((sum, item) => sum + item.count, 0),
+    urgencyData,
+    topicData,
+    engagementData,
+    deviceData,
+    referrerData,
+    browserData,
+    languageData,
+    leadQualityData,
+    totalUsers: 0,
+    detailedMetrics: {
+      avgTimeOnPageBeforeChat: 0,
+      avgSessionDuration: 0,
+      avgScrollDepth: 0,
+      returnVisitorRate: 0,
+      avgMessagesPerSession: 0,
+      totalSessions: 0
+    },
+    recentSessions: [],
     summary: {
-      resolutionRate: 85,
-      openTickets: 23,
-      resolvedToday: 67,
-      avgResponseTime: '2.3h'
+      resolutionRate: 0,
+      openTickets: 0,
+      resolvedToday: 0,
+      avgResponseTime: '0h'
     }
   };
 };
