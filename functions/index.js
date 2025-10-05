@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const OpenAI = require('openai');
+const fetch = require('node-fetch');
 
 admin.initializeApp();
 
@@ -1002,6 +1003,69 @@ exports.getAgentConfig = onRequest({
   } catch (error) {
     console.error('Get agent config error:', error);
     response.status(500).json({ error: 'Failed to get agent config' });
+  }
+});
+
+exports.fetchWebsiteMetadata = onCall({
+  timeoutSeconds: 30,
+  memory: '256MiB'
+}, async (request) => {
+  try {
+    const { url } = request.data;
+
+    if (!url) {
+      throw new Error('URL is required');
+    }
+
+    console.log('📡 Fetching metadata for:', url);
+
+    // Fetch the website HTML
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MetadataBot/1.0)'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const html = await response.text();
+
+    // Extract metadata using regex (simple parsing)
+    const getMetaContent = (property, attribute = 'property') => {
+      const regex = new RegExp(`<meta\\s+${attribute}=["']${property}["']\\s+content=["']([^"']+)["']`, 'i');
+      const match = html.match(regex);
+      return match ? match[1] : null;
+    };
+
+    const getTitleContent = () => {
+      const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      return match ? match[1].trim() : null;
+    };
+
+    // Try to get site name from various sources
+    const ogSiteName = getMetaContent('og:site_name');
+    const ogTitle = getMetaContent('og:title');
+    const twitterTitle = getMetaContent('twitter:title', 'name');
+    const pageTitle = getTitleContent();
+    const ogDescription = getMetaContent('og:description');
+    const metaDescription = getMetaContent('description', 'name');
+
+    const siteName = ogSiteName || ogTitle || twitterTitle || pageTitle || new URL(url).hostname;
+    const description = ogDescription || metaDescription || '';
+
+    console.log('✅ Metadata extracted:', { siteName, description: description.substring(0, 100) });
+
+    return {
+      siteName: siteName.trim(),
+      description: description.trim().slice(0, 200),
+      success: true
+    };
+
+  } catch (error) {
+    console.error('❌ Error fetching metadata:', error);
+    throw new Error(`Failed to fetch metadata: ${error.message}`);
   }
 });
 

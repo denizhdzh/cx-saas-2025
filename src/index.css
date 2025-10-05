@@ -2,23 +2,37 @@
 
 @layer base {
   body {
-    @apply bg-stone-50 dark:bg-stone-900 text-neutral-900 antialiased;
+    @apply bg-stone-50 dark:bg-stone-900 antialiased;
     font-feature-settings: "kern", "liga", "clig", "calt";
   }
-  
+
   * {
     @apply border-neutral-200;
   }
-  
+
   /* Minimal typography hierarchy */
   h1 { @apply text-2xl font-thin text-neutral-900 leading-tight; }
   h2 { @apply text-lg font-medium text-neutral-900; }
   h3 { @apply text-sm font-medium text-neutral-900; }
-  
+
   /* Consistent text sizes */
   .text-label { @apply text-xs text-neutral-400 uppercase tracking-wider; }
   .text-body { @apply text-sm text-neutral-600 leading-relaxed; }
   .text-caption { @apply text-xs text-neutral-500; }
+
+  /* Shimmer animation for progress bars */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
 }
 
 @layer components {
@@ -78,16 +92,17 @@
     outline: none !important;
   }
 
-  /* Dark gradient buttons - consistent across all pages */
+  /* Primary and secondary buttons */
   .btn-primary {
-    @apply px-6 py-3 text-sm font-medium transition-colors rounded-xl text-white hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
-    border: 0.5px solid rgb(20, 20, 20);
-    box-shadow: rgba(255, 255, 255, 0.15) 0px 2px 0px 0px inset;
-    background: linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%);
+    @apply px-4 py-1.5 text-sm font-medium transition-colors rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-stone-700 border border-stone-900 text-stone-50 hover:opacity-90;
+    @apply dark:bg-stone-200 dark:border-stone-50 dark:text-stone-900;
   }
-  
+
   .btn-secondary {
-    @apply px-6 py-3 text-sm font-medium bg-white text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors cursor-pointer;
+    @apply px-4 py-1.5 text-sm font-medium transition-colors rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-white border border-stone-100 text-stone-900 hover:bg-stone-50;
+    @apply dark:bg-stone-800/50 dark:border-stone-700 dark:text-stone-50 dark:hover:bg-stone-800;
   }
   
   .btn-ghost {

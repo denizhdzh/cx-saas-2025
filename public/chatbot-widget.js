@@ -840,9 +840,8 @@ Provide JSON with:
         .orchis-position-top-left { top: 20px; left: 20px; }
         
         .orchis-chat-widget {
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(30px);
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(8px);
           border: 0.5px solid rgba(80, 80, 80, 0.9);
           border-radius: 25px;
           width: 100%;
@@ -981,13 +980,16 @@ Provide JSON with:
         }
         
         .orchis-input-section {
-          padding: 4px;
-          background: rgba(255, 255, 255, 0);
+          padding: 8px;
+          background: rgba(0, 0, 0, 0.4);
+          border-radius: 20px;
+
+          
         }
 
         .orchis-input-container {
-          background: rgba(255, 255, 255, 0.05);
-          border: 0.5px solid rgba(255, 255, 255, 0.5);
+          background: rgba(255, 255, 255, 0);
+          border: none;
           border-radius: 20px;
           padding: 6px;
           transition: all 0.2s ease;
@@ -1178,11 +1180,12 @@ Provide JSON with:
                 </button>
               </div>
             </div>
-            <div class="orchis-powered-by">
+            
+          </div>
+          <div class="orchis-powered-by">
               <img src="https://orchis.app/logo.png" alt="Orchis" class="orchis-logo" />
               <span>Powered by <a href="https://orchis.app" target="_blank" class="orchis-link">ORCHIS</a></span>
             </div>
-          </div>
         </div>
       `;
     },

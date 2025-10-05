@@ -5,19 +5,24 @@ import { Helmet } from 'react-helmet-async';
 import Navbar from '../components/Navbar';
 import AgentDashboard from '../components/AgentDashboard';
 import EmbedView from '../components/EmbedView';
+import CreateAgentView from '../components/CreateAgentView';
 import PricingDashboard from '../components/PricingDashboard';
+import SettingsView from '../components/SettingsView';
 import { useAgent } from '../contexts/AgentContext';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { agentId } = useParams();
   const isBillingPage = agentId === 'billing';
+  const isCreatePage = agentId === 'create';
+  const isSettingsPage = agentId === 'settings';
   const { agents, deleteAgent, selectAgent, selectedAgent, loading } = useAgent();
   const [showEmbedView, setShowEmbedView] = useState(false);
+  const [showCreateView, setShowCreateView] = useState(false);
 
   // Find and select the agent based on URL parameter
   useEffect(() => {
-    if (agentId && agents.length > 0 && agentId !== 'billing') {
+    if (agentId && agents.length > 0 && agentId !== 'billing' && agentId !== 'create' && agentId !== 'settings') {
       const agent = agents.find(a => a.id === agentId);
       if (agent && (!selectedAgent || selectedAgent.id !== agentId)) {
         selectAgent(agent);
@@ -29,7 +34,7 @@ export default function DashboardPage() {
   }, [agentId, agents, selectedAgent, selectAgent, navigate]);
 
   const handleCreateAgent = () => {
-    navigate('/create-agent');
+    navigate('/dashboard/create');
   };
 
   const handleDeleteAgent = async (agentId, e) => {
@@ -71,10 +76,44 @@ export default function DashboardPage() {
           <title>Billing - Orchis</title>
           <meta name="description" content="Manage your billing and subscription" />
         </Helmet>
-        
-        <div className="min-h-screen bg-stone-50">
+
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
           <Navbar />
           <PricingDashboard />
+        </div>
+      </>
+    );
+  }
+
+  // If create page, show create agent view
+  if (isCreatePage) {
+    return (
+      <>
+        <Helmet>
+          <title>Create Agent - Orchis</title>
+          <meta name="description" content="Create a new AI agent" />
+        </Helmet>
+
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
+          <Navbar />
+          <CreateAgentView onBack={() => navigate('/dashboard')} />
+        </div>
+      </>
+    );
+  }
+
+  // If settings page, show settings view
+  if (isSettingsPage) {
+    return (
+      <>
+        <Helmet>
+          <title>Settings - Orchis</title>
+          <meta name="description" content="Manage your account settings" />
+        </Helmet>
+
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
+          <Navbar />
+          <SettingsView onBack={() => navigate('/dashboard')} />
         </div>
       </>
     );
@@ -117,9 +156,9 @@ export default function DashboardPage() {
         <meta name="description" content="Manage and train your AI assistants" />
       </Helmet>
       
-      <div className="min-h-screen bg-stone-100 dark:bg-stone-900">
+      <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
         <Navbar />
-        
+
         <div className="max-w-5xl mx-auto px-6 py-8">
           {/* Header */}
           <div className="mb-8">
@@ -131,15 +170,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={handleCreateAgent}
-                className="px-6 py-2 text-sm font-medium transition-colors rounded-xl text-white flex items-center gap-3 hover:opacity-90 cursor-pointer"
-                style={{
-                  borderWidth: '0.5px',
-                  borderStyle: 'solid',
-                  borderColor: 'rgb(20, 20, 20)',
-                  backgroundColor: 'rgba(0, 0, 0, 0)',
-                  boxShadow: 'rgba(255, 255, 255, 0.15) 0px 2px 0px 0px inset',
-                  background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%)'
-                }}
+                className="btn-primary flex items-center gap-3"
               >
                 <PlusIcon className="w-4 h-4" />
                 Create Agent
@@ -159,7 +190,7 @@ export default function DashboardPage() {
               {agents.map((agent) => (
                 <div
                   key={agent.id}
-                  className="p-6 border border-stone-200 dark:border-stone-800 rounded-xl hover:border-stone-300 cursor-pointer transition-colors bg-stone-50 dark:bg-stone-800/50"
+                  className="p-6 border border-stone-200 dark:border-stone-800 rounded-xl hover:border-stone-300 cursor-pointer transition-colors bg-white dark:bg-stone-800/50"
                   onClick={() => {
                     selectAgent(agent);
                     navigate(`/dashboard/${agent.id}`);
@@ -168,8 +199,8 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 bg-stone-100 dark:bg-stone-900 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {agent.logoUrl ? (
-                        <img 
-                          src={agent.logoUrl} 
+                        <img
+                          src={agent.logoUrl}
                           alt={agent.name}
                           className="w-10 h-10 object-cover rounded-lg"
                         />

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useAgent } from '../contexts/AgentContext';
-import Sidebar from '../components/Sidebar';
 import { 
   CloudArrowUpIcon, 
   DocumentTextIcon, 
@@ -113,7 +112,6 @@ export default function TrainPage() {
         </Helmet>
         
         <div className="min-h-screen bg-white">
-          <Sidebar />
           
           <div className="ml-64 p-6">
             <div className="max-w-4xl mx-auto">

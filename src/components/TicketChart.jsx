@@ -174,7 +174,7 @@ export default function TicketChart({
             <Bar
               dataKey="opened"
               name="Tickets Opened"
-              fill="#f97316"
+              fill="#f94316ff"
               maxBarSize={24}
               radius={[4, 4, 0, 0]}
             />

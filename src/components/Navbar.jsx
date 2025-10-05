@@ -32,6 +32,7 @@ export default function Navbar() {
     try {
       await logout();
       setIsUserDropdownOpen(false);
+      navigate('/signin');
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -39,8 +40,7 @@ export default function Navbar() {
 
   const handleSettings = () => {
     setIsUserDropdownOpen(false);
-    // TODO: Navigate to settings
-    console.log('Settings clicked');
+    navigate('/dashboard/settings');
   };
 
   const handleBilling = () => {
