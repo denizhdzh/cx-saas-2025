@@ -5,6 +5,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from 'firebase/auth';
+import { auth } from '../firebase';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   UserIcon,
@@ -81,7 +82,7 @@ export default function SettingsView({ onBack }) {
   const handleAccountSave = async () => {
     try {
       // Update Firebase Auth profile (only displayName, photoURL is too long for base64)
-      await updateProfile(user, {
+      await updateProfile(auth.currentUser, {
         displayName: accountForm.displayName
       });
 
@@ -93,6 +94,9 @@ export default function SettingsView({ onBack }) {
       });
 
       showNotification('Account updated successfully!', 'success');
+
+      // Refresh user context to reflect changes
+      window.location.reload();
     } catch (error) {
       console.error('Error updating account:', error);
       showNotification('Error updating account: ' + error.message, 'error');
@@ -116,10 +120,10 @@ export default function SettingsView({ onBack }) {
         user.email,
         passwordForm.currentPassword
       );
-      await reauthenticateWithCredential(user, credential);
+      await reauthenticateWithCredential(auth.currentUser, credential);
 
       // Update password
-      await updatePassword(user, passwordForm.newPassword);
+      await updatePassword(auth.currentUser, passwordForm.newPassword);
 
       showNotification('Password changed successfully!', 'success');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -152,7 +156,7 @@ export default function SettingsView({ onBack }) {
       await deleteDoc(doc(db, 'users', user.uid));
 
       // Delete Firebase Auth account
-      await deleteUser(user);
+      await deleteUser(auth.currentUser);
 
       showNotification('Account deleted successfully', 'success');
       navigate('/signin');

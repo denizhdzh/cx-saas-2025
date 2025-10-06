@@ -57,6 +57,7 @@ export default function DashboardPage() {
     }
   };
 
+  // Show loading spinner while agents are being fetched
   if (loading) {
     return (
       <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
@@ -65,6 +66,23 @@ export default function DashboardPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       </div>
+    );
+  }
+
+  // Force onboarding: if no agents exist AND not on special pages, show create page
+  if (agents.length === 0 && !isBillingPage && !isCreatePage && !isSettingsPage) {
+    return (
+      <>
+        <Helmet>
+          <title>Create Your First Agent - Orchis</title>
+          <meta name="description" content="Create your first AI agent to get started" />
+        </Helmet>
+
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
+          <Navbar />
+          <CreateAgentView onBack={() => {}} />
+        </div>
+      </>
     );
   }
 

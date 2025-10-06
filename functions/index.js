@@ -13,6 +13,9 @@ setGlobalOptions({
   region: 'us-central1'
 });
 
+// Initialize Stripe
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 // Initialize OpenAI lazily
 let openaiInstance = null;
 function getOpenAI() {
@@ -1158,6 +1161,263 @@ Respond with valid JSON only. Be precise and consistent with categorization.`;
   } catch (error) {
     console.error('Message analysis error:', error);
     response.status(500).json({ error: 'Analysis failed' });
+  }
+});
+
+// Stripe Price IDs Configuration
+const STRIPE_PRICES = {
+  starter_monthly: 'price_1SEtjICw3gxLTtQCr7xvDdR0',
+  starter_yearly: 'price_1SEtjICw3gxLTtQCC6fIugqt',
+  growth_monthly: 'price_1SEtjuCw3gxLTtQChEonKkz1',
+  growth_yearly: 'price_1SEtjuCw3gxLTtQCa4MZ13YJ',
+  scale_monthly: 'price_1SEtkRCw3gxLTtQCXUDDMDiD',
+  scale_yearly: 'price_1SEtkRCw3gxLTtQCtNWV255C'
+};
+
+// Create Stripe Checkout Session
+exports.createCheckoutSession = onCall({ cors: true }, async (request) => {
+  try {
+    const { priceId, userId } = request.data;
+
+    if (!priceId || !userId) {
+      throw new Error('Missing required parameters');
+    }
+
+    // Get or create Stripe customer
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+
+    let customerId = userData?.stripeCustomerId;
+
+    if (!customerId) {
+      // Create new Stripe customer
+      const customer = await stripe.customers.create({
+        email: userData?.email,
+        metadata: {
+          firebaseUID: userId
+        }
+      });
+      customerId = customer.id;
+
+      // Save customer ID to Firestore
+      await db.collection('users').doc(userId).update({
+        stripeCustomerId: customerId
+      });
+    }
+
+    // Determine if this is a monthly plan and suggest yearly alternative
+    const isMonthly = priceId === STRIPE_PRICES.starter_monthly ||
+                     priceId === STRIPE_PRICES.growth_monthly ||
+                     priceId === STRIPE_PRICES.scale_monthly;
+
+    let discounts = undefined;
+
+    // If monthly, suggest yearly plan with discount
+    if (isMonthly) {
+      let yearlyPriceId;
+      if (priceId === STRIPE_PRICES.starter_monthly) yearlyPriceId = STRIPE_PRICES.starter_yearly;
+      else if (priceId === STRIPE_PRICES.growth_monthly) yearlyPriceId = STRIPE_PRICES.growth_yearly;
+      else if (priceId === STRIPE_PRICES.scale_monthly) yearlyPriceId = STRIPE_PRICES.scale_yearly;
+
+      // Add yearly price as alternative
+      discounts = [{
+        promotion_code: undefined // Will show coupon field
+      }];
+    }
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      allow_promotion_codes: true, // Enable coupon codes
+      success_url: `${request.rawRequest.headers.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${request.rawRequest.headers.origin}/dashboard/billing`,
+      metadata: {
+        userId: userId
+      }
+    });
+
+    return { sessionId: session.id, url: session.url };
+  } catch (error) {
+    console.error('Create checkout session error:', error);
+    throw new Error(`Failed to create checkout session: ${error.message}`);
+  }
+});
+
+// Create Customer Portal Session
+exports.createPortalSession = onCall({ cors: true }, async (request) => {
+  try {
+    const { userId } = request.data;
+
+    if (!userId) {
+      throw new Error('Missing userId');
+    }
+
+    // Get Stripe customer ID
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+
+    if (!userData?.stripeCustomerId) {
+      throw new Error('No Stripe customer found');
+    }
+
+    // Create portal session
+    const session = await stripe.billingPortal.sessions.create({
+      customer: userData.stripeCustomerId,
+      return_url: `${request.rawRequest.headers.origin}/dashboard/billing`,
+    });
+
+    return { url: session.url };
+  } catch (error) {
+    console.error('Create portal session error:', error);
+    throw new Error(`Failed to create portal session: ${error.message}`);
+  }
+});
+
+// Stripe Webhook Handler
+exports.stripeWebhook = onRequest({ cors: true }, async (request, response) => {
+  const sig = request.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      request.rawBody,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return response.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        const userId = session.metadata.userId;
+
+        // Get subscription details
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        const priceId = subscription.items.data[0].price.id;
+
+        // Determine plan based on price ID
+        let planName = 'free';
+        let tokenLimit = 10000;
+        let agentLimit = 0;
+
+        if (priceId === STRIPE_PRICES.starter_monthly || priceId === STRIPE_PRICES.starter_yearly) {
+          planName = 'starter';
+          tokenLimit = 50000;
+          agentLimit = 1;
+        } else if (priceId === STRIPE_PRICES.growth_monthly || priceId === STRIPE_PRICES.growth_yearly) {
+          planName = 'growth';
+          tokenLimit = 200000;
+          agentLimit = 3;
+        } else if (priceId === STRIPE_PRICES.scale_monthly || priceId === STRIPE_PRICES.scale_yearly) {
+          planName = 'scale';
+          tokenLimit = 1000000;
+          agentLimit = -1; // Unlimited
+        }
+
+        // Update user subscription status
+        await db.collection('users').doc(userId).update({
+          subscriptionStatus: 'active',
+          subscriptionPlan: planName,
+          stripeSubscriptionId: session.subscription,
+          stripePriceId: priceId,
+          tokenLimit: tokenLimit,
+          agentLimit: agentLimit,
+          tokensUsed: 0,
+          currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object;
+        const customer = subscription.customer;
+
+        // Find user by customer ID
+        const usersSnapshot = await db.collection('users')
+          .where('stripeCustomerId', '==', customer)
+          .limit(1)
+          .get();
+
+        if (!usersSnapshot.empty) {
+          const userDoc = usersSnapshot.docs[0];
+          await userDoc.ref.update({
+            subscriptionStatus: subscription.status,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        const customer = subscription.customer;
+
+        // Find user by customer ID
+        const usersSnapshot = await db.collection('users')
+          .where('stripeCustomerId', '==', customer)
+          .limit(1)
+          .get();
+
+        if (!usersSnapshot.empty) {
+          const userDoc = usersSnapshot.docs[0];
+          await userDoc.ref.update({
+            subscriptionStatus: 'canceled',
+            subscriptionPlan: 'free',
+            stripeSubscriptionId: null,
+            stripePriceId: null,
+            tokenLimit: 10000,
+            agentLimit: 0,
+            tokensUsed: 0,
+            updatedAt: new Date().toISOString()
+          });
+        }
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const customer = invoice.customer;
+
+        // Find user by customer ID
+        const usersSnapshot = await db.collection('users')
+          .where('stripeCustomerId', '==', customer)
+          .limit(1)
+          .get();
+
+        if (!usersSnapshot.empty) {
+          const userDoc = usersSnapshot.docs[0];
+          await userDoc.ref.update({
+            subscriptionStatus: 'past_due',
+            updatedAt: new Date().toISOString()
+          });
+        }
+        break;
+      }
+
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+
+    response.json({ received: true });
+  } catch (error) {
+    console.error('Webhook handler error:', error);
+    response.status(500).json({ error: 'Webhook handler failed' });
   }
 });
 

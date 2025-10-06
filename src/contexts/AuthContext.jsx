@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChange } from '../firebase';
+import { onAuthStateChange, auth, db } from '../firebase';
+import { signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -15,18 +17,52 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const loadUserData = async (authUser) => {
+    if (authUser) {
+      // Fetch user data from Firestore
+      const userDocRef = doc(db, 'users', authUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        // Merge Firestore data with auth user
+        setUser({
+          ...authUser,
+          photoURL: userData.photoURL || authUser.photoURL,
+          displayName: userData.displayName || authUser.displayName
+        });
+      } else {
+        setUser(authUser);
+      }
+    } else {
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChange(async (authUser) => {
+      await loadUserData(authUser);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
+  const refreshUser = async () => {
+    if (auth.currentUser) {
+      await loadUserData(auth.currentUser);
+    }
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+  };
+
   const value = {
     user,
-    loading
+    loading,
+    logout,
+    refreshUser
   };
 
   return (

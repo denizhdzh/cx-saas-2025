@@ -66,12 +66,20 @@ export default function Navbar() {
           <div className="relative" ref={userDropdownRef}>
             <button
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors cursor-pointer"
             >
-              <div className="w-7 h-7 bg-stone-900 dark:bg-stone-50 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-medium text-stone-50 dark:text-stone-900">
-                  {getInitials(user?.displayName)}
-                </span>
+              <div className="w-7 h-7 bg-stone-900 dark:bg-stone-50 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {user?.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'User'}
+                    className="w-7 h-7 object-cover"
+                  />
+                ) : (
+                  <span className="text-xs font-medium text-stone-50 dark:text-stone-900">
+                    {getInitials(user?.displayName)}
+                  </span>
+                )}
               </div>
               <div className="flex-1 text-left">
                 <div className="text-sm font-semibold text-stone-900 dark:text-stone-50">
@@ -87,24 +95,24 @@ export default function Navbar() {
                 <div className="p-1 space-y-0.5">
                   <button
                     onClick={handleSettings}
-                    className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group"
+                    className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
                   >
                     <HugeiconsIcon icon={Settings03Icon} className="w-4 h-4 text-stone-500 group-hover:text-white dark:md:group-hover:text-black" />
                     <span className="text-sm font-medium text-stone-900 dark:text-stone-50 dark:md:group-hover:text-black group-hover:text-white">Settings</span>
                   </button>
-                  
+
                   <button
                     onClick={handleBilling}
-                    className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group"
+                    className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
                   >
                     <HugeiconsIcon icon={CreditCardIcon} className="w-4 h-4 text-stone-500 group-hover:text-white dark:md:group-hover:text-black" />
                     <span className="text-sm font-medium text-stone-900 dark:text-stone-50 dark:md:group-hover:text-black group-hover:text-white">Billing</span>
                   </button>
-                  
+
                   <div className="border-t border-stone-100 dark:border-stone-700 mt-1">
                     <button
                       onClick={handleLogout}
-                      className="mt-1 w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group"
+                      className="mt-1 w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
                     >
                       <HugeiconsIcon icon={SquareArrowMoveRightUpIcon} className="w-4 h-4 text-stone-500 group-hover:text-white dark:md:group-hover:text-black" />
                       <span className="text-sm font-medium text-stone-900 dark:text-stone-50 dark:md:group-hover:text-black group-hover:text-white">Log out</span>

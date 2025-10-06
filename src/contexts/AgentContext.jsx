@@ -16,7 +16,7 @@ export const useAgent = () => {
 export const AgentProvider = ({ children }) => {
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
   // Fetch user's agents
@@ -124,6 +124,7 @@ export const AgentProvider = ({ children }) => {
     } else {
       setAgents([]);
       setSelectedAgent(null);
+      setLoading(false);
     }
   }, [user]);
 

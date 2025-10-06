@@ -840,7 +840,7 @@ Provide JSON with:
         .orchis-position-top-left { top: 20px; left: 20px; }
         
         .orchis-chat-widget {
-          background: rgba(0, 0, 0, 0.8);
+          background: rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(8px);
           border: 0.5px solid rgba(80, 80, 80, 0.9);
           border-radius: 25px;
@@ -850,6 +850,7 @@ Provide JSON with:
           overflow: hidden;
           box-shadow: inset 1px 2px 1px 0 rgba(255, 255, 255, 0.08);
           height: auto;
+          padding: 4px;
           min-height: 50px;
           max-height: 480px;
           display: flex;
@@ -983,7 +984,7 @@ Provide JSON with:
           padding: 8px;
           background: rgba(0, 0, 0, 0.4);
           border-radius: 20px;
-
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
           
         }
 
@@ -1058,15 +1059,15 @@ Provide JSON with:
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 6px;
+          gap: 4px;
+          padding: 2px;
           font-size: 10px;
-          color: rgba(255, 255, 255, 0.5);
+          color: rgba(255, 255, 255, 0.8);
         }
 
         .orchis-logo {
-          width: 16px;
-          height: 16px;
+          width: 12px;
+          height: 12px;
           border-radius: 4px;
         }
 
