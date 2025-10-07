@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChange, auth, db } from '../firebase';
+import { onAuthStateChange, auth, db, functions } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 
 const AuthContext = createContext();
 
@@ -19,19 +20,30 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserData = async (authUser) => {
     if (authUser) {
-      // Fetch user data from Firestore
-      const userDocRef = doc(db, 'users', authUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      try {
+        // Call backend function to initialize/verify user document
+        const initializeUser = httpsCallable(functions, 'initializeUser');
+        const result = await initializeUser();
 
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        // Merge Firestore data with auth user
-        setUser({
-          ...authUser,
-          photoURL: userData.photoURL || authUser.photoURL,
-          displayName: userData.displayName || authUser.displayName
-        });
-      } else {
+        console.log('🔥 User initialization result:', result.data);
+
+        // Fetch user data from Firestore
+        const userDocRef = doc(db, 'users', authUser.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          // Merge Firestore data with auth user
+          setUser({
+            ...authUser,
+            photoURL: userData.photoURL || authUser.photoURL,
+            displayName: userData.displayName || authUser.displayName
+          });
+        } else {
+          setUser(authUser);
+        }
+      } catch (error) {
+        console.error('❌ Error loading user data:', error);
         setUser(authUser);
       }
     } else {

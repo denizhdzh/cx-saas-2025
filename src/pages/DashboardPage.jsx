@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { PlusIcon, CpuChipIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, CpuChipIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 import { Helmet } from 'react-helmet-async';
 import Navbar from '../components/Navbar';
 import AgentDashboard from '../components/AgentDashboard';
@@ -8,17 +8,24 @@ import EmbedView from '../components/EmbedView';
 import CreateAgentView from '../components/CreateAgentView';
 import PricingDashboard from '../components/PricingDashboard';
 import SettingsView from '../components/SettingsView';
+import UpgradeModal from '../components/UpgradeModal';
 import { useAgent } from '../contexts/AgentContext';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { agentId } = useParams();
+  const { user } = useAuth();
   const isBillingPage = agentId === 'billing';
   const isCreatePage = agentId === 'create';
   const isSettingsPage = agentId === 'settings';
   const { agents, deleteAgent, selectAgent, selectedAgent, loading } = useAgent();
   const [showEmbedView, setShowEmbedView] = useState(false);
   const [showCreateView, setShowCreateView] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [subscriptionData, setSubscriptionData] = useState(null);
 
   // Find and select the agent based on URL parameter
   useEffect(() => {
@@ -33,7 +40,38 @@ export default function DashboardPage() {
     }
   }, [agentId, agents, selectedAgent, selectAgent, navigate]);
 
+  // Fetch subscription data
+  useEffect(() => {
+    const fetchSubscriptionData = async () => {
+      if (!user) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setSubscriptionData({
+            plan: userData.subscriptionPlan || 'free',
+            agentLimit: userData.agentLimit || 0,
+            status: userData.subscriptionStatus || 'free'
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching subscription data:', error);
+      }
+    };
+
+    fetchSubscriptionData();
+  }, [user]);
+
   const handleCreateAgent = () => {
+    // Check if user has reached their agent limit
+    if (subscriptionData) {
+      const { agentLimit } = subscriptionData;
+      if (agentLimit !== -1 && agents.length >= agentLimit) {
+        setShowUpgradeModal(true);
+        return;
+      }
+    }
     navigate('/dashboard/create');
   };
 
@@ -103,8 +141,20 @@ export default function DashboardPage() {
     );
   }
 
-  // If create page, show create agent view
+  // If create page, show create agent view (with limit check)
   if (isCreatePage) {
+    // Check if user has reached their agent limit before showing create view
+    const isAtLimit = subscriptionData && subscriptionData.agentLimit !== -1 && agents.length >= subscriptionData.agentLimit;
+
+    if (isAtLimit) {
+      // Redirect to dashboard and show upgrade modal
+      setTimeout(() => {
+        navigate('/dashboard');
+        setShowUpgradeModal(true);
+      }, 0);
+      return null;
+    }
+
     return (
       <>
         <Helmet>
@@ -177,6 +227,15 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
         <Navbar />
 
+        {/* Upgrade Modal */}
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          currentPlan={subscriptionData?.plan}
+          agentLimit={subscriptionData?.agentLimit}
+          currentAgentCount={agents.length}
+        />
+
         <div className="max-w-5xl mx-auto px-6 py-8">
           {/* Header */}
           <div className="mb-8">
@@ -188,10 +247,23 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={handleCreateAgent}
-                className="btn-primary flex items-center gap-3"
+                className={`flex items-center gap-3 ${
+                  subscriptionData && subscriptionData.agentLimit !== -1 && agents.length >= subscriptionData.agentLimit
+                    ? 'btn-secondary'
+                    : 'btn-primary'
+                }`}
               >
-                <PlusIcon className="w-4 h-4" />
-                Create Agent
+                {subscriptionData && subscriptionData.agentLimit !== -1 && agents.length >= subscriptionData.agentLimit ? (
+                  <>
+                    <RocketLaunchIcon className="w-4 h-4" />
+                    Upgrade to Create
+                  </>
+                ) : (
+                  <>
+                    <PlusIcon className="w-4 h-4" />
+                    Create Agent
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -227,8 +299,8 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-lg font-medium text-stone-900 dark:text-stone-50 truncate">{agent.name}</div>
-                      <div className="text-sm text-stone-500 truncate mt-1">{agent.description}</div>
+                      <div className="text-lg font-medium text-stone-900 dark:text-stone-50 truncate">{agent.projectName || agent.name}</div>
+                      <div className="text-sm text-stone-500 truncate mt-1">{agent.websiteUrl}</div>
                       <div className="flex items-center gap-3 mt-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTrainingStatusColor(agent.trainingStatus)}`}>
                           {agent.trainingStatus?.replace('_', ' ')}

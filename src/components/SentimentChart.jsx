@@ -14,7 +14,7 @@ const SENTIMENT_MAPPING = {
   10: { label: 'Delighted', icon: '🤩', color: 'rgba(249, 115, 22, 0.1)' }
 };
 
-export default function SentimentChart({ data }) {
+export default function SentimentChart({ data = [] }) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -28,10 +28,11 @@ export default function SentimentChart({ data }) {
     return () => observer.disconnect();
   }, []);
 
-  console.log('SentimentChart data:', data);
-
   // Process sentiment data - expecting data with sentiment scores 1-10
-  const processedData = {};
+  // Initialize with zeros for all sentiment levels
+  const processedData = {
+    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0
+  };
 
   // Only process if we have actual data
   if (data && data.length > 0) {
@@ -45,8 +46,6 @@ export default function SentimentChart({ data }) {
       }
     });
   }
-
-  console.log('Processed sentiment data:', processedData);
 
   // Create chart data for all 10 sentiment levels
   const chartData = Array.from({ length: 10 }, (_, i) => {
@@ -135,7 +134,7 @@ export default function SentimentChart({ data }) {
               className="text-xs font-semibold"
               style={{ color: isDark ? '#f5f5f4' : '#292524' }}
             >
-              {item.count > 0 ? item.count : ''}
+              {item.count}
             </span>
           </div>
         ))}

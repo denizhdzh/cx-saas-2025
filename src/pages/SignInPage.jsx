@@ -3,8 +3,6 @@ import { Helmet } from 'react-helmet-async';
 import { Navigate } from 'react-router-dom';
 import { signInWithGoogle } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 export default function SignInPage() {
   const { user } = useAuth();
@@ -16,25 +14,10 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      const result = await signInWithGoogle();
-      const user = result.user;
-
-      // Check if user exists in Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        // Create new user document
-        await setDoc(userDocRef, {
-          displayName: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-      }
+      await signInWithGoogle();
+      // AuthContext will automatically create user document if needed
     } catch (error) {
-      console.error('Sign in failed:', error);
+      console.error('❌ Sign in failed:', error);
     }
   };
 

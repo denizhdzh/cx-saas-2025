@@ -14,9 +14,10 @@ import SessionListTable from './SessionListTable';
 import ReferrerChart from './ReferrerChart';
 import BrowserChart from './BrowserChart';
 import LanguageChart from './LanguageChart';
+import KnowledgeGapModal from './KnowledgeGapModal';
 import { useAgent } from '../contexts/AgentContext';
 import { useAuth } from '../contexts/AuthContext';
-import { getTicketAnalytics, getRecentActivity } from '../utils/ticketFunctions';
+import { getConversationAnalytics, getKnowledgeGaps } from '../utils/newAnalyticsFunctions';
 
 export default function AgentDashboard({ agent, onShowEmbed }) {
   const navigate = useNavigate();
@@ -27,13 +28,13 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
   const agentDropdownRef = useRef(null);
   const timeDropdownRef = useRef(null);
   
-  // Ticket analytics state
+  // Analytics state
   const [analyticsData, setAnalyticsData] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [showOpened, setShowOpened] = useState(true);
-  const [showResolved, setShowResolved] = useState(true);
-  const [timeRange, setTimeRange] = useState('daily');
+  const [knowledgeGaps, setKnowledgeGaps] = useState([]);
+  const [timeRange, setTimeRange] = useState('daily'); // hourly, daily, weekly, quarterly, alltime
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [selectedGap, setSelectedGap] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -56,22 +57,14 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     const loadAnalytics = async () => {
       if (!agent?.id || !user?.uid) return;
 
-      console.log('🔄 Loading analytics for timeRange:', timeRange);
       setAnalyticsLoading(true);
       try {
-        const [analytics, activity] = await Promise.all([
-          getTicketAnalytics(agent.id, timeRange, user.uid),
-          getRecentActivity(agent.id, 5)
+        const [analytics, gaps] = await Promise.all([
+          getConversationAnalytics(agent.id, timeRange, user.uid),
+          getKnowledgeGaps(agent.id, user.uid)
         ]);
-
-        console.log('✅ Analytics loaded:', {
-          detailedMetrics: analytics.detailedMetrics,
-          recentSessions: analytics.recentSessions?.length,
-          timeRange
-        });
-
         setAnalyticsData(analytics);
-        setRecentActivity(activity);
+        setKnowledgeGaps(gaps);
       } catch (error) {
         console.error('Error loading analytics:', error);
       } finally {
@@ -93,6 +86,41 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     setIsAgentDropdownOpen(false);
     if (onShowEmbed) {
       onShowEmbed();
+    }
+  };
+
+  const handleFillGap = (gap) => {
+    setSelectedGap(gap);
+    setIsModalOpen(true);
+  };
+
+  const handleSubmitAnswer = async (gap, answer) => {
+    try {
+      // Call Cloud Function to process and add the answer
+      const response = await fetch('https://us-central1-cx-saas-8510f.cloudfunctions.net/fillKnowledgeGap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          agentId: agent.id,
+          gapId: gap.id,
+          question: gap.question,
+          userAnswer: answer
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fill knowledge gap');
+      }
+
+      // Reload knowledge gaps after successful submission
+      const updatedGaps = await getKnowledgeGaps(agent.id, user.uid);
+      setKnowledgeGaps(updatedGaps);
+    } catch (error) {
+      console.error('Error filling knowledge gap:', error);
+      throw error;
     }
   };
 
@@ -131,7 +159,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
               </div>
               <div className="flex-1 text-left">
                 <div className="text-md font-bold text-stone-900 dark:text-stone-50">
-                  {agent?.name || 'Select Agent'}
+                  {agent?.projectName || agent?.name || 'Select Agent'}
                 </div>
               </div>
               <ChevronDownIcon className={`w-4 h-4 text-stone-500 transition-transform ${isAgentDropdownOpen ? 'rotate-180' : ''}`} />
@@ -161,7 +189,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-stone-900 dark:text-stone-100">{agentOption.name}</div>
+                        <div className="text-sm font-medium text-stone-900 dark:text-stone-100">{agentOption.projectName || agentOption.name}</div>
                       </div>
                     </button>
                   ))}
@@ -189,7 +217,11 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             >
               <div className="flex-1 text-left">
                 <div className="text-md font-bold text-stone-900 dark:text-stone-50">
-                  {timeRange === 'daily' ? 'Last 24H' : timeRange === 'weekly' ? 'Last 7 Days' : 'Last 30 Days'}
+                  {timeRange === 'hourly' ? 'Last 24H' :
+                   timeRange === 'daily' ? 'Last 7 Days' :
+                   timeRange === 'weekly' ? 'Last 30 Days' :
+                   timeRange === 'quarterly' ? 'Last 90 Days' :
+                   'All Time'}
                 </div>
               </div>
               <ChevronDownIcon className={`w-4 h-4 text-stone-500 transition-transform ${isTimeDropdownOpen ? 'rotate-180' : ''}`} />
@@ -197,9 +229,9 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
 
             {/* Dropdown Menu */}
             {isTimeDropdownOpen && (
-              <div className="absolute top-full left-0 min-w-[120px] mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg z-10">
+              <div className="absolute top-full left-0 min-w-[150px] mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg z-10">
                 <div className="p-1 space-y-0.5">
-                  {['daily', 'weekly', 'monthly'].map((range) => (
+                  {['hourly', 'daily', 'weekly', 'quarterly', 'alltime'].map((range) => (
                     <button
                       key={range}
                       onClick={() => {
@@ -212,7 +244,11 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                     >
                       <div className="flex-1">
                         <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                          {range === 'daily' ? 'Last 24H' : range === 'weekly' ? 'Last 7 Days' : 'Last 30 Days'}
+                          {range === 'hourly' ? 'Last 24H' :
+                           range === 'daily' ? 'Last 7 Days' :
+                           range === 'weekly' ? 'Last 30 Days' :
+                           range === 'quarterly' ? 'Last 90 Days' :
+                           'All Time'}
                         </div>
                       </div>
                     </button>
@@ -228,83 +264,56 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
         {/* Top Metrics Row */}
         <div className="flex items-center gap-8 mb-8">
-          <div 
-            className="cursor-pointer" 
-            onClick={() => setShowOpened(!showOpened)}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <input 
-                type="checkbox" 
-                checked={showOpened}
-                onChange={() => {}} // Handled by parent onClick
-                className="checkbox-orange pointer-events-none"
-              />
-              <span className="text-xs font-medium text-stone-500">Tickets Opened</span>
-            </div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-50">
-              {analyticsData?.chartData ? 
-                Object.values(analyticsData.chartData).reduce((total, day) => total + (day.opened || 0), 0) 
-                : '0'
-              }
-            </div>
-          </div>
-          
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-          
-          <div 
-            className="cursor-pointer" 
-            onClick={() => setShowResolved(!showResolved)}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <input 
-                type="checkbox" 
-                checked={showResolved}
-                onChange={() => {}} // Handled by parent onClick
-                className="checkbox-orange pointer-events-none"
-              />
-              <span className="text-xs font-medium text-stone-500">Tickets Resolved</span>
-            </div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-50">
-              {analyticsData?.chartData ? 
-                Object.values(analyticsData.chartData).reduce((total, day) => total + (day.resolved || 0), 0) 
-                : '0'
-              }
-            </div>
-          </div>
-          
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-          
           <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Resolution Rate</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-50">
-              {analyticsData ? analyticsData.summary.resolutionRate : '0'}%
+            <div className="text-xs font-medium text-stone-500 mb-1">Total Conversations</div>
+            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+              {analyticsData?.summary?.analyzedConversations || '0'}
             </div>
           </div>
-          
+
           <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-          
-          <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Open Tickets</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-50">
-              {analyticsData ? analyticsData.summary.openTickets : '0'}
-            </div>
-          </div>
-          
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-          
+
           <div>
             <div className="text-xs font-medium text-stone-500 mb-1">Resolved</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-50">
-              {analyticsData ? analyticsData.summary.resolvedToday : '0'}
+            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+              {analyticsData?.summary?.resolvedConversations || '0'}
             </div>
           </div>
-          
+
           <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-          
+
           <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Avg Response</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-50">
-              {analyticsData ? analyticsData.summary.avgResponseTime : '0h'}
+            <div className="text-xs font-medium text-stone-500 mb-1">Unresolved</div>
+            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+              {analyticsData?.summary?.unresolvedConversations || '0'}
+            </div>
+          </div>
+
+          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
+
+          <div>
+            <div className="text-xs font-medium text-stone-500 mb-1">Success Rate</div>
+            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+              {analyticsData?.summary?.resolutionRate || '0'}%
+            </div>
+          </div>
+
+          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
+
+          <div>
+            <div className="text-xs font-medium text-stone-500 mb-1">Avg Sentiment</div>
+            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+              {analyticsData?.summary?.avgSentiment?.toFixed(1) || '5.0'}/10
+            </div>
+          </div>
+
+          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
+
+          <div>
+            <div className="text-xs font-medium text-stone-500 mb-1">Knowledge Gaps</div>
+            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              {knowledgeGaps?.length || '0'}
+              {knowledgeGaps?.length > 0 && <span className="text-2xl">⚠️</span>}
             </div>
           </div>
         </div>
@@ -313,15 +322,19 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         <div className="h-80">
           {analyticsLoading ? (
             <div className="h-full flex items-center justify-center">
-              <div className="text-stone-400 text-sm">Loading chart data...</div>
+              <div className="text-stone-400 text-sm">Loading analytics...</div>
             </div>
-          ) : (
-            <TicketChart 
+          ) : analyticsData?.totalConversations > 0 ? (
+            <TicketChart
               chartData={analyticsData?.chartData || {}}
-              showOpened={showOpened}
-              showResolved={showResolved}
+              showOpened={true}
+              showResolved={false}
               timeRange={timeRange}
             />
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-stone-400 text-sm">No conversation data available for this time range</div>
+            </div>
           )}
         </div>
       </div>
@@ -353,8 +366,8 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         {/* Urgency Distribution */}
         <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Ticket Urgency</h3>
-            <div className="text-sm text-stone-500">Priority Levels</div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Urgency Levels</h3>
+            <div className="text-sm text-stone-500">AI-Detected Priority</div>
           </div>
           <div className="h-64">
             <UrgencyChart data={analyticsData?.urgencyData || []} />
@@ -373,97 +386,71 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         </div>
       </div>
 
-      {/* Engagement & Device Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* Engagement Levels */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Engagement</h3>
-            <div className="text-sm text-stone-500">Activity Level</div>
-          </div>
-          <div className="h-64">
-            <EngagementChart data={analyticsData?.engagementData || {}} />
-          </div>
-        </div>
 
-        {/* Device Types */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Device Distribution</h3>
-            <div className="text-sm text-stone-500">Platform Usage</div>
-          </div>
-          <div className="h-64">
-            <DeviceChart data={analyticsData?.deviceData || {}} />
-          </div>
-        </div>
-      </div>
-
-      {/* Traffic & Browser Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        {/* Referrer Sources */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Traffic Sources</h3>
-            <div className="text-sm text-stone-500">Referrers</div>
-          </div>
-          <div className="h-64">
-            <ReferrerChart data={analyticsData?.referrerData || {}} />
-          </div>
-        </div>
-
-        {/* Browser Distribution */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Browser Usage</h3>
-            <div className="text-sm text-stone-500">User Agents</div>
-          </div>
-          <div className="h-64">
-            <BrowserChart data={analyticsData?.browserData || {}} />
-          </div>
-        </div>
-
-        {/* Language Distribution */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Languages</h3>
-            <div className="text-sm text-stone-500">User Preferences</div>
-          </div>
-          <div className="h-64">
-            <LanguageChart data={analyticsData?.languageData || {}} />
-          </div>
-        </div>
-      </div>
-
-      {/* Detailed Metrics Card */}
+      {/* Recent Conversations Table */}
       <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Detailed Session Metrics</h3>
-          <div className="text-sm text-stone-500">Advanced behavior insights</div>
-        </div>
-        <div className="min-h-[120px]">
-          <DetailedMetricsCard detailedMetrics={analyticsData?.detailedMetrics || {}} />
-        </div>
-      </div>
-
-      {/* World Map */}
-      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">User Locations</h3>
-          <div className="text-sm text-stone-500">{analyticsData?.totalUsers || 0} total users</div>
-        </div>
-        <div className="h-96">
-          <UserWorldMap data={analyticsData?.locationData || []} />
-        </div>
-      </div>
-
-      {/* Recent Sessions Table */}
-      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Recent Sessions</h3>
-          <div className="text-sm text-stone-500">Last 10 conversations</div>
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Recent Conversations</h3>
+          <div className="text-sm text-stone-500">Last 10 analyzed chats</div>
         </div>
         <SessionListTable sessions={analyticsData?.recentSessions || []} />
       </div>
+
+      {/* Knowledge Gaps */}
+      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Knowledge Gaps</h3>
+          <div className="text-sm text-stone-500">Questions your agent couldn't answer</div>
+        </div>
+        {knowledgeGaps.length > 0 ? (
+          <div className="space-y-3">
+            {knowledgeGaps.slice(0, 10).map((gap) => (
+              <div
+                key={gap.id}
+                className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800"
+              >
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-stone-900 dark:text-stone-50 mb-1">
+                    {gap.question}
+                  </div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400">
+                    First asked: {gap.firstAsked?.toLocaleDateString()} • Last asked: {gap.lastAsked?.toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="ml-4 flex items-center gap-3">
+                  <span className="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 font-semibold">
+                    Asked {gap.count}x
+                  </span>
+                  <button
+                    onClick={() => handleFillGap(gap)}
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
+                  >
+                    Fill Gap
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="h-32 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No knowledge gaps detected</div>
+              <div className="text-stone-300 dark:text-stone-600 text-xs">Your agent is answering all questions successfully</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Knowledge Gap Modal */}
+      <KnowledgeGapModal
+        gap={selectedGap}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedGap(null);
+        }}
+        onSubmit={handleSubmitAnswer}
+      />
     </div>
   );
 }

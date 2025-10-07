@@ -33,6 +33,7 @@ export default function SettingsView({ onBack }) {
   });
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [loading, setLoading] = useState(true);
+  const [subscriptionData, setSubscriptionData] = useState(null);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -47,6 +48,13 @@ export default function SettingsView({ onBack }) {
           email: user.email || '',
           photoURL: userData?.photoURL || user.photoURL || ''
         });
+
+        setSubscriptionData({
+          plan: userData?.subscriptionPlan || 'free',
+          messageLimit: userData?.messageLimit || 0,
+          messagesUsed: userData?.messagesUsed || 0
+        });
+
         setLoading(false);
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -371,6 +379,38 @@ export default function SettingsView({ onBack }) {
           </div>
         </div>
       </div>
+
+      {/* Message Usage Progress */}
+      {subscriptionData && (
+        <div className="mb-8 p-6 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-stone-900 dark:text-stone-50">
+              {subscriptionData.plan === 'free' ? 'One-Time Message Credits' : 'Monthly Message Usage'}
+            </h3>
+            <span className="text-xs text-stone-600 dark:text-stone-400 capitalize">
+              {subscriptionData.plan} Plan
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400 mb-3">
+            <span>{subscriptionData.messagesUsed} messages</span>
+            <span>{subscriptionData.messageLimit} messages {subscriptionData.plan === 'free' ? 'total' : 'limit'}</span>
+          </div>
+          <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-2">
+            <div
+              className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all duration-300"
+              style={{
+                width: `${Math.min((subscriptionData.messagesUsed / subscriptionData.messageLimit) * 100, 100)}%`
+              }}
+            ></div>
+          </div>
+          <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+            {subscriptionData.plan === 'free'
+              ? `${subscriptionData.messageLimit - subscriptionData.messagesUsed} credits remaining (does not renew)`
+              : `${((subscriptionData.messagesUsed / subscriptionData.messageLimit) * 100).toFixed(1)}% used this month`
+            }
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex gap-8">

@@ -1,5 +1,5 @@
 import React from 'react';
-import LiveActivitiesDemo from './LiveActivitiesDemo';
+import LiveActivitiesDemo from './ChatWidgetOfferDemo';
 
 export default function BentoFeatures() {
   return (
@@ -22,7 +22,7 @@ export default function BentoFeatures() {
           </div>
           
           {/* Three steps */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 lg:gap-4">
             
             {/* Step 1 */}
             <div className="text-center">
@@ -34,22 +34,22 @@ export default function BentoFeatures() {
                 Drag and drop your docs. Our AI understands everything instantly.
               </p>
               
-              <div className="bg-neutral-900 rounded-xl p-6">
+              <div className="bg-linear-125 from-neutral-900 to-neutral-700 rounded-3xl p-6">
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-xl">
+                  <div className="flex items-center gap-3 p-3 bg-neutral-700 rounded-xl">
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                     <span className="text-white text-sm">support-guide.pdf</span>
                     <span className="text-neutral-400 text-xs ml-auto">2.4 MB</span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-neutral-800/30 rounded-xl">
+                  <div className="flex items-center gap-3 p-3 bg-neutral-700 rounded-xl">
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                     <span className="text-neutral-300 text-sm">product-manual.docx</span>
-                    <span className="text-neutral-500 text-xs ml-auto">1.8 MB</span>
+                    <span className="text-neutral-400 text-xs ml-auto">1.8 MB</span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-neutral-800/20 rounded-xl">
+                  <div className="flex items-center gap-3 p-3 bg-neutral-700 rounded-xl">
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                     <span className="text-neutral-400 text-sm">faqs.txt</span>
-                    <span className="text-neutral-600 text-xs ml-auto">124 KB</span>
+                    <span className="text-neutral-400 text-xs ml-auto">124 KB</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-center gap-2 pt-2 mt-4 border-t border-neutral-700">
@@ -83,7 +83,7 @@ export default function BentoFeatures() {
               </p>
               
               <div className="space-y-4">
-                <div className="bg-neutral-900 rounded-xl p-4 text-left">
+                <div className="bg-linear-125 from-neutral-900 to-neutral-700 rounded-3xl p-4 text-left">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                     <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>

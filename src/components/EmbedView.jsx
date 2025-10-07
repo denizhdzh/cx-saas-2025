@@ -2,30 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { useAgent } from '../contexts/AgentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { functions } from '../firebase';
-import { httpsCallable } from 'firebase/functions';
+import { db } from '../firebase';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   BinaryCodeIcon,
-  AirplayLineIcon,
   Tick01Icon,
   PencilEdit01Icon,
   Store01Icon,
   Copy01Icon,
   ArrowLeft01Icon,
+  GiftIcon,
+  Alert02Icon,
+  CheckmarkCircle01Icon,
 } from '@hugeicons/core-free-icons';
-import ChatWidget from './ChatWidget';
 
 
 export default function EmbedView({ agent, onBack }) {
   const { updateAgent } = useAgent();
   const { user } = useAuth();
   const { showNotification } = useNotification();
-  const [embedCode, setEmbedCode] = useState('');
   const [copied, setCopied] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [brandingForm, setBrandingForm] = useState({
-    name: '',
     projectName: '',
     logoUrl: '',
     userIcon: 'alien'
@@ -33,16 +31,21 @@ export default function EmbedView({ agent, onBack }) {
   const [securityForm, setSecurityForm] = useState({
     allowedDomains: ''
   });
+  const [discountForm, setDiscountForm] = useState({
+    enabled: false,
+    title: 'Welcome back! 🎉',
+    message: 'We have a special offer just for you',
+    code: 'WELCOME15',
+    discountPercent: 15
+  });
   const [newLogo, setNewLogo] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [activeSection, setActiveSection] = useState('branding');
-  
-  const generateEmbedCode = httpsCallable(functions, 'generateEmbedCode');
+  const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
     if (agent) {
       setBrandingForm({
-        name: agent.name || '',
         projectName: agent.projectName || '',
         logoUrl: agent.logoUrl || '',
         userIcon: agent.userIcon || 'alien'
@@ -50,25 +53,53 @@ export default function EmbedView({ agent, onBack }) {
       setSecurityForm({
         allowedDomains: agent.allowedDomains ? agent.allowedDomains.join('\n') : ''
       });
+      setDiscountForm({
+        enabled: agent.returnUserDiscount?.enabled || false,
+        title: agent.returnUserDiscount?.title || 'Welcome back! 🎉',
+        message: agent.returnUserDiscount?.message || 'We have a special offer just for you',
+        code: agent.returnUserDiscount?.code || 'WELCOME15',
+        discountPercent: agent.returnUserDiscount?.discountPercent || 15
+      });
       setLogoPreview(agent.logoUrl || null);
     }
   }, [agent]);
 
-  const handleGenerateEmbed = async () => {
-    if (!agent) return;
+  // Listen for alerts
+  useEffect(() => {
+    if (!user || !agent) return;
 
-    setIsLoading(true);
-    try {
-      const result = await generateEmbedCode({ agentId: agent.id });
-      setEmbedCode(result.data.embedCode);
-      showNotification('Embed code generated successfully!', 'success');
-    } catch (error) {
-      console.error('Error generating embed code:', error);
-      showNotification('Error generating embed code: ' + error.message, 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const alertsRef = collection(db, 'users', user.uid, 'agents', agent.id, 'alerts');
+    const q = query(alertsRef, orderBy('timestamp', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const alertsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate()
+      }));
+      setAlerts(alertsData);
+    });
+
+    return () => unsubscribe();
+  }, [user, agent]);
+
+  const embedCode = agent ? `<!-- Orchis Chatbot -->
+<script>
+(function(){
+  if(!window.OrchisChatbot){
+    const script = document.createElement('script');
+    script.src = 'https://orchis.app/chatbot-widget.js';
+    script.onload = function() {
+      if(window.OrchisChatbot) {
+        window.OrchisChatbot.init({
+          agentId: '${agent.id}'
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }
+})();
+</script>` : '';
 
   const copyToClipboard = async () => {
     try {
@@ -92,7 +123,6 @@ export default function EmbedView({ agent, onBack }) {
       }
 
       const updatedAgentData = {
-        name: brandingForm.name,
         projectName: brandingForm.projectName,
         logoUrl: logoUrlToSave,
         userIcon: brandingForm.userIcon,
@@ -103,7 +133,6 @@ export default function EmbedView({ agent, onBack }) {
       await updateAgent(agent.id, updatedAgentData);
 
       setNewLogo(null);
-      setEmbedCode(''); // Clear old embed code
 
       showNotification('Branding updated successfully!', 'success');
     } catch (error) {
@@ -128,12 +157,32 @@ export default function EmbedView({ agent, onBack }) {
       // Update the agent using the context function
       await updateAgent(agent.id, updatedAgentData);
 
-      setEmbedCode(''); // Clear old embed code
-
       showNotification('Security settings updated successfully!', 'success');
     } catch (error) {
       console.error('Error updating security settings:', error);
       showNotification('Error updating security settings: ' + error.message, 'error');
+    }
+  };
+
+  const handleDiscountSave = async () => {
+    try {
+      const updatedAgentData = {
+        returnUserDiscount: {
+          enabled: discountForm.enabled,
+          title: discountForm.title,
+          message: discountForm.message,
+          code: discountForm.code,
+          discountPercent: discountForm.discountPercent
+        },
+        updatedAt: new Date().toISOString()
+      };
+
+      await updateAgent(agent.id, updatedAgentData);
+
+      showNotification('Discount settings updated successfully!', 'success');
+    } catch (error) {
+      console.error('Error updating discount settings:', error);
+      showNotification('Error updating discount settings: ' + error.message, 'error');
     }
   };
 
@@ -148,32 +197,50 @@ export default function EmbedView({ agent, onBack }) {
   };
 
 
+  const handleMarkAlertAsRead = async (alertId) => {
+    if (!user || !agent) return;
+
+    try {
+      const alertRef = doc(db, 'users', user.uid, 'agents', agent.id, 'alerts', alertId);
+      await updateDoc(alertRef, { read: true });
+      showNotification('Alert marked as read', 'success');
+    } catch (error) {
+      console.error('Error marking alert as read:', error);
+      showNotification('Error marking alert as read', 'error');
+    }
+  };
+
+  const handleMarkAllAlertsAsRead = async () => {
+    if (!user || !agent) return;
+
+    try {
+      const unreadAlerts = alerts.filter(alert => !alert.read);
+      for (const alert of unreadAlerts) {
+        const alertRef = doc(db, 'users', user.uid, 'agents', agent.id, 'alerts', alert.id);
+        await updateDoc(alertRef, { read: true });
+      }
+      showNotification('All alerts marked as read', 'success');
+    } catch (error) {
+      console.error('Error marking all alerts as read:', error);
+      showNotification('Error marking all alerts as read', 'error');
+    }
+  };
+
   const sections = [
     { id: 'branding', title: 'Branding', icon: Store01Icon },
-    { id: 'security', title: 'Security', icon: BinaryCodeIcon },
-    { id: 'embed', title: 'Embed Code', icon: Copy01Icon },
-    { id: 'preview', title: 'Preview', icon: AirplayLineIcon }
+    { id: 'security', title: 'Allowed Domains', icon: BinaryCodeIcon },
+    { id: 'discount', title: 'Return User Discount', icon: GiftIcon },
+    { id: 'alerts', title: 'Security Alerts', icon: Alert02Icon },
+    { id: 'embed', title: 'Embed Code', icon: Copy01Icon }
   ];
 
   const renderBrandingSection = () => (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-stone-500 mb-1">
-            Agent Name
-          </label>
-          <input
-            type="text"
-            value={brandingForm.name}
-            onChange={(e) => setBrandingForm({...brandingForm, name: e.target.value})}
-            className="form-input text-sm bg-transparent border border-stone-300 dark:border-stone-700 text-neutral-900 dark:text-neutral-100"
-            placeholder="Customer Support Bot"
-          />
-        </div>
 
         <div>
           <label className="block text-xs font-medium text-stone-500 mb-1">
-            Project Name
+            Agent Name
           </label>
           <input
             type="text"
@@ -269,56 +336,132 @@ export default function EmbedView({ agent, onBack }) {
     </div>
   );
 
+  const renderDiscountSection = () => (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        {/* Enable Toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white">
+              Enable Return User Discount
+            </label>
+            <p className="text-xs text-stone-500 mt-1">
+              Show special discount popup to returning visitors
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={discountForm.enabled}
+              onChange={(e) => setDiscountForm({...discountForm, enabled: e.target.checked})}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-orange-600"></div>
+          </label>
+        </div>
+
+        {discountForm.enabled && (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-black dark:text-white mb-1">
+                Popup Title
+              </label>
+              <input
+                type="text"
+                value={discountForm.title}
+                onChange={(e) => setDiscountForm({...discountForm, title: e.target.value})}
+                className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                placeholder="Welcome back! 🎉"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-black dark:text-white mb-1">
+                Popup Message
+              </label>
+              <textarea
+                value={discountForm.message}
+                onChange={(e) => setDiscountForm({...discountForm, message: e.target.value})}
+                className="form-textarea bg-transparent text-black dark:text-white border border-stone-200 dark:border-stone-700 text-sm"
+                placeholder="We have a special offer just for you"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-black dark:text-white mb-1">
+                  Discount Code
+                </label>
+                <input
+                  type="text"
+                  value={discountForm.code}
+                  onChange={(e) => setDiscountForm({...discountForm, code: e.target.value})}
+                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white font-mono"
+                  placeholder="WELCOME15"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-black dark:text-white mb-1">
+                  Discount %
+                </label>
+                <input
+                  type="number"
+                  value={discountForm.discountPercent}
+                  onChange={(e) => setDiscountForm({...discountForm, discountPercent: parseInt(e.target.value)})}
+                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                  placeholder="15"
+                  min="0"
+                  max="100"
+                />
+              </div>
+            </div>
+
+            
+          </>
+        )}
+
+        <div className="pt-4">
+          <button
+            onClick={handleDiscountSave}
+            className="btn-primary text-sm py-2 px-4"
+          >
+            Save Discount Settings
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderEmbedSection = () => (
     <div className="space-y-6">
-      {/* Generate Button */}
+      {/* Copy Button */}
       <div className="flex gap-3">
         <button
-          onClick={handleGenerateEmbed}
-          disabled={isLoading}
-          className="btn-secondary flex items-center gap-2"
+          onClick={copyToClipboard}
+          className="btn-primary flex items-center gap-2"
         >
-          {isLoading ? (
+          {copied ? (
             <>
-              <div className="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full"></div>
-              Generating...
+              <HugeiconsIcon icon={Tick01Icon} className="w-4 h-4" />
+              Copied!
             </>
           ) : (
             <>
-              <HugeiconsIcon icon={BinaryCodeIcon} className="w-4 h-4" />
-              Generate Embed Code
+              <HugeiconsIcon icon={Copy01Icon} className="w-4 h-4" />
+              Copy Code
             </>
           )}
         </button>
-        
-        {embedCode && (
-          <button
-            onClick={copyToClipboard}
-            className="btn-primary flex items-center gap-2"
-          >
-            {copied ? (
-              <>
-                <HugeiconsIcon icon={Tick01Icon} className="w-4 h-4" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <HugeiconsIcon icon={Copy01Icon} className="w-4 h-4" />
-                Copy Code
-              </>
-            )}
-          </button>
-        )}
       </div>
 
       {/* Code Display */}
-      {embedCode && (
-        <div className="bg-stone-900 rounded-lg p-4 overflow-x-auto">
-          <pre className="text-green-400 text-xs font-mono whitespace-pre-wrap">
-            {embedCode}
-          </pre>
-        </div>
-      )}
+      <div className="bg-stone-900 rounded-lg p-4 overflow-x-auto">
+        <pre className="text-green-400 text-xs font-mono whitespace-pre-wrap">
+          {embedCode}
+        </pre>
+      </div>
 
       {/* Installation Instructions */}
       <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-4">
@@ -336,42 +479,126 @@ export default function EmbedView({ agent, onBack }) {
     </div>
   );
 
-  const renderPreviewSection = () => (
-    <div className="space-y-6">
-      <div className="text-sm text-stone-600 dark:text-stone-400">
-        See how your chatbot will appear on your website
-      </div>
 
-      {/* Preview Area */}
-      <div className="relative overflow-hidden border border-stone-200 dark:border-stone-700 rounded-lg" style={{ height: '500px' }}>
-        {/* Background Pattern */}
-        <div className="absolute inset-0 h-full w-full bg-white dark:bg-stone-900 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#404040_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_60%,transparent_100%)]"></div>
+  const renderAlertsSection = () => {
+    const unreadAlerts = alerts.filter(alert => !alert.read);
+    const readAlerts = alerts.filter(alert => alert.read);
 
-        {/* Try Here Message */}
-        <div className="absolute top-6 left-6 z-10">
-          <div className="flex items-center gap-2 text-orange-500">
-            <span className="text-sm font-medium">Try here</span>
-            <svg className="w-5 h-5 transform rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
+    return (
+      <div className="space-y-6">
+        {/* Header with actions */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-stone-600 dark:text-stone-400">
+            {unreadAlerts.length > 0 ? (
+              <span className="text-red-500 font-medium">
+                {unreadAlerts.length} unread alert{unreadAlerts.length > 1 ? 's' : ''}
+              </span>
+            ) : (
+              <span>No unread alerts</span>
+            )}
           </div>
+          {unreadAlerts.length > 0 && (
+            <button
+              onClick={handleMarkAllAlertsAsRead}
+              className="btn-secondary text-xs py-1 px-3 flex items-center gap-1"
+            >
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-3 h-3" />
+              Mark all as read
+            </button>
+          )}
         </div>
 
-        {/* Preview Content */}
-        <div className="relative h-full p-6 flex items-center justify-center">
-          <div className="w-full max-w-md">
-            <ChatWidget
-              agentId={agent.id}
-              projectName={agent.projectName}
-              logoUrl={agent.logoUrl}
-              userIcon={agent.userIcon || brandingForm.userIcon}
-              primaryColor="#f97316"
-            />
+        {/* Alerts list */}
+        {alerts.length === 0 ? (
+          <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+            <HugeiconsIcon icon={Alert02Icon} className="w-12 h-12 text-stone-300 dark:text-stone-600 mx-auto mb-3" />
+            <p className="text-sm text-stone-500">No security alerts yet</p>
+            <p className="text-xs text-stone-400 mt-1">You'll be notified here when unauthorized access is attempted</p>
           </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Unread alerts */}
+            {unreadAlerts.map((alert) => (
+              <div
+                key={alert.id}
+                className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                      <HugeiconsIcon icon={Alert02Icon} className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-red-900 dark:text-red-100">
+                        {alert.type === 'domain_blocked' ? '🚫 Unauthorized Domain Access' : 'Security Alert'}
+                      </h4>
+                      <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                        Domain: <span className="font-mono">{alert.requestDomain}</span>
+                      </p>
+                      {alert.message && (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                          Message preview: "{alert.message}"
+                        </p>
+                      )}
+                      <p className="text-xs text-red-500 dark:text-red-500 mt-2">
+                        {alert.timestamp ? new Date(alert.timestamp).toLocaleString() : 'Just now'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleMarkAlertAsRead(alert.id)}
+                    className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 font-medium"
+                  >
+                    Mark as read
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Read alerts */}
+            {readAlerts.length > 0 && (
+              <>
+                <div className="text-xs text-stone-400 font-medium mt-6 mb-2">Read Alerts</div>
+                {readAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg p-4 opacity-60"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-stone-100 dark:bg-stone-700 rounded-lg">
+                        <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-4 h-4 text-stone-500" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                          {alert.type === 'domain_blocked' ? '🚫 Unauthorized Domain Access' : 'Security Alert'}
+                        </h4>
+                        <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                          Domain: <span className="font-mono">{alert.requestDomain}</span>
+                        </p>
+                        <p className="text-xs text-stone-500 mt-2">
+                          {alert.timestamp ? new Date(alert.timestamp).toLocaleString() : 'Just now'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Info box */}
+        <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-black dark:text-white mb-2">ℹ️ About Security Alerts</h4>
+          <ul className="text-xs text-black dark:text-white space-y-1">
+            <li>• Alerts are triggered when someone tries to use your widget from an unauthorized domain</li>
+            <li>• Configure allowed domains in the <strong>Security</strong> section</li>
+            <li>• All blocked attempts are logged here for your review</li>
+          </ul>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (!agent) {
     return (
@@ -445,8 +672,9 @@ export default function EmbedView({ agent, onBack }) {
           
           {activeSection === 'branding' && renderBrandingSection()}
           {activeSection === 'security' && renderSecuritySection()}
+          {activeSection === 'discount' && renderDiscountSection()}
+          {activeSection === 'alerts' && renderAlertsSection()}
           {activeSection === 'embed' && renderEmbedSection()}
-          {activeSection === 'preview' && renderPreviewSection()}
         </div>
       </div>
     </div>

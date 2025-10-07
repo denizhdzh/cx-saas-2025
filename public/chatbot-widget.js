@@ -9,12 +9,16 @@
   class ChatSessionManager {
     constructor(agentId) {
       this.agentId = agentId;
-      this.sessionId = this.getOrCreateSessionId();
-      this.anonymousUserId = this.generateAnonymousUserId();
-      this.sessionData = this.initializeSessionData();
       this.pageLoadTime = Date.now();
+
+      // IMPORTANT: Generate anonymousUserId FIRST before session!
+      this.anonymousUserId = this.generateAnonymousUserId();
+
+      // Now we can use anonymousUserId in getOrCreateSessionId
+      this.sessionId = this.getOrCreateSessionId();
+
+      this.sessionData = this.initializeSessionData();
       this.chatStartTime = null;
-      this.behaviorTracker = new UserBehaviorTracker();
     }
 
     generateAnonymousUserId() {
@@ -38,95 +42,83 @@
     }
 
     getOrCreateSessionId() {
-      let sessionId = sessionStorage.getItem('orchis_session_id');
-      if (!sessionId) {
-        sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(7);
-        sessionStorage.setItem('orchis_session_id', sessionId);
+      // Key based on anonymousUserId for user-specific session tracking
+      const sessionKey = `orchis_session_${this.anonymousUserId}`;
+      const lastVisitKey = `orchis_last_visit_${this.anonymousUserId}`;
+
+      let sessionId = localStorage.getItem(sessionKey);
+      const lastVisit = localStorage.getItem(lastVisitKey);
+      const now = Date.now();
+
+      // Consider return user only if last visit was more than 1 hour ago
+      const ONE_HOUR = 60 * 60 * 1000;
+      const isActualReturnUser = sessionId && lastVisit && (now - parseInt(lastVisit)) > ONE_HOUR;
+
+      if (sessionId) {
+        if (isActualReturnUser) {
+          this.isReturnUser = true;
+          console.log('🔄 Return user detected (last visit: ' + new Date(parseInt(lastVisit)).toLocaleString() + ')');
+        } else {
+          this.isReturnUser = false;
+          console.log('⏰ Same session (last visit was less than 1 hour ago)');
+        }
+      } else {
+        // New user - create new session
+        sessionId = this.anonymousUserId; // Use anonymousUserId as sessionId (simpler!)
+        this.isReturnUser = false;
+        console.log('✨ New user:', this.anonymousUserId);
+        localStorage.setItem(sessionKey, sessionId);
       }
+
+      // Update last visit timestamp
+      localStorage.setItem(lastVisitKey, now.toString());
+
       return sessionId;
     }
 
     initializeSessionData() {
       return {
-        // Identity & Session
+        // User Identity
+        userId: this.anonymousUserId,
         sessionId: this.sessionId,
-        anonymousUserId: this.anonymousUserId,
         agentId: this.agentId,
-        
-        // Location & Context
-        userLocation: {
-          hostname: window.location.hostname,
-          pathname: window.location.pathname,
-          referrer: document.referrer || 'direct',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          userAgent: navigator.userAgent
+
+        // User Info
+        userInfo: {
+          location: {
+            hostname: window.location.hostname,
+            pathname: window.location.pathname,
+            referrer: document.referrer || 'direct',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          },
+          device: {
+            userAgent: navigator.userAgent,
+            screen: `${screen.width}x${screen.height}`,
+            browser: this.getBrowserInfo(),
+            deviceType: this.getDeviceType()
+          },
+          language: navigator.language || 'en',
+          isReturnUser: this.isReturnUser,
+          firstVisit: !this.isReturnUser ? new Date().toISOString() : null,
+          lastVisit: new Date().toISOString(),
+          totalVisits: this.getPageViewCount()
         },
-        
-        // Conversation Metadata
-        language: navigator.language || 'en',
-        startedAt: null,
-        lastMessageAt: null,
-        status: 'initialized',
-        
-        // Content Analysis (will be populated)
-        topic: null,
-        category: null,
-        subCategory: null,
-        sentiment: 'neutral',
-        intentDetection: null,
-        
-        // Ticket Integration
-        ticketCreated: false,
-        ticketId: null,
-        ticketStatus: null,
-        resolutionTime: null,
-        
-        // Performance Metrics
-        messageCount: 0,
-        avgResponseTime: 0,
-        userSatisfaction: null,
-        responseTimes: [],
-        
-        // Messages Array
-        messages: [],
-        
-        // User Behavior Analytics
-        behaviorMetrics: {
-          scrollDepth: 0,
-          timeOnPageBeforeChat: 0,
-          clicksBeforeChat: 0,
-          pageViewCount: this.getPageViewCount(),
-          returnVisitor: this.isReturnVisitor(),
-          bounceRate: false,
-          engagementLevel: 'low',
-          deviceType: this.getDeviceType(),
-          browserInfo: this.getBrowserInfo()
-        },
-        
-        // Conversation Quality Metrics
-        qualityMetrics: {
-          emotionProgression: ['neutral'],
-          topicSwitchCount: 0,
-          clarificationNeeded: 0,
-          misunderstandingCount: 0,
-          urgencyLevel: 'low'
-        },
-        
-        // Business Intelligence
-        businessMetrics: {
-          leadQuality: 'unknown',
-          productInterest: [],
-          pricePoint: null,
-          competitorMentioned: false,
-          conversionEvent: null
-        },
-        
-        // Technical Performance
-        technicalMetrics: {
-          responseLatency: [],
-          widgetLoadTime: 0,
-          errorCount: 0,
-          disconnectionCount: 0
+
+        // Page content (lightweight scrape for context)
+        pageContent: this.scrapePageContent(),
+
+        // Current Conversation
+        currentConversation: {
+          conversationId: 'conv_' + Date.now(),
+          startedAt: new Date().toISOString(),
+          messages: [],
+          analysis: null, // Will be populated by AI
+          metrics: {
+            messageCount: 0,
+            duration: 0,
+            avgResponseTime: 0,
+            responseTimes: []
+          }
         }
       };
     }
@@ -171,9 +163,9 @@
     startChat() {
       if (!this.chatStartTime) {
         this.chatStartTime = Date.now();
-        this.sessionData.startedAt = new Date().toISOString();
-        this.sessionData.status = 'active';
-        this.sessionData.behaviorMetrics.timeOnPageBeforeChat = this.chatStartTime - this.pageLoadTime;
+        this.sessionData.currentConversation.startedAt = new Date().toISOString();
+        const timeOnPage = this.chatStartTime - this.pageLoadTime;
+        console.log(`💬 Chat started after ${Math.round(timeOnPage / 1000)}s on page`);
         this.saveSession();
       }
     }
@@ -187,547 +179,57 @@
         responseTime: isUser ? null : (this.lastUserMessageTime ? Date.now() - this.lastUserMessageTime : null)
       };
 
-      this.sessionData.messages.push(messageData);
-      this.sessionData.messageCount++;
-      this.sessionData.lastMessageAt = messageData.timestamp;
+      this.sessionData.currentConversation.messages.push(messageData);
+      this.sessionData.currentConversation.metrics.messageCount++;
 
       if (isUser) {
         this.lastUserMessageTime = Date.now();
-        this.analyzeUserMessage(message);
-        this.detectMisunderstanding(message);
       } else {
         // Track response time
         if (messageData.responseTime) {
-          this.sessionData.technicalMetrics.responseLatency.push(messageData.responseTime);
-          this.updateAvgResponseTime();
+          this.sessionData.currentConversation.metrics.responseTimes.push(messageData.responseTime);
+          const times = this.sessionData.currentConversation.metrics.responseTimes;
+          this.sessionData.currentConversation.metrics.avgResponseTime =
+            Math.round(times.reduce((a, b) => a + b, 0) / times.length / 1000);
         }
       }
 
-      this.updateEngagementLevel();
       this.saveSession();
     }
 
-    detectMisunderstanding(message) {
-      const misunderstandingPhrases = [
-        'that\'s not what i meant', 'you misunderstood', 'that\'s not right',
-        'no, i meant', 'that\'s not what i asked', 'wrong answer',
-        'not what i wanted', 'misunderstood my question'
-      ];
-      
-      if (misunderstandingPhrases.some(phrase => message.toLowerCase().includes(phrase))) {
-        this.sessionData.qualityMetrics.misunderstandingCount++;
-        console.log('🤔 Misunderstanding detected, count:', this.sessionData.qualityMetrics.misunderstandingCount);
-      }
-    }
+    // All analysis is now done by AI in the backend
+    // No client-side keyword analysis needed
 
-    analyzeUserMessage(message) {
-      const text = message.toLowerCase();
-      
-      // Only trigger AI analysis for important cases
-      const shouldAnalyze = this.shouldTriggerAIAnalysis(message);
-      console.log('🤖 AI Analysis decision:', shouldAnalyze, 'for message:', message.substring(0, 50));
-      
-      if (shouldAnalyze) {
-        this.queueAIAnalysis(message);
-      }
-      
-      // AI will handle all analysis - no need for manual keywords!
-    }
-
-    shouldTriggerAIAnalysis(message) {
-      const text = message.toLowerCase();
-      const messageCount = this.sessionData.messageCount;
-      
-      // Always analyze first message
-      if (messageCount <= 1) return true;
-      
-      // Analyze every 5th message to track conversation flow
-      if (messageCount % 5 === 0) return true;
-      
-      // Analyze if critical keywords detected
-      const criticalKeywords = [
-        'problem', 'issue', 'bug', 'error', 'broken', 'not working',
-        'billing', 'payment', 'charge', 'refund', 'cancel',
-        'support', 'help', 'urgent', 'asap',
-        'price', 'cost', 'demo', 'trial', 'enterprise',
-        'competitor', 'alternative', 'vs', 'compare'
-      ];
-      
-      const hasCriticalKeyword = criticalKeywords.some(keyword => 
-        text.includes(keyword)
-      );
-      
-      if (hasCriticalKeyword) return true;
-      
-      // Analyze if negative sentiment detected in keyword analysis
-      const negativeWords = ['bad', 'terrible', 'awful', 'hate', 'worst', 'disappointed', 'frustrated', 'angry'];
-      const hasNegative = negativeWords.some(word => text.includes(word));
-      
-      return hasNegative;
-    }
-
-    shouldCreateTicket(message, conversationHistory) {
-      const text = message.toLowerCase();
-      const messageCount = this.sessionData.messageCount;
-      
-      // Immediate ticket triggers (high priority)
-      const immediateTicketKeywords = [
-        'not working', 'broken', 'error', 'bug', 'crash',
-        'billing issue', 'payment problem', 'charged wrong',
-        'refund', 'cancel subscription', 'account locked',
-        'urgent', 'emergency', 'asap', 'critical'
-      ];
-      
-      const hasImmediateTrigger = immediateTicketKeywords.some(keyword => 
-        text.includes(keyword)
-      );
-      
-      if (hasImmediateTrigger) {
-        console.log('🎫 Immediate ticket trigger:', text.substring(0, 50));
-        return { shouldCreate: true, priority: 'high', reason: 'immediate_issue' };
-      }
-      
-      // Support-related issues
-      const supportKeywords = [
-        'problem', 'issue', 'help', 'support', 'trouble',
-        'doesnt work', "doesn't work", 'failed', 'wrong'
-      ];
-      
-      const hasSupportKeyword = supportKeywords.some(keyword => 
-        text.includes(keyword)
-      );
-      
-      // Check if negative sentiment + support keyword
-      const negativeWords = ['bad', 'terrible', 'awful', 'frustrated', 'angry', 'disappointed'];
-      const hasNegative = negativeWords.some(word => text.includes(word));
-      
-      if (hasSupportKeyword && (hasNegative || messageCount >= 3)) {
-        console.log('🎫 Support + negative/long conversation ticket');
-        return { shouldCreate: true, priority: 'medium', reason: 'support_issue' };
-      }
-      
-      // Long unresolved conversation (5+ messages with confusion)
-      if (messageCount >= 5 && this.sessionData.qualityMetrics.misunderstandingCount >= 2) {
-        console.log('🎫 Unresolved conversation ticket');
-        return { shouldCreate: true, priority: 'medium', reason: 'unresolved' };
-      }
-      
-      return { shouldCreate: false, reason: 'no_trigger' };
-    }
-
-
-    detectTopic(text) {
-      if (text.includes('pricing') || text.includes('cost') || text.includes('plan')) return 'pricing';
-      if (text.includes('features') || text.includes('functionality')) return 'features';
-      if (text.includes('integration') || text.includes('api')) return 'integration';
-      if (text.includes('support') || text.includes('help')) return 'support';
-      if (text.includes('security') || text.includes('privacy')) return 'security';
-      if (text.includes('setup') || text.includes('installation')) return 'setup';
-      return null;
-    }
-
-    createTicket() {
-      this.sessionData.ticketCreated = true;
-      this.sessionData.ticketId = 'TKT_' + Date.now() + '_' + Math.random().toString(36).substring(7);
-      this.sessionData.ticketStatus = 'open';
-      
-      console.log('🎫 Auto-created ticket:', this.sessionData.ticketId, 'for session:', this.sessionData.sessionId);
-      this.saveSession();
-    }
-
-    createSmartTicket(analysis) {
-      this.sessionData.ticketCreated = true;
-      this.sessionData.ticketId = 'TKT_' + Date.now() + '_' + Math.random().toString(36).substring(7);
-      this.sessionData.ticketStatus = 'open';
-      this.sessionData.ticketPriority = analysis.urgency;
-      this.sessionData.ticketReason = analysis.ticketReason;
-      this.sessionData.aiAnalysis = analysis;
-      
-      console.log('🎫 AI-powered ticket created:', this.sessionData.ticketId, 'Reason:', analysis.ticketReason);
-      this.saveSession();
-    }
-
-    updateLeadQuality(text) {
-      // AI handles all analysis now - no manual keywords needed
-      return;
-    }
-
-    queueAIAnalysis(message) {
-      // Debounce AI calls to avoid too many requests
-      clearTimeout(this.aiAnalysisTimeout);
-      this.aiAnalysisTimeout = setTimeout(() => {
-        this.performAIAnalysis(message);
-      }, 2000); // Wait 2 seconds before AI analysis
-    }
-
-    async performAIAnalysis(message) {
-      // AI analysis now happens in the main chat response
-      // This is just for backward compatibility
-      console.log('🤖 AI Analysis called for:', message.substring(0, 50));
-      return;
-    }
-
-    getExistingCategories() {
-      const competitors = ['chatbase', 'intercom', 'zendesk', 'crisp', 'tidio', 'drift', 'hubspot'];
-      if (competitors.some(comp => text.includes(comp)) || text.includes('competitor') || text.includes('alternative')) {
-        this.sessionData.businessMetrics.competitorMentioned = true;
-      }
-
-      // Product interest detection
-      if (text.includes('api') || text.includes('integration')) {
-        if (!this.sessionData.businessMetrics.productInterest.includes('api')) {
-          this.sessionData.businessMetrics.productInterest.push('api');
-        }
-      }
-      if (text.includes('analytics') || text.includes('reporting')) {
-        if (!this.sessionData.businessMetrics.productInterest.includes('analytics')) {
-          this.sessionData.businessMetrics.productInterest.push('analytics');
-        }
-      }
-      if (text.includes('chatbot') || text.includes('widget')) {
-        if (!this.sessionData.businessMetrics.productInterest.includes('chatbot')) {
-          this.sessionData.businessMetrics.productInterest.push('chatbot');
-        }
-      }
-
-      // Price point detection - Enhanced
-      const priceMatch = text.match(/\$(\d+)/);
-      if (priceMatch) {
-        this.sessionData.businessMetrics.pricePoint = parseInt(priceMatch[1]);
-      }
-      
-      // Lead quality scoring
-      this.updateLeadQuality(text);
-
-      // Conversion events
-      if (text.includes('sign up') || text.includes('register') || text.includes('create account')) {
-        this.sessionData.businessMetrics.conversionEvent = 'signup_intent';
-      } else if (text.includes('trial') || text.includes('try')) {
-        this.sessionData.businessMetrics.conversionEvent = 'trial_intent';
-      } else if (text.includes('demo') || text.includes('show me')) {
-        this.sessionData.businessMetrics.conversionEvent = 'demo_intent';
-      }
-
-      // Emotion progression tracking
-      this.sessionData.qualityMetrics.emotionProgression.push(this.sessionData.sentiment);
-
-      // Auto-ticket creation logic
-      this.checkAutoTicketCreation(text);
-    }
-
-    performKeywordAnalysis(text) {
-      // Immediate keyword-based analysis for fallback
-      if (text.includes('help') || text.includes('support') || text.includes('problem')) {
-        this.sessionData.intentDetection = 'support';
-        this.sessionData.category = 'support';
-      } else if (text.includes('price') || text.includes('cost') || text.includes('buy')) {
-        this.sessionData.intentDetection = 'sales';
-        this.sessionData.category = 'sales';
-      } else if (text.includes('how') || text.includes('what') || text.includes('info')) {
-        this.sessionData.intentDetection = 'information';
-        this.sessionData.category = 'information';
-      }
-    }
-
-    queueAIAnalysis(message) {
-      // Debounce AI calls to avoid too many requests
-      clearTimeout(this.aiAnalysisTimeout);
-      this.aiAnalysisTimeout = setTimeout(() => {
-        this.performAIAnalysis(message);
-      }, 2000); // Wait 2 seconds before AI analysis
-    }
-
-    async performAIAnalysis(message) {
+    scrapePageContent() {
       try {
-        // Get conversation history for context
-        const recentMessages = this.sessionData.messages.slice(-6);
-        const conversationContext = recentMessages.map(msg => 
-          `${msg.isUser ? 'User' : 'Assistant'}: ${msg.content}`
-        ).join('\n');
+        // Lightweight page context - just title, URL and main headings
+        const title = document.title || '';
+        const h1s = Array.from(document.querySelectorAll('h1')).map(h => h.textContent.trim()).join(', ');
 
-        // Get existing categories from previous sessions for consistency
-        const existingCategories = this.getExistingCategories();
-
-        const analysisPrompt = `
-Analyze this customer service conversation and provide JSON output ONLY:
-
-CONVERSATION CONTEXT:
-${conversationContext}
-
-LATEST MESSAGE TO ANALYZE: "${message}"
-
-EXISTING CATEGORIES (use these for consistency): ${JSON.stringify(existingCategories)}
-
-Provide JSON with:
-{
-  "intent": "support|sales|information|general",
-  "category": "specific category from existing or new",
-  "subCategory": "specific subcategory",
-  "sentiment": "positive|negative|neutral|frustrated|confused",
-  "topic": "main topic discussed",
-  "urgencyLevel": "low|medium|high",
-  "leadQuality": "low|medium|high",
-  "productInterest": ["array", "of", "interests"],
-  "businessContext": {
-    "isPotentialCustomer": true/false,
-    "budgetIndicated": true/false,
-    "timeframe": "immediate|short_term|long_term|unknown",
-    "competitorMentioned": true/false
-  },
-  "emotionalState": "calm|excited|frustrated|confused|satisfied",
-  "conversationFlow": "smooth|needs_clarification|off_topic|escalating"
-}`;
-
-        // Send to AI for analysis
-        const aiResponse = await this.callAIForAnalysis(analysisPrompt);
-        
-        if (aiResponse) {
-          this.applyAIAnalysis(aiResponse);
-        }
-
+        return {
+          title,
+          headings: h1s,
+          url: window.location.href
+        };
       } catch (error) {
-        console.error('AI Analysis error:', error);
-        // Fallback to keyword analysis already done
+        console.error('Error scraping page:', error);
+        return {
+          title: document.title || '',
+          url: window.location.href
+        };
       }
-    }
-
-    async callAIForAnalysis(prompt) {
-      try {
-        // Use dedicated analysis endpoint
-        const analysisUrl = 'https://us-central1-candelaai.cloudfunctions.net/analyzeMessage';
-        const response = await fetch(analysisUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            data: {
-              agentId: this.agentId,
-              message: prompt,
-              sessionId: this.sessionId,
-              analysisMode: true
-            }
-          })
-        });
-
-        const result = await response.json();
-        if (result.data && result.data.response) {
-          try {
-            return JSON.parse(result.data.response);
-          } catch (e) {
-            // Extract JSON from response if it's wrapped in text
-            const jsonMatch = result.data.response.match(/\{.*\}/s);
-            if (jsonMatch) {
-              return JSON.parse(jsonMatch[0]);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('AI API call failed:', error);
-        return null;
-      }
-    }
-
-    applyAIAnalysis(analysis) {
-      console.log('🤖 AI Analysis Result:', analysis);
-
-      // Apply AI analysis with validation
-      if (analysis.intent) this.sessionData.intentDetection = analysis.intent;
-      if (analysis.category) this.sessionData.category = analysis.category;
-      if (analysis.subCategory) this.sessionData.subCategory = analysis.subCategory;
-      if (analysis.sentiment) this.sessionData.sentiment = analysis.sentiment;
-      if (analysis.topic) this.sessionData.topic = analysis.topic;
-      if (analysis.urgencyLevel) this.sessionData.qualityMetrics.urgencyLevel = analysis.urgencyLevel;
-      if (analysis.leadQuality) this.sessionData.businessMetrics.leadQuality = analysis.leadQuality;
-      
-      if (analysis.productInterest && Array.isArray(analysis.productInterest)) {
-        this.sessionData.businessMetrics.productInterest = [
-          ...new Set([...this.sessionData.businessMetrics.productInterest, ...analysis.productInterest])
-        ];
-      }
-
-      if (analysis.businessContext) {
-        if (analysis.businessContext.competitorMentioned) {
-          this.sessionData.businessMetrics.competitorMentioned = true;
-        }
-      }
-
-      // Save updated analysis
-      this.saveSession();
-      
-      // Store category for future consistency
-      this.storeCategory(analysis.category, analysis.subCategory);
-    }
-
-    getExistingCategories() {
-      const stored = localStorage.getItem(`orchis_categories_${this.agentId}`);
-      return stored ? JSON.parse(stored) : {
-        support: ['technical_support', 'billing_support', 'account_support'],
-        sales: ['pricing_inquiry', 'demo_request', 'trial_inquiry'],
-        information: ['feature_inquiry', 'integration_info', 'general_info']
-      };
-    }
-
-    storeCategory(category, subCategory) {
-      const existing = this.getExistingCategories();
-      if (category && subCategory) {
-        if (!existing[category]) existing[category] = [];
-        if (!existing[category].includes(subCategory)) {
-          existing[category].push(subCategory);
-        }
-        localStorage.setItem(`orchis_categories_${this.agentId}`, JSON.stringify(existing));
-      }
-    }
-
-    checkAutoTicketCreation(text) {
-      // Auto-create ticket for support requests or negative sentiments
-      if (!this.sessionData.ticketCreated) {
-        const shouldCreateTicket = 
-          this.sessionData.intentDetection === 'support' ||
-          this.sessionData.sentiment === 'negative' ||
-          this.sessionData.qualityMetrics.urgencyLevel === 'high' ||
-          text.includes('bug') || text.includes('problem') || text.includes('issue');
-
-        if (shouldCreateTicket) {
-          this.createTicket();
-        }
-      }
-    }
-
-    createTicket() {
-      this.sessionData.ticketCreated = true;
-      this.sessionData.ticketId = 'TKT_' + Date.now() + '_' + Math.random().toString(36).substring(7);
-      this.sessionData.ticketStatus = 'open';
-      
-      console.log('🎫 Auto-created ticket:', this.sessionData.ticketId, 'for session:', this.sessionData.sessionId);
-      this.saveSession();
-    }
-
-    createSmartTicket(analysis) {
-      this.sessionData.ticketCreated = true;
-      this.sessionData.ticketId = 'TKT_' + Date.now() + '_' + Math.random().toString(36).substring(7);
-      this.sessionData.ticketStatus = 'open';
-      this.sessionData.ticketPriority = analysis.urgency;
-      this.sessionData.ticketReason = analysis.ticketReason;
-      this.sessionData.aiAnalysis = analysis;
-      
-      // Store ticket data in Firestore via sessionData
-      console.log('🎫 AI-powered ticket created:', this.sessionData.ticketId, 'Reason:', analysis.ticketReason);
-      this.saveSession();
-    }
-
-    detectTopic(text) {
-      if (text.includes('pricing') || text.includes('cost') || text.includes('plan')) return 'pricing';
-      if (text.includes('features') || text.includes('functionality')) return 'features';
-      if (text.includes('integration') || text.includes('api')) return 'integration';
-      if (text.includes('support') || text.includes('help')) return 'support';
-      if (text.includes('security') || text.includes('privacy')) return 'security';
-      if (text.includes('setup') || text.includes('installation')) return 'setup';
-      return null;
-    }
-
-    updateLeadQuality(text) {
-      let score = 0;
-      
-      // High-value indicators
-      if (text.includes('enterprise') || text.includes('business') || text.includes('company')) score += 3;
-      if (text.includes('team') || text.includes('multiple users')) score += 2;
-      if (text.includes('integration') || text.includes('api')) score += 2;
-      if (text.includes('security') || text.includes('compliance')) score += 2;
-      if (this.sessionData.businessMetrics.pricePoint > 100) score += 3;
-      
-      // Medium-value indicators
-      if (text.includes('trial') || text.includes('demo')) score += 1;
-      if (text.includes('features') || text.includes('capabilities')) score += 1;
-      
-      // Low-value indicators
-      if (text.includes('free') || text.includes('cheapest')) score -= 1;
-      if (text.includes('just looking') || text.includes('browsing')) score -= 2;
-
-      if (score >= 5) this.sessionData.businessMetrics.leadQuality = 'high';
-      else if (score >= 2) this.sessionData.businessMetrics.leadQuality = 'medium';
-      else this.sessionData.businessMetrics.leadQuality = 'low';
-    }
-
-    updateAvgResponseTime() {
-      const times = this.sessionData.technicalMetrics.responseLatency;
-      if (times.length > 0) {
-        this.sessionData.avgResponseTime = Math.round(times.reduce((a, b) => a + b, 0) / times.length / 1000); // Convert to seconds
-      }
-    }
-
-    updateEngagementLevel() {
-      const messageCount = this.sessionData.messageCount;
-      const timeSpent = this.chatStartTime ? (Date.now() - this.chatStartTime) / 1000 : 0;
-      
-      if (messageCount >= 10 || timeSpent >= 300) {
-        this.sessionData.behaviorMetrics.engagementLevel = 'high';
-      } else if (messageCount >= 5 || timeSpent >= 120) {
-        this.sessionData.behaviorMetrics.engagementLevel = 'medium';
-      } else {
-        this.sessionData.behaviorMetrics.engagementLevel = 'low';
-      }
-    }
-
-    trackError(error) {
-      this.sessionData.technicalMetrics.errorCount++;
-      console.error('Chat Widget Error:', error);
-      this.saveSession();
     }
 
     saveSession() {
-      // Save to localStorage for offline persistence
+      // Save to localStorage for persistence
       localStorage.setItem(`orchis_session_${this.sessionId}`, JSON.stringify(this.sessionData));
-      
-      // Queue for server sync
-      this.queueServerSync();
-    }
 
-    queueServerSync() {
-      // Debounced server sync to avoid too many requests
-      clearTimeout(this.syncTimeout);
-      this.syncTimeout = setTimeout(() => {
-        this.syncToServer();
-      }, 5000); // Sync every 5 seconds
-    }
-
-    async syncToServer() {
-      // Session data is already sent with each chat message
-      // No separate sync needed as it's included in the chat API call
-      console.log('📊 Session data updated:', {
-        sessionId: this.sessionData.sessionId,
-        messageCount: this.sessionData.messageCount,
-        engagement: this.sessionData.behaviorMetrics.engagementLevel,
-        sentiment: this.sessionData.sentiment,
-        topic: this.sessionData.topic
+      // Session will be synced to Firestore when messages are sent
+      console.log('💾 Session saved:', {
+        userId: this.sessionData.userId,
+        conversationId: this.sessionData.currentConversation.conversationId,
+        messageCount: this.sessionData.currentConversation.metrics.messageCount
       });
-    }
-  }
-
-  // User Behavior Tracker
-  class UserBehaviorTracker {
-    constructor() {
-      this.clickCount = 0;
-      this.maxScrollDepth = 0;
-      this.startTracking();
-    }
-
-    startTracking() {
-      // Track clicks
-      document.addEventListener('click', () => {
-        this.clickCount++;
-      });
-
-      // Track scroll depth
-      window.addEventListener('scroll', () => {
-        const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
-        this.maxScrollDepth = Math.max(this.maxScrollDepth, scrollPercent || 0);
-      });
-    }
-
-    getMetrics() {
-      return {
-        clicksBeforeChat: this.clickCount,
-        scrollDepth: this.maxScrollDepth
-      };
     }
   }
 
@@ -784,10 +286,7 @@ Provide JSON with:
       console.warn('Orchis Widget: Domain not allowed:', currentDomain);
       return; // Don't initialize widget
     }
-    
-    // Track widget load time
-    this.sessionManager.sessionData.technicalMetrics.widgetLoadTime = Date.now() - this.sessionManager.pageLoadTime;
-    
+
     this.init();
   }
 
@@ -799,6 +298,11 @@ Provide JSON with:
       this.injectStyles();
       this.createWidget();
       this.bindEvents();
+
+      // Show return user discount popup if applicable
+      if (this.sessionManager.isReturnUser) {
+        setTimeout(() => this.showReturnUserDiscount(), 1500);
+      }
     },
 
     fetchAgentConfig: async function() {
@@ -817,8 +321,13 @@ Provide JSON with:
         this.config.logoUrl = agentData.logoUrl || this.config.logoUrl;
         this.config.userIcon = agentData.userIcon || 'alien';
         this.config.primaryColor = agentData.primaryColor || this.config.primaryColor;
+        this.config.returnUserDiscount = agentData.returnUserDiscount || null;
+        this.config.whitelabel = agentData.whitelabel || false; // Growth/Scale plans get whitelabel
 
         console.log('✅ Agent config loaded securely from backend:', this.config.projectName);
+        if (this.config.whitelabel) {
+          console.log('🎨 Whitelabel mode enabled (Growth/Scale plan)');
+        }
       } catch (error) {
         console.warn('Failed to fetch agent config, using defaults:', error);
       }
@@ -834,29 +343,27 @@ Provide JSON with:
           font-family: system-ui, -apple-system, sans-serif;
         }
         
-        .orchis-position-bottom-right { bottom: 20px; right: 20px; }
-        .orchis-position-bottom-left { bottom: 20px; left: 20px; }
-        .orchis-position-top-right { top: 20px; right: 20px; }
-        .orchis-position-top-left { top: 20px; left: 20px; }
+        .orchis-position-bottom-right { bottom: 10px; right: 10px; }
+        .orchis-position-bottom-left { bottom: 10px; left: 10px; }
+        .orchis-position-top-right { top: 10px; right: 10px; }
+        .orchis-position-top-left { top: 10px; left: 10px; }
         
         .orchis-chat-widget {
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(8px);
-          border: 0.5px solid rgba(80, 80, 80, 0.9);
+          background: linear-gradient(135deg, rgba(22, 22, 22, 0.95) 0%, rgba(44, 44, 44, 0.92) 100%);
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          border: 0.5px solid rgba(255, 255, 255, 0.12);
           border-radius: 25px;
           width: 100%;
-          max-width: 24rem;
-          min-width: 24rem;
+          max-width: 22rem;
+          min-width: 22rem;
           overflow: hidden;
-          box-shadow: inset 1px 2px 1px 0 rgba(255, 255, 255, 0.08);
-          height: auto;
-          padding: 4px;
-          min-height: 50px;
-          max-height: 480px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 1px 2px rgba(255, 255, 255, 0.05) inset;
           display: flex;
           flex-direction: column;
-          transition: all 0.7s ease-out;
-          animation: orchis-slideIn 0.3s ease-out;
+          transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+          animation: orchis-slideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          position: relative;
         }
         
         @keyframes orchis-slideIn {
@@ -979,12 +486,40 @@ Provide JSON with:
           color: rgba(255, 255, 255, 0.85);
           font-weight: 500;
         }
-        
+
+        .orchis-suggestions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 10px;
+        }
+
+        .orchis-suggestion-btn {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: white;
+          padding: 6px 12px;
+          border-radius: 16px;
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .orchis-suggestion-btn:hover {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.4);
+          transform: translateY(-2px);
+        }
+
+        .orchis-suggestion-btn:active {
+          transform: translateY(0) scale(0.95);
+        }
+
         .orchis-input-section {
-          padding: 8px;
-          background: rgba(0, 0, 0, 0.4);
-          border-radius: 20px;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+          padding: 3px;
+          background: rgba(255, 255, 255, 0);
+          border-radius: 0px;
           
         }
 
@@ -1060,7 +595,7 @@ Provide JSON with:
           align-items: center;
           justify-content: center;
           gap: 4px;
-          padding: 2px;
+          padding: 2px 2px 8px 2px;
           font-size: 10px;
           color: rgba(255, 255, 255, 0.8);
         }
@@ -1139,11 +674,186 @@ Provide JSON with:
           transform: rotate(180deg);
         }
         
+        .orchis-offer-banner {
+          padding: 12px 16px;
+          animation: orchis-offer-slide-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transform-origin: top;
+        }
+
+        @keyframes orchis-offer-slide-in {
+          from {
+            opacity: 0;
+            transform: translateY(-20px) scaleY(0.8);
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scaleY(1);
+            max-height: 100px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+          }
+        }
+
+        @keyframes orchis-offer-slide-out {
+          from {
+            opacity: 1;
+            transform: translateY(0) scaleY(1);
+            max-height: 100px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+          }
+          to {
+            opacity: 0;
+            transform: translateY(-20px) scaleY(0.8);
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+          }
+        }
+
+        .orchis-offer-content {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .orchis-offer-divider {
+          width: 1px;
+          height: 32px;
+          background: white;
+          flex-shrink: 0;
+        }
+
+        .orchis-offer-text {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .orchis-offer-title {
+          color: white;
+          font-size: 13px;
+          font-weight: 600;
+          margin: 0 0 2px 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .orchis-timer {
+          display: inline-flex;
+          align-items: center;
+          background: rgba(255, 255, 255, 0.15);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: 700;
+          font-family: 'Courier New', monospace;
+          letter-spacing: 0.5px;
+        }
+
+        .orchis-timer-urgent {
+          animation: orchis-timer-pulse 1s ease-in-out infinite;
+          background: rgba(239, 68, 68, 0.2);
+          color: #fca5a5;
+        }
+
+        @keyframes orchis-timer-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+
+        .orchis-offer-subtitle {
+          color: rgba(255, 255, 255, 0.75);
+          font-size: 12px;
+          line-height: 1.4;
+        }
+
+        .orchis-coupon-code {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          position: relative;
+        }
+
+        .orchis-coupon-code strong {
+          color: white;
+          font-weight: 700;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .orchis-copy-icon {
+          opacity: 0;
+          transform: scale(0.8);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .orchis-coupon-code:hover {
+          transform: scale(1.05);
+        }
+
+        .orchis-coupon-code:hover strong {
+          transform: scale(1.05);
+        }
+
+        .orchis-coupon-code:hover .orchis-copy-icon {
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        .orchis-coupon-code:active {
+          transform: scale(0.95);
+        }
+
+        .orchis-coupon-code.orchis-copied {
+          animation: orchis-copy-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes orchis-copy-bounce {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+        }
+
+        .orchis-close-offer {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 20px;
+          cursor: pointer;
+          padding: 0;
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          flex-shrink: 0;
+        }
+
+        .orchis-close-offer:hover {
+          color: white;
+          transform: rotate(90deg);
+        }
+
         @media (max-width: 480px) {
           .orchis-chat-widget {
             width: calc(100vw - 32px);
             height: 70vh;
             max-height: 500px;
+          }
+
+          .orchis-discount-popup {
+            width: calc(100vw - 40px);
+            left: 20px;
+            transform: none;
+          }
+
+          .orchis-discount-content {
+            min-width: auto;
           }
         }
       `;
@@ -1166,8 +876,24 @@ Provide JSON with:
     getWidgetHTML: function() {
       return `
         <div class="orchis-chat-widget">
+          <div class="orchis-chat-header">
+            <div class="orchis-agent-avatar">
+              ${this.config.logoUrl ?
+                `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />` :
+                '<div class="orchis-default-avatar">✨</div>'
+              }
+            </div>
+            <div class="orchis-agent-details">
+              <div class="orchis-agent-name">${this.config.projectName}</div>
+              <div class="orchis-status">Online now</div>
+            </div>
+            <div class="orchis-status-dot"></div>
+          </div>
+
+          <!-- Offer banner will be inserted here for return users -->
+
           <div class="orchis-messages"></div>
-          
+
           <div class="orchis-input-section">
             <div class="orchis-input-container">
               <div class="orchis-input-row">
@@ -1181,12 +907,14 @@ Provide JSON with:
                 </button>
               </div>
             </div>
-            
+
           </div>
+          ${!this.config.whitelabel ? `
           <div class="orchis-powered-by">
               <img src="https://orchis.app/logo.png" alt="Orchis" class="orchis-logo" />
               <span>Powered by <a href="https://orchis.app" target="_blank" class="orchis-link">ORCHIS</a></span>
             </div>
+          ` : ''}
         </div>
       `;
     },
@@ -1206,17 +934,40 @@ Provide JSON with:
     },
 
     addWelcomeMessage: function() {
-      const welcomeMessage = this.userName 
-        ? `Welcome back, ${this.userName}! What would you like to know about ${this.config.projectName}?`
-        : `Hi! I'm ${this.config.projectName}'s AI assistant. What's your name so I can personalize our session?`;
-      
+      // Context-aware welcome based on current page
+      const currentPath = window.location.pathname.toLowerCase();
+      const currentURL = window.location.href.toLowerCase();
+
+      let welcomeMessage = '';
+      let contextualSuggestions = [];
+
+      // Smart context detection
+      if (currentPath.includes('pricing') || currentURL.includes('pricing')) {
+        welcomeMessage = `Hi! I see you're checking out pricing. I can help you find the perfect plan for your needs!`;
+        contextualSuggestions = ['Compare plans', 'Enterprise pricing', 'Free trial details'];
+      } else if (currentPath.includes('features') || currentURL.includes('features')) {
+        welcomeMessage = `Hey! Exploring our features? I'd love to show you what ${this.config.projectName} can do!`;
+        contextualSuggestions = ['Key features', 'Integrations', 'See demo'];
+      } else if (currentPath.includes('about') || currentPath.includes('contact')) {
+        welcomeMessage = `Hi there! Looking to get in touch? I can help answer questions or schedule a call!`;
+        contextualSuggestions = ['Book a demo', 'Talk to sales', 'Contact support'];
+      } else if (currentPath.includes('blog') || currentPath.includes('resources')) {
+        welcomeMessage = `Hey! Reading our content? Feel free to ask me anything about ${this.config.projectName}!`;
+        contextualSuggestions = ['Getting started', 'Use cases', 'Documentation'];
+      } else if (this.userName) {
+        welcomeMessage = `Welcome back, ${this.userName}! What would you like to know about ${this.config.projectName}?`;
+      } else {
+        welcomeMessage = `Hi! I'm ${this.config.projectName}'s AI assistant. What's your name so I can personalize our session?`;
+      }
+
       this.messages.push({
         id: 1,
         role: 'assistant',
         content: welcomeMessage,
-        timestamp: new Date()
+        timestamp: new Date(),
+        suggestions: contextualSuggestions
       });
-      
+
       this.updateMessages();
     },
 
@@ -1258,10 +1009,6 @@ Provide JSON with:
       // Start chat session if first message
       if (this.messages.length === 0) {
         this.sessionManager.startChat();
-        // Update behavior metrics from tracker
-        const behaviorMetrics = this.sessionManager.behaviorTracker.getMetrics();
-        this.sessionManager.sessionData.behaviorMetrics.clicksBeforeChat = behaviorMetrics.clicksBeforeChat;
-        this.sessionManager.sessionData.behaviorMetrics.scrollDepth = behaviorMetrics.scrollDepth;
       }
 
       // Check if user is providing their name
@@ -1291,11 +1038,24 @@ Provide JSON with:
           ? `User ${this.userName} asks: ${message}`
           : message;
 
-        // Send last 6 messages (3 Q&A pairs) for context
-        const recentMessages = this.messages.slice(-6).map(msg => ({
-          role: msg.role,
-          content: msg.content
-        }));
+        // Send conversation history with token limit (~2000 tokens = ~8000 chars)
+        let recentMessages = [];
+        let totalChars = 0;
+        const maxChars = 8000;
+
+        // Add messages from newest to oldest until we hit limit
+        for (let i = this.messages.length - 1; i >= 0; i--) {
+          const msg = this.messages[i];
+          const msgLength = msg.content.length;
+
+          if (totalChars + msgLength > maxChars) break;
+
+          recentMessages.unshift({
+            role: msg.role,
+            content: msg.content
+          });
+          totalChars += msgLength;
+        }
 
         // Prepare request data
         const timestamp = Date.now();
@@ -1334,16 +1094,26 @@ Provide JSON with:
 
         console.log('📡 Response status:', response.status);
         console.log('📡 Response headers:', [...response.headers.entries()]);
-        
+
         const result = await response.json();
-        
+
+        // Check for limit error (429 status)
+        if (response.status === 429 && result.error === 'LIMIT_REACHED') {
+          this.setLoading(false);
+          const limitMsg = `You've reached your monthly message limit. Please upgrade your plan to continue chatting. 🚀`;
+          this.addMessage('assistant', limitMsg);
+          this.sessionManager.addMessage(limitMsg, false);
+          console.warn('📊 Token limit reached:', result.details);
+          return;
+        }
+
         if (result.data && result.data.response) {
           this.setLoading(false);
           this.addMessage('assistant', result.data.response);
-          
+
           // Add assistant response to session manager
           this.sessionManager.addMessage(result.data.response, false);
-          
+
           // Handle AI analysis if available
           if (result.data.analysis) {
             console.log('🧠 AI Analysis received:', result.data.analysis);
@@ -1366,21 +1136,17 @@ Provide JSON with:
     },
 
     handleAIAnalysis: function(analysis) {
-      // Update session data with AI analysis
-      this.sessionManager.sessionData.sentiment = analysis.sentiment;
-      this.sessionManager.sessionData.intentDetection = analysis.intent;
-      this.sessionManager.sessionData.category = analysis.category;
-      this.sessionManager.sessionData.topic = analysis.topic;
-      this.sessionManager.sessionData.qualityMetrics.urgencyLevel = analysis.urgency;
-      
-      // Smart ticket creation based on AI analysis
-      if (analysis.needsTicket && !this.sessionManager.sessionData.ticketCreated) {
-        console.log('🎫 AI recommends ticket creation:', analysis.ticketReason);
-        this.sessionManager.createSmartTicket(analysis);
-      }
-      
-      // Session data already updated above
-      console.log('📊 Session updated with AI analysis');
+      // Store AI analysis in current conversation
+      this.sessionManager.sessionData.currentConversation.analysis = analysis;
+
+      console.log('🧠 AI Analysis stored:', {
+        mainCategory: analysis.mainCategory,
+        subCategory: analysis.subCategory,
+        sentiment: analysis.sentimentScore
+      });
+
+      // Save updated session
+      this.sessionManager.saveSession();
     },
 
     addMessage: function(role, content) {
@@ -1397,15 +1163,39 @@ Provide JSON with:
 
     updateMessages: function() {
       const messagesContainer = this.container.querySelector('.orchis-messages');
-      const html = this.messages.map(message => `
-        <div class="orchis-message orchis-${message.role}-message">
-          <div class="orchis-message-label">${message.role === 'user' ? 'You' : this.config.projectName + ' AI'}</div>
-          <div class="orchis-message-content">${message.content}${this.isTyping && this.messages[this.messages.length - 1].id === message.id ? '<span style="animation: blink 1s infinite;">|</span>' : ''}</div>
-        </div>
-      `).join('');
+      const html = this.messages.map(message => {
+        let suggestionsHTML = '';
+        if (message.suggestions && message.suggestions.length > 0) {
+          suggestionsHTML = `
+            <div class="orchis-suggestions">
+              ${message.suggestions.map(suggestion => `
+                <button class="orchis-suggestion-btn" data-suggestion="${suggestion}">${suggestion}</button>
+              `).join('')}
+            </div>
+          `;
+        }
+
+        return `
+          <div class="orchis-message orchis-${message.role}-message">
+            <div class="orchis-message-label">${message.role === 'user' ? 'You' : this.config.projectName + ' AI'}</div>
+            <div class="orchis-message-content">${message.content}${this.isTyping && this.messages[this.messages.length - 1].id === message.id ? '<span style="animation: blink 1s infinite;">|</span>' : ''}</div>
+            ${suggestionsHTML}
+          </div>
+        `;
+      }).join('');
 
       messagesContainer.innerHTML = html + (this.isLoading ? this.getLoadingHTML() : '');
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      // Add click handlers for suggestions
+      const suggestionBtns = messagesContainer.querySelectorAll('.orchis-suggestion-btn');
+      suggestionBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const suggestion = btn.dataset.suggestion;
+          this.container.querySelector('.orchis-input').value = suggestion;
+          this.sendMessage();
+        });
+      });
     },
 
     typeMessage: function(content) {
@@ -1449,6 +1239,97 @@ Provide JSON with:
           </div>
         </div>
       `;
+    },
+
+    showReturnUserDiscount: function() {
+      const discountConfig = this.config.returnUserDiscount;
+
+      // Check if discount is enabled and configured
+      if (!discountConfig || !discountConfig.enabled) return;
+
+      // Check if already shown to this user
+      const shownKey = `orchis_discount_shown_${this.sessionManager.anonymousUserId}`;
+      if (localStorage.getItem(shownKey)) return;
+
+      // Insert offer banner after header
+      const header = this.container.querySelector('.orchis-chat-header');
+      if (!header) return;
+
+      const offerBanner = document.createElement('div');
+      offerBanner.className = 'orchis-offer-banner';
+      const couponCode = discountConfig.code || 'WELCOME15';
+      offerBanner.innerHTML = `
+        <div class="orchis-offer-content">
+          <div class="orchis-offer-divider"></div>
+          <div class="orchis-offer-text">
+            <div class="orchis-offer-title">
+              ${discountConfig.title || 'Welcome back!'}
+              <span class="orchis-timer">10:00</span>
+            </div>
+            <div class="orchis-offer-subtitle">
+              Get 15% off with code
+              <span class="orchis-coupon-code" data-code="${couponCode}">
+                <strong>${couponCode}</strong>
+                <svg class="orchis-copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </span>
+            </div>
+          </div>
+          <button class="orchis-close-offer">×</button>
+        </div>
+      `;
+
+      // Insert after header
+      header.parentNode.insertBefore(offerBanner, header.nextSibling);
+
+      // Add copy functionality
+      const couponEl = offerBanner.querySelector('.orchis-coupon-code');
+      couponEl.addEventListener('click', () => {
+        navigator.clipboard.writeText(couponCode).then(() => {
+          couponEl.classList.add('orchis-copied');
+          setTimeout(() => couponEl.classList.remove('orchis-copied'), 1500);
+        });
+      });
+
+      // Add close functionality with animation
+      const closeBtn = offerBanner.querySelector('.orchis-close-offer');
+      closeBtn.addEventListener('click', () => {
+        offerBanner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+        setTimeout(() => offerBanner.remove(), 400);
+      });
+
+      // Countdown timer (10 minutes)
+      const timerEl = offerBanner.querySelector('.orchis-timer');
+      const expiryTime = Date.now() + (10 * 60 * 1000);
+
+      const updateTimer = () => {
+        const remaining = expiryTime - Date.now();
+        if (remaining <= 0) {
+          offerBanner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+          setTimeout(() => offerBanner.remove(), 400);
+          return;
+        }
+
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        // Pulse animation when < 1 minute
+        if (remaining < 60000) {
+          timerEl.classList.add('orchis-timer-urgent');
+        }
+
+        requestAnimationFrame(updateTimer);
+      };
+
+      updateTimer();
+
+      // Mark as shown
+      localStorage.setItem(shownKey, 'true');
+
+      console.log('🎁 Return user discount shown:', discountConfig.code);
     }
   };
 

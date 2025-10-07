@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import ToastDemo from './ToastDemo';
+import ChatWidgetMockup from './ChatWidgetMockup';
 import { addToWaitlist } from '../../utils/firebaseFunctions';
 
 export default function Hero() {
@@ -119,15 +119,15 @@ export default function Hero() {
             {/* Right side - Desktop only, bottom aligned */}
             <div className="hidden lg:flex lg:items-end lg:justify-center">
               <div className="w-full max-w-sm">
-                <ToastDemo />
+                <ChatWidgetMockup />
               </div>
             </div>
           </div>
-          
-          {/* Mobile ToastDemo - Below content */}
+
+          {/* Mobile ChatWidget - Below content */}
           <div className="lg:hidden mt-12 flex justify-center">
             <div className="w-full max-w-sm">
-              <ToastDemo />
+              <ChatWidgetMockup />
             </div>
           </div>
           

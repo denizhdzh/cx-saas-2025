@@ -26,8 +26,8 @@ export default function PricingDashboard() {
   const [dataLoading, setDataLoading] = useState(true);
   
   const allFeatures = [
-    { name: "messages/month", starter: "~1,000", growth: "~5,000", scale: "~40,000" },
-    { name: "AI Agents", starter: "1", growth: "3", scale: "Unlimited" },
+    { name: "messages/month", starter: "~1,500", growth: "~7,500", scale: "~50,000" },
+    { name: "AI Agents", starter: "1", growth: "5", scale: "Unlimited" },
     { name: "Unlimited training data", starter: true, growth: true, scale: true },
     { name: "Advanced analytics", starter: true, growth: true, scale: true },
     { name: "Ticket tracking", starter: true, growth: true, scale: true },
@@ -49,8 +49,8 @@ export default function PricingDashboard() {
           setSubscriptionData({
             status: userData.subscriptionStatus || 'free',
             plan: userData.subscriptionPlan || 'free',
-            tokenLimit: userData.tokenLimit || 0,
-            tokensUsed: userData.tokensUsed || 0,
+            messageLimit: userData.messageLimit || 0,
+            messagesUsed: userData.messagesUsed || 0,
             agentLimit: userData.agentLimit || 0
           });
         }
@@ -194,32 +194,35 @@ export default function PricingDashboard() {
         <div className="w-12 h-px bg-stone-900 dark:bg-stone-50 mt-4"></div>
       </div>
 
-      {/* Usage Progress Bar - Only show if has active subscription */}
-      {hasActiveSubscription && (
+      {/* Usage Progress Bar - Show for all users */}
+      {subscriptionData && (
         <div className="mb-12 p-6 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700">
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-medium text-stone-900 dark:text-stone-50">
-                Monthly Usage
+                {subscriptionData.plan === 'free' ? 'One-Time Message Credits' : 'Monthly Usage'}
               </h3>
               <span className="text-sm text-stone-600 dark:text-stone-400 capitalize">
                 {subscriptionData.plan} Plan
               </span>
             </div>
             <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400 mb-3">
-              <span>{formatNumber(subscriptionData.tokensUsed)} tokens (~{Math.floor(subscriptionData.tokensUsed / 100)} messages)</span>
-              <span>{formatNumber(subscriptionData.tokenLimit)} tokens limit</span>
+              <span>{formatNumber(subscriptionData.messagesUsed)} messages</span>
+              <span>{formatNumber(subscriptionData.messageLimit)} messages {subscriptionData.plan === 'free' ? 'total' : 'limit'}</span>
             </div>
             <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-3">
               <div
                 className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 rounded-full transition-all duration-300"
                 style={{
-                  width: `${Math.min((subscriptionData.tokensUsed / subscriptionData.tokenLimit) * 100, 100)}%`
+                  width: `${Math.min((subscriptionData.messagesUsed / subscriptionData.messageLimit) * 100, 100)}%`
                 }}
               ></div>
             </div>
             <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-              {((subscriptionData.tokensUsed / subscriptionData.tokenLimit) * 100).toFixed(1)}% used this month
+              {subscriptionData.plan === 'free'
+                ? `${formatNumber(subscriptionData.messageLimit - subscriptionData.messagesUsed)} credits remaining (does not renew)`
+                : `${((subscriptionData.messagesUsed / subscriptionData.messageLimit) * 100).toFixed(1)}% used this month`
+              }
             </div>
           </div>
         </div>

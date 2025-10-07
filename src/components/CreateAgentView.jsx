@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAgent } from '../contexts/AgentContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { storage, functions } from '../firebase';
+import { storage, functions, db } from '../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import UpgradeModal from './UpgradeModal';
 import {
   CloudArrowUpIcon,
   DocumentTextIcon,
@@ -27,12 +29,9 @@ export default function CreateAgentView({ onBack }) {
   const { showNotification } = useNotification();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [isManualMode, setIsManualMode] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: '',
     projectName: '',
-    description: '',
     websiteUrl: ''
   });
 
@@ -44,6 +43,40 @@ export default function CreateAgentView({ onBack }) {
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [trainingComplete, setTrainingComplete] = useState(false);
   const [createdAgentId, setCreatedAgentId] = useState(null);
+
+  // Subscription and limit tracking
+  const [subscriptionData, setSubscriptionData] = useState(null);
+  const [currentAgentCount, setCurrentAgentCount] = useState(0);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Fetch user subscription and agent count on mount
+  useEffect(() => {
+    const fetchSubscriptionData = async () => {
+      if (!user) return;
+
+      try {
+        // Get user subscription data
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setSubscriptionData({
+            plan: userData.subscriptionPlan || 'free',
+            agentLimit: userData.agentLimit || 0,
+            status: userData.subscriptionStatus || 'free'
+          });
+        }
+
+        // Count existing agents
+        const agentsRef = collection(db, 'users', user.uid, 'agents');
+        const agentsSnapshot = await getDocs(agentsRef);
+        setCurrentAgentCount(agentsSnapshot.size);
+      } catch (error) {
+        console.error('Error fetching subscription data:', error);
+      }
+    };
+
+    fetchSubscriptionData();
+  }, [user]);
 
   const handleFetchMetadata = async () => {
     if (!formData.websiteUrl) {
@@ -283,19 +316,46 @@ export default function CreateAgentView({ onBack }) {
       return;
     }
 
-    if (!formData.name || !formData.projectName) {
-      showNotification('Please enter agent name and project name', 'error');
+    if (!formData.projectName || !formData.websiteUrl) {
+      showNotification('Please enter agent name and website URL', 'error');
       return;
+    }
+
+    // Check agent limit before creating
+    if (subscriptionData) {
+      const { agentLimit } = subscriptionData;
+
+      // If agentLimit is not -1 (unlimited) and current count >= limit, show upgrade modal
+      if (agentLimit !== -1 && currentAgentCount >= agentLimit) {
+        setShowUpgradeModal(true);
+        return;
+      }
     }
 
     setIsTraining(true);
 
+    // Give time for UI to update before heavy operations
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     try {
+      // Extract domain from website URL for allowed domains
+      let allowedDomains = [];
+      if (formData.websiteUrl) {
+        try {
+          const url = new URL(formData.websiteUrl);
+          allowedDomains = [url.hostname];
+        } catch (e) {
+          console.warn('Could not extract domain from URL:', e);
+        }
+      }
+
+
       const agentData = {
         ...formData,
         logoUrl: logoPreview,
         documentCount: readyFiles.length,
         trainingStatus: 'training',
+        allowedDomains: allowedDomains,
         userId: user.uid,
         createdAt: new Date().toISOString()
       };
@@ -319,11 +379,12 @@ export default function CreateAgentView({ onBack }) {
       }));
 
       const trainAgent = httpsCallable(functions, 'trainAgent');
+
+      // Start training - backend processes fully before returning
       await trainAgent({
         agentId: agentId,
         documents: documents,
         agentConfig: {
-          name: formData.name,
           projectName: formData.projectName,
           userId: user.uid
         }
@@ -333,6 +394,8 @@ export default function CreateAgentView({ onBack }) {
         ...file,
         status: 'processed'
       })));
+
+      console.log('✅ Training completed! Agent ID:', agentId);
 
       setIsTraining(false);
       setTrainingComplete(true);
@@ -355,9 +418,16 @@ export default function CreateAgentView({ onBack }) {
 
   const canGoToNextStep = () => {
     if (currentStep === 1) {
-      return formData.name && formData.projectName && logoPreview;
+      return formData.projectName && formData.websiteUrl && logoPreview;
     }
     if (currentStep === 2) {
+      // Check limit before allowing to go to step 3
+      if (subscriptionData) {
+        const { agentLimit } = subscriptionData;
+        if (agentLimit !== -1 && currentAgentCount >= agentLimit) {
+          return false; // Don't allow proceeding if at limit
+        }
+      }
       return uploadedFiles.filter(f => f.status === 'ready').length > 0;
     }
     return true;
@@ -396,111 +466,66 @@ export default function CreateAgentView({ onBack }) {
 
   const renderStep1 = () => (
     <div className="space-y-4">
-      {!isManualMode ? (
-        <>
-          <div className="space-y-3">
-            <label className="block text-xs font-medium text-stone-600 dark:text-stone-400">
-              Website URL
-            </label>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+            Agent Name
+          </label>
+          <input
+            type="text"
+            name="projectName"
+            value={formData.projectName}
+            onChange={handleInputChange}
+            className="form-input text-sm bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+            placeholder="Acme Corp"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+            Website URL
+          </label>
+          <input
+            type="url"
+            name="websiteUrl"
+            value={formData.websiteUrl}
+            onChange={handleInputChange}
+            className="form-input text-sm bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+            placeholder="https://example.com"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+            Logo
+          </label>
+          <div className="flex items-center gap-3">
+            {logoPreview && (
+              <img
+                src={logoPreview}
+                alt="Logo"
+                className="w-10 h-10 rounded-xl object-cover border border-stone-200 dark:border-stone-700"
+              />
+            )}
             <input
-              type="url"
-              name="websiteUrl"
-              value={formData.websiteUrl}
-              onChange={handleInputChange}
-              className="form-input text-sm bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-2xl"
-              placeholder="https://example.com"
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="hidden"
+              id="logo-upload-step1"
             />
-            <button
-              onClick={handleFetchMetadata}
-              disabled={isFetchingMetadata}
-              className="w-full btn-primary text-sm py-2 rounded-2xl"
+            <label
+              htmlFor="logo-upload-step1"
+              className="btn-secondary text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1.5 cursor-pointer"
             >
-              {isFetchingMetadata ? 'Loading...' : 'Continue'}
-            </button>
+              <PhotoIcon className="w-3.5 h-3.5" />
+              Upload Logo
+            </label>
           </div>
+        </div>
+      </div>
 
-          <button
-            onClick={() => setIsManualMode(true)}
-            className="w-full text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 py-2 flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <PencilIcon className="w-3.5 h-3.5" />
-            Enter manually instead
-          </button>
-        </>
-      ) : (
-        <>
-          <button
-            onClick={() => setIsManualMode(false)}
-            className="w-full text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 py-1.5 flex items-center justify-center gap-1.5 transition-colors mb-2"
-          >
-            <GlobeAltIcon className="w-3.5 h-3.5" />
-            Fetch from URL instead
-          </button>
-
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
-                  Agent Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="form-input text-sm bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
-                  placeholder="Support Bot"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
-                  Project Name
-                </label>
-                <input
-                  type="text"
-                  name="projectName"
-                  value={formData.projectName}
-                  onChange={handleInputChange}
-                  className="form-input text-sm bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
-                  placeholder="My Company"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
-                Logo
-              </label>
-              <div className="flex items-center gap-3">
-                {logoPreview && (
-                  <img
-                    src={logoPreview}
-                    alt="Logo"
-                    className="w-10 h-10 rounded-xl object-cover border border-stone-200 dark:border-stone-700"
-                  />
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="hidden"
-                  id="logo-upload-step1"
-                />
-                <label
-                  htmlFor="logo-upload-step1"
-                  className="btn-secondary text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <PhotoIcon className="w-3.5 h-3.5" />
-                  Upload
-                </label>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {logoPreview && (
+      {logoPreview && formData.projectName && (
         <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
           <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-2xl">
             <img
@@ -510,10 +535,10 @@ export default function CreateAgentView({ onBack }) {
             />
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-stone-900 dark:text-stone-50 truncate">
-                {formData.name || 'Agent Name'}
+                {formData.projectName}
               </div>
               <div className="text-xs text-stone-500 truncate">
-                {formData.projectName || 'Project Name'}
+                {formData.websiteUrl}
               </div>
             </div>
             <CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
@@ -619,7 +644,23 @@ export default function CreateAgentView({ onBack }) {
   const renderStep3 = () => {
     if (trainingComplete && createdAgentId) {
       // Show embed code after training
-      const embedCode = `<script src="${window.location.origin}/widget.js" data-agent-id="${createdAgentId}"></script>`;
+      const embedCode = `<!-- Orchis Chatbot -->
+<script>
+(function(){
+  if(!window.OrchisChatbot){
+    const script = document.createElement('script');
+    script.src = 'https://orchis.app/chatbot-widget.js';
+    script.onload = function() {
+      if(window.OrchisChatbot) {
+        window.OrchisChatbot.init({
+          agentId: '${createdAgentId}'
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }
+})();
+</script>`;
 
       return (
         <div className="space-y-4">
@@ -725,7 +766,14 @@ export default function CreateAgentView({ onBack }) {
         Back
       </button>
 
-
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentPlan={subscriptionData?.plan}
+        agentLimit={subscriptionData?.agentLimit}
+        currentAgentCount={currentAgentCount}
+      />
 
       {renderStepIndicator()}
 
@@ -750,8 +798,18 @@ export default function CreateAgentView({ onBack }) {
         <div className={`flex items-center gap-2 ${trainingComplete ? 'w-full' : ''}`}>
           {currentStep < 3 && (
             <button
-              onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
-              disabled={!canGoToNextStep()}
+              onClick={() => {
+                // Check limit when clicking Next from step 2
+                if (currentStep === 2 && subscriptionData) {
+                  const { agentLimit } = subscriptionData;
+                  if (agentLimit !== -1 && currentAgentCount >= agentLimit) {
+                    setShowUpgradeModal(true);
+                    return;
+                  }
+                }
+                setCurrentStep(prev => Math.min(3, prev + 1));
+              }}
+              disabled={currentStep === 1 ? !canGoToNextStep() : (currentStep === 2 && uploadedFiles.filter(f => f.status === 'ready').length === 0)}
               className="btn-primary text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Next
@@ -783,7 +841,23 @@ export default function CreateAgentView({ onBack }) {
             <>
               <button
                 onClick={() => {
-                  const embedCode = `<script src="${window.location.origin}/widget.js" data-agent-id="${createdAgentId}"></script>`;
+                  const embedCode = `<!-- Orchis Chatbot -->
+<script>
+(function(){
+  if(!window.OrchisChatbot){
+    const script = document.createElement('script');
+    script.src = 'https://orchis.app/chatbot-widget.js';
+    script.onload = function() {
+      if(window.OrchisChatbot) {
+        window.OrchisChatbot.init({
+          agentId: '${createdAgentId}'
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }
+})();
+</script>`;
                   navigator.clipboard.writeText(embedCode);
                   showNotification('Embed code copied to clipboard!', 'success');
                 }}
@@ -792,7 +866,10 @@ export default function CreateAgentView({ onBack }) {
                 Copy Embed Code
               </button>
               <button
-                onClick={() => navigate(`/dashboard/${createdAgentId}`)}
+                onClick={() => {
+                  console.log('🚀 Navigating to:', `/dashboard/${createdAgentId}`);
+                  navigate(`/dashboard/${createdAgentId}`);
+                }}
                 className="flex-1 btn-primary text-xs py-2 rounded-xl inline-flex items-center justify-center gap-1.5"
               >
                 Go to Dashboard

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 
-export default function CategoryDonutChart({ data }) {
+export default function CategoryDonutChart({ data = [] }) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -15,12 +15,12 @@ export default function CategoryDonutChart({ data }) {
     return () => observer.disconnect();
   }, []);
 
-  const total = data?.reduce((sum, item) => sum + item.count, 0) || 0;
+  const total = data?.reduce((sum, item) => sum + (item.value || item.count || 0), 0) || 0;
 
   const chartData = data?.map((item, index) => ({
-    category: item.category.replace(/_/g, ' '),
-    count: item.count,
-    percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : 0,
+    category: (item.name || item.category || 'Unknown').replace(/_/g, ' '),
+    count: item.value || item.count || 0,
+    percentage: total > 0 ? (((item.value || item.count || 0) / total) * 100).toFixed(1) : 0,
     fill: 'rgba(249, 115, 22, 0.1)' // orange-500 with 10% opacity
   })) || [];
 

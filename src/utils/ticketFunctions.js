@@ -179,19 +179,71 @@ export const getTicketAnalytics = async (agentId, timeRange = 'daily', userId = 
         ...doc.data()
       }));
 
-      // Path: users/{userId}/agents/{agentId}/analytics/sessions/detailed/{sessionId}
-      const sessionsRef = collection(db, 'users', userId, 'agents', agentId, 'analytics', 'sessions', 'detailed');
-      const sessionsQuery = query(
-        sessionsRef,
-        where('savedAt', '>=', Timestamp.fromDate(startDate)),
-        orderBy('savedAt', 'desc'),
-        limit(50) // Get last 50 sessions for detailed view
-      );
-      const sessionsSnapshot = await getDocs(sessionsQuery);
-      const sessions = sessionsSnapshot.docs.map(doc => ({
+      // Path: users/{userId}/agents/{agentId}/sessions/{sessionId}
+      const sessionsRef = collection(db, 'users', userId, 'agents', agentId, 'sessions');
+
+      console.log('🔍 Fetching sessions from:', `users/${userId}/agents/${agentId}/sessions`);
+
+      // Fetch ALL sessions without any query (no index needed)
+      const sessionsSnapshot = await getDocs(sessionsRef);
+
+      console.log(`📦 Raw sessions fetched: ${sessionsSnapshot.size}`);
+
+      // Map all sessions first to see what we have
+      const allSessions = sessionsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+
+      // Log first session for debugging
+      if (allSessions.length > 0) {
+        console.log('🔍 First session raw data:', allSessions[0]);
+      }
+
+      // Filter and sort sessions on client side
+      const sessions = allSessions
+        .filter(session => {
+          if (!session.lastMessageTime) {
+            console.log(`⚠️ Session ${session.id} has no lastMessageTime field`);
+            return false;
+          }
+          const sessionDate = session.lastMessageTime.toDate();
+          const isInRange = sessionDate >= startDate;
+          if (!isInRange) {
+            console.log(`⏰ Session ${session.id} outside time range: ${sessionDate.toISOString()}`);
+          }
+          return isInRange;
+        })
+        .sort((a, b) => {
+          const aTime = a.lastMessageTime?.toDate?.() || new Date(0);
+          const bTime = b.lastMessageTime?.toDate?.() || new Date(0);
+          return bTime - aTime;
+        })
+        .slice(0, 50); // Limit to 50 after filtering
+
+      console.log(`✅ Filtered sessions: ${sessions.length}`);
+
+      // Now get all conversations for each session
+      const allConversations = [];
+      for (const session of sessions.slice(0, 10)) { // Limit to 10 recent sessions to avoid too many queries
+        try {
+          const conversationsRef = collection(db, 'users', userId, 'agents', agentId, 'sessions', session.id, 'conversations');
+          const conversationsSnapshot = await getDocs(conversationsRef);
+
+          conversationsSnapshot.docs.forEach(doc => {
+            allConversations.push({
+              id: doc.id,
+              sessionId: session.id,
+              anonymousUserId: session.anonymousUserId,
+              ...doc.data()
+            });
+          });
+        } catch (convError) {
+          console.log(`⚠️ Error fetching conversations for session ${session.id}:`, convError);
+        }
+      }
+
+      console.log(`📊 Total conversations found: ${allConversations.length}`);
 
       // Path: users/{userId}/agents/{agentId}/conversations - Get actual AI analysis data
       const conversationsRef = collection(db, 'users', userId, 'agents', agentId, 'conversations');
@@ -220,12 +272,26 @@ export const getTicketAnalytics = async (agentId, timeRange = 'daily', userId = 
         console.log('Could not fetch user patterns:', patternsError);
       }
 
-      console.log('Found analytics:', {
+      console.log('📊 Found analytics:', {
         dailyStats: dailyStats.length,
         sessions: sessions.length,
         conversations: conversations.length,
-        userPatterns: userPatterns.length
+        userPatterns: userPatterns.length,
+        userId,
+        agentId,
+        startDate: startDate.toISOString()
       });
+
+      // Debug: Log first session if exists
+      if (sessions.length > 0) {
+        console.log('📊 First session sample:', {
+          id: sessions[0].id,
+          lastMessageTime: sessions[0].lastMessageTime?.toDate?.(),
+          anonymousUserId: sessions[0].anonymousUserId
+        });
+      } else {
+        console.log('⚠️ No sessions found. Checking path: users/' + userId + '/agents/' + agentId + '/sessions');
+      }
 
       if (dailyStats.length > 0 || sessions.length > 0 || conversations.length > 0) {
         console.log(`📊 Processing analytics for timeRange: ${timeRange}, ${sessions.length} sessions, ${conversations.length} conversations found`);

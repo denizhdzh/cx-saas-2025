@@ -1,19 +1,59 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAgent } from '../contexts/AgentContext';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CreditCardIcon, Settings03Icon, ArrowDown01Icon, SquareArrowMoveRightUpIcon } from '@hugeicons/core-free-icons';
+import { CreditCardIcon, Settings03Icon, ArrowDown01Icon, SquareArrowMoveRightUpIcon, Alert02Icon } from '@hugeicons/core-free-icons';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { agents } = useAgent();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
   const userDropdownRef = useRef(null);
 
   const getInitials = (name) => {
     if (!name) return 'U';
     return name.split(' ').map(part => part[0]).join('').substring(0, 2).toUpperCase();
   };
+
+  // Listen for unread alerts across all agents
+  useEffect(() => {
+    if (!user || !agents || agents.length === 0) {
+      setUnreadAlertsCount(0);
+      return;
+    }
+
+    const unsubscribers = [];
+
+    agents.forEach((agent) => {
+      const alertsRef = collection(db, 'users', user.uid, 'agents', agent.id, 'alerts');
+      const q = query(alertsRef, where('read', '==', false));
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        // Recalculate total unread alerts across all agents
+        let totalUnread = 0;
+        agents.forEach((ag) => {
+          const agentAlertsRef = collection(db, 'users', user.uid, 'agents', ag.id, 'alerts');
+          const agentQuery = query(agentAlertsRef, where('read', '==', false));
+
+          onSnapshot(agentQuery, (agentSnapshot) => {
+            totalUnread = agentSnapshot.docs.length;
+            setUnreadAlertsCount(totalUnread);
+          });
+        });
+      });
+
+      unsubscribers.push(unsubscribe);
+    });
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [user, agents]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -54,16 +94,32 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo and Brand */}
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img 
-              src="/logo.png" 
-              alt="Orchis Logo" 
+            <img
+              src="/logo.png"
+              alt="Orchis Logo"
               className="w-5 h-5"
             />
             <span className="font-bold text-stone-900 dark:text-stone-50 text-md">ORCHIS</span>
           </Link>
 
-          {/* User Profile Dropdown */}
-          <div className="relative" ref={userDropdownRef}>
+          {/* Right Section: Alerts + User Profile */}
+          <div className="flex items-center gap-3">
+            {/* Alert Bell */}
+            {unreadAlertsCount > 0 && (
+              <Link
+                to="/dashboard"
+                className="relative p-2 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors"
+                title={`${unreadAlertsCount} unread security alert${unreadAlertsCount > 1 ? 's' : ''}`}
+              >
+                <HugeiconsIcon icon={Alert02Icon} className="w-5 h-5 text-stone-500" />
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                  {unreadAlertsCount > 9 ? '9+' : unreadAlertsCount}
+                </span>
+              </Link>
+            )}
+
+            {/* User Profile Dropdown */}
+            <div className="relative" ref={userDropdownRef}>
             <button
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
               className="flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors cursor-pointer"
@@ -123,6 +179,7 @@ export default function Navbar() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </nav>
   );

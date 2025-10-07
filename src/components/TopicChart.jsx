@@ -16,11 +16,14 @@ export default function TopicChart({ data = [] }) {
   }, []);
 
   const chartDataArray = data
-    .filter(item => item.count > 0)
-    .map(item => ({
-      category: item.topic.charAt(0).toUpperCase() + item.topic.slice(1),
-      count: item.count
-    }));
+    .filter(item => (item.value || item.count || 0) > 0)
+    .map(item => {
+      const topicName = item.name || item.topic || 'Unknown';
+      return {
+        category: topicName.charAt(0).toUpperCase() + topicName.slice(1),
+        count: item.value || item.count || 0
+      };
+    });
 
   const total = chartDataArray.reduce((sum, item) => sum + item.count, 0);
 

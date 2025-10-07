@@ -1,17 +1,17 @@
 import React from 'react';
-import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-export default function TicketChart({ 
-  chartData, 
-  showOpened = true, 
-  showResolved = true, 
+export default function TicketChart({
+  chartData,
+  showOpened = true,
+  showResolved = true,
   timeRange = 'daily'
 }) {
   // Transform chartData object to array format for Recharts
   const data = Object.keys(chartData).sort().map(date => ({
     date,
-    opened: chartData[date]?.opened || 0,
-    resolved: chartData[date]?.resolved || 0
+    resolved: chartData[date]?.resolved || 0,
+    unresolved: (chartData[date]?.analyzed || 0) - (chartData[date]?.resolved || 0)
   }));
 
   // If no data, create empty array
@@ -23,8 +23,8 @@ export default function TicketChart({
       date.setDate(today.getDate() - i);
       emptyData.push({
         date: date.toISOString().split('T')[0],
-        opened: 0,
-        resolved: 0
+        resolved: 0,
+        unresolved: 0
       });
     }
     return (
@@ -33,10 +33,10 @@ export default function TicketChart({
           <ComposedChart
             data={emptyData}
             margin={{
-              left: 4,
-              right: 20,
-              top: 12,
-              bottom: 18,
+              left: -20,
+              right: 10,
+              top: 5,
+              bottom: 5,
             }}
             className="text-stone-500 [&_.recharts-text]:text-xs focus:outline-none [&>*]:focus:outline-none"
           >
@@ -47,15 +47,31 @@ export default function TicketChart({
               tickLine={false}
               tickMargin={12}
               dataKey="date"
+              angle={timeRange === 'weekly' || timeRange === 'quarterly' ? -45 : 0}
+              textAnchor={timeRange === 'weekly' || timeRange === 'quarterly' ? 'end' : 'middle'}
+              height={timeRange === 'weekly' || timeRange === 'quarterly' ? 80 : 60}
               tickFormatter={(value) => {
-                const date = new Date(value);
-                if (timeRange === 'daily') {
+                if (timeRange === 'hourly') {
+                  // Show hour only (e.g., "14:00")
+                  return value.split(' ')[1] || value;
+                } else if (timeRange === 'daily') {
+                  // Show day (e.g., "Jan 1")
+                  const date = new Date(value);
                   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                 } else if (timeRange === 'weekly') {
+                  // Show date (e.g., "Jan 1")
+                  const date = new Date(value);
                   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                } else {
-                  return date.toLocaleDateString(undefined, { month: 'short' });
+                } else if (timeRange === 'quarterly') {
+                  // Show "Week of Jan 1"
+                  return value.replace('Week of ', '');
+                } else if (timeRange === 'alltime') {
+                  // Show month-year (e.g., "Jan 2025")
+                  const [year, month] = value.split('-');
+                  const date = new Date(year, parseInt(month) - 1);
+                  return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
                 }
+                return value;
               }}
             />
 
@@ -66,14 +82,17 @@ export default function TicketChart({
             />
 
             <Tooltip
-              formatter={(value, name) => [Number(value).toLocaleString(), name === 'opened' ? 'Tickets Opened' : 'Tickets Resolved']}
+              formatter={(value, name) => {
+                const label = name === 'resolved' ? 'Resolved' : 'Unresolved';
+                return [Number(value).toLocaleString(), label];
+              }}
               labelFormatter={(value) => {
                 const date = new Date(value);
-                return date.toLocaleDateString(undefined, { 
+                return date.toLocaleDateString(undefined, {
                   weekday: 'long',
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 });
               }}
               contentStyle={{
@@ -84,29 +103,21 @@ export default function TicketChart({
               }}
             />
 
-            {showOpened && (
-              <Bar
-                dataKey="opened"
-                name="Tickets Opened"
-                fill="#f97316"
-                maxBarSize={24}
-                radius={[4, 4, 0, 0]}
-              />
-            )}
-            
-            {showResolved && (
-              <Line
-                dataKey="resolved"
-                name="Tickets Resolved"
-                type="monotone"
-                stroke="#f97316"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                strokeLinecap="round"
-                dot={false}
-                activeDot={{ r: 4, fill: '#f97316' }}
-              />
-            )}
+            <Bar
+              dataKey="resolved"
+              name="Resolved"
+              fill="#22c55e"
+              stackId="a"
+              radius={[0, 0, 0, 0]}
+            />
+
+            <Bar
+              dataKey="unresolved"
+              name="Unresolved"
+              fill="#ef4444"
+              stackId="a"
+              radius={[4, 4, 0, 0]}
+            />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -119,10 +130,10 @@ export default function TicketChart({
         <ComposedChart
           data={data}
           margin={{
-            left: 4,
-            right: 20,
-            top: 12,
-            bottom: 18,
+            left: -20,
+            right: 10,
+            top: 5,
+            bottom: 5,
           }}
           className="text-stone-500 [&_.recharts-text]:text-xs focus:outline-none [&>*]:focus:outline-none"
         >
@@ -133,15 +144,31 @@ export default function TicketChart({
             tickLine={false}
             tickMargin={12}
             dataKey="date"
+            angle={timeRange === 'weekly' || timeRange === 'quarterly' ? -45 : 0}
+            textAnchor={timeRange === 'weekly' || timeRange === 'quarterly' ? 'end' : 'middle'}
+            height={timeRange === 'weekly' || timeRange === 'quarterly' ? 80 : 60}
             tickFormatter={(value) => {
-              const date = new Date(value);
-              if (timeRange === 'daily') {
+              if (timeRange === 'hourly') {
+                // Show hour only (e.g., "14:00")
+                return value.split(' ')[1] || value;
+              } else if (timeRange === 'daily') {
+                // Show day (e.g., "Jan 1")
+                const date = new Date(value);
                 return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
               } else if (timeRange === 'weekly') {
+                // Show date (e.g., "Jan 1")
+                const date = new Date(value);
                 return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-              } else {
-                return date.toLocaleDateString(undefined, { month: 'short' });
+              } else if (timeRange === 'quarterly') {
+                // Show "Week of Jan 1"
+                return value.replace('Week of ', '');
+              } else if (timeRange === 'alltime') {
+                // Show month-year (e.g., "Jan 2025")
+                const [year, month] = value.split('-');
+                const date = new Date(year, parseInt(month) - 1);
+                return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
               }
+              return value;
             }}
           />
 
@@ -152,14 +179,17 @@ export default function TicketChart({
           />
 
           <Tooltip
-            formatter={(value, name) => [Number(value).toLocaleString(), name === 'opened' ? 'Tickets Opened' : 'Tickets Resolved']}
+            formatter={(value, name) => {
+              const label = name === 'resolved' ? 'Resolved' : 'Unresolved';
+              return [Number(value).toLocaleString(), label];
+            }}
             labelFormatter={(value) => {
               const date = new Date(value);
-              return date.toLocaleDateString(undefined, { 
+              return date.toLocaleDateString(undefined, {
                 weekday: 'long',
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               });
             }}
             contentStyle={{
@@ -170,29 +200,21 @@ export default function TicketChart({
             }}
           />
 
-          {showOpened && (
-            <Bar
-              dataKey="opened"
-              name="Tickets Opened"
-              fill="#f94316ff"
-              maxBarSize={24}
-              radius={[4, 4, 0, 0]}
-            />
-          )}
-          
-          {showResolved && (
-            <Line
-              dataKey="resolved"
-              name="Tickets Resolved"
-              type="monotone"
-              stroke="#f97316"
-              strokeWidth={2}
-              strokeDasharray="4 4"
-              strokeLinecap="round"
-              dot={false}
-              activeDot={{ r: 4, fill: '#f97316' }}
-            />
-          )}
+          <Bar
+            dataKey="resolved"
+            name="Resolved"
+            fill="#22c55e"
+            stackId="a"
+            radius={[0, 0, 0, 0]}
+          />
+
+          <Bar
+            dataKey="unresolved"
+            name="Unresolved"
+            fill="#ef4444"
+            stackId="a"
+            radius={[4, 4, 0, 0]}
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

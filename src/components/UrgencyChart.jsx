@@ -15,9 +15,20 @@ export default function UrgencyChart({ data = [] }) {
     return () => observer.disconnect();
   }, []);
 
-  const chartDataArray = data.map(item => ({
-    category: item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1),
-    count: item.count
+  // Initialize with default urgency levels
+  const defaultUrgencies = { Low: 0, Medium: 0, High: 0 };
+
+  // Process data if available
+  if (data && data.length > 0) {
+    data.forEach(item => {
+      const name = item.name || 'Low';
+      defaultUrgencies[name] = item.value || 0;
+    });
+  }
+
+  const chartDataArray = Object.entries(defaultUrgencies).map(([category, count]) => ({
+    category,
+    count
   }));
 
   const total = chartDataArray.reduce((sum, item) => sum + item.count, 0);
@@ -44,24 +55,13 @@ export default function UrgencyChart({ data = [] }) {
             {data.category}
           </p>
           <p className="text-xs mt-1" style={{ color: '#f97316' }}>
-            {data.count} tickets ({data.percentage}%)
+            {data.count} conversations ({data.percentage}%)
           </p>
         </div>
       );
     }
     return null;
   };
-
-  if (total === 0) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No urgency data yet</div>
-          <div className="text-stone-300 dark:text-stone-600 text-xs">Data will appear as conversations are analyzed</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-full w-full relative">
