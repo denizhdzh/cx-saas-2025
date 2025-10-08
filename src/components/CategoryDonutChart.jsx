@@ -21,7 +21,7 @@ export default function CategoryDonutChart({ data = [] }) {
     category: (item.name || item.category || 'Unknown').replace(/_/g, ' '),
     count: item.value || item.count || 0,
     percentage: total > 0 ? (((item.value || item.count || 0) / total) * 100).toFixed(1) : 0,
-    fill: 'rgba(249, 115, 22, 0.1)' // orange-500 with 10% opacity
+    fill: 'rgba(249, 116, 22, 1)' // orange-500 with 10% opacity
   })) || [];
 
   const CustomTooltip = ({ active, payload }) => {
@@ -51,7 +51,8 @@ export default function CategoryDonutChart({ data = [] }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">No data available</div>
+          <div className="text-stone-400 dark:text-stone-500 text-sm">Not enough data yet</div>
+          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Start getting conversations to see insights</div>
         </div>
       </div>
     );
@@ -64,7 +65,7 @@ export default function CategoryDonutChart({ data = [] }) {
           transition: fill 0.2s ease;
         }
         .category-bar:hover {
-          fill: rgba(249, 115, 22, 0.2) !important;
+          fill: rgba(209, 111, 40, 1) !important;
         }
       `}</style>
       <ResponsiveContainer width="100%" height="100%">

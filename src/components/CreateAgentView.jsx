@@ -6,7 +6,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { storage, functions, db } from '../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import UpgradeModal from './UpgradeModal';
 import {
@@ -77,6 +77,41 @@ export default function CreateAgentView({ onBack }) {
 
     fetchSubscriptionData();
   }, [user]);
+
+  // Listen to training status updates from Firestore
+  useEffect(() => {
+    if (!createdAgentId || !user) return;
+
+    console.log('👂 Setting up Firestore listener for agent:', createdAgentId);
+
+    const agentRef = doc(db, 'users', user.uid, 'agents', createdAgentId);
+    const unsubscribe = onSnapshot(agentRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        console.log('📊 Training status update:', data.trainingStatus);
+
+        if (data.trainingStatus === 'trained') {
+          console.log('✅ Training complete!');
+          setIsTraining(false);
+          setTrainingComplete(true);
+          showNotification('Agent trained successfully! 🎉', 'success');
+        } else if (data.trainingStatus === 'training') {
+          console.log('🔄 Still training...');
+        } else if (data.trainingStatus === 'failed') {
+          console.log('❌ Training failed');
+          setIsTraining(false);
+          showNotification('Training failed. Please try again.', 'error');
+        }
+      }
+    }, (error) => {
+      console.error('❌ Firestore listener error:', error);
+    });
+
+    return () => {
+      console.log('🔇 Cleaning up Firestore listener');
+      unsubscribe();
+    };
+  }, [createdAgentId, user, showNotification]);
 
   const handleFetchMetadata = async () => {
     if (!formData.websiteUrl) {
@@ -343,7 +378,10 @@ export default function CreateAgentView({ onBack }) {
       if (formData.websiteUrl) {
         try {
           const url = new URL(formData.websiteUrl);
-          allowedDomains = [url.hostname];
+          // Remove 'www.' prefix if present
+          const domain = url.hostname.replace(/^www\./, '');
+          allowedDomains = [domain];
+          console.log('✅ Extracted domain for allowedDomains:', domain);
         } catch (e) {
           console.warn('Could not extract domain from URL:', e);
         }
@@ -438,7 +476,7 @@ export default function CreateAgentView({ onBack }) {
     let stepTitle = '';
 
     if (currentStep === 1) {
-      stepTitle = 'Project Details';
+      stepTitle = 'Agent Details';
     } else if (currentStep === 2) {
       stepTitle = 'Upload Documents';
     } else if (currentStep === 3) {
@@ -476,7 +514,7 @@ export default function CreateAgentView({ onBack }) {
             name="projectName"
             value={formData.projectName}
             onChange={handleInputChange}
-            className="form-input text-sm bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+            className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
             placeholder="Acme Corp"
           />
         </div>
@@ -490,8 +528,8 @@ export default function CreateAgentView({ onBack }) {
             name="websiteUrl"
             value={formData.websiteUrl}
             onChange={handleInputChange}
-            className="form-input text-sm bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
-            placeholder="https://example.com"
+            className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+            placeholder="https://google.com"
           />
         </div>
 
@@ -774,6 +812,27 @@ export default function CreateAgentView({ onBack }) {
         agentLimit={subscriptionData?.agentLimit}
         currentAgentCount={currentAgentCount}
       />
+
+      {/* Welcome Message */}
+      {currentAgentCount === 0 ? (
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-2">
+            Welcome, {user?.displayName || 'there'}! 👋
+          </h1>
+          <p className="text-sm text-stone-600 dark:text-stone-400 max-w-md mx-auto">
+            Let's create your first AI agent together. We're excited to have you on board and can't wait to see what you build!
+          </p>
+        </div>
+      ) : (
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-2">
+            Create New Agent
+          </h1>
+          <p className="text-sm text-stone-600 dark:text-stone-400 max-w-md mx-auto">
+            Ready to expand your AI toolkit? Let's set up another intelligent agent to help your business grow.
+          </p>
+        </div>
+      )}
 
       {renderStepIndicator()}
 

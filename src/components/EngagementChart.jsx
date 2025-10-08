@@ -61,8 +61,8 @@ export default function EngagementChart({ data = {} }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No engagement data yet</div>
-          <div className="text-stone-300 dark:text-stone-600 text-xs">Data will appear as users interact</div>
+          <div className="text-stone-400 dark:text-stone-500 text-sm">Not enough data yet</div>
+          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Start getting conversations to see insights</div>
         </div>
       </div>
     );

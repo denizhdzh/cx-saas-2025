@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
-export default function DeviceChart({ data = {} }) {
+export default function ReturnUserChart({ data = [] }) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -15,17 +15,10 @@ export default function DeviceChart({ data = {} }) {
     return () => observer.disconnect();
   }, []);
 
-  // Transform device types object to array
-  const chartDataArray = Object.entries(data).map(([device, count]) => ({
-    name: device.charAt(0).toUpperCase() + device.slice(1),
-    value: count,
-    device: device
-  })).filter(item => item.value > 0);
-
-  const total = chartDataArray.reduce((sum, item) => sum + item.value, 0);
+  const total = data.reduce((sum, item) => sum + (item.value || 0), 0);
 
   // Create gradient colors based on orange
-  const chartData = chartDataArray.map((item, index) => {
+  const chartData = data.map((item, index) => {
     const opacity = 1 + (index * 0.3); // Gradual opacity increase
     return {
       ...item,
@@ -36,7 +29,7 @@ export default function DeviceChart({ data = {} }) {
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0];
-      const percentage = ((data.value / total) * 100).toFixed(1);
+      const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : 0;
       return (
         <div
           className="backdrop-blur-sm rounded-lg shadow-xl p-3"
@@ -45,11 +38,11 @@ export default function DeviceChart({ data = {} }) {
             border: `1px solid ${isDark ? '#44403c' : '#e7e5e4'}`
           }}
         >
-          <p className="text-sm font-semibold capitalize" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
+          <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
             {data.name}
           </p>
           <p className="text-xs mt-1" style={{ color: '#f97316' }}>
-            {data.value} sessions ({percentage}%)
+            {data.value} users ({percentage}%)
           </p>
         </div>
       );

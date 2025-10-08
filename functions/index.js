@@ -276,9 +276,9 @@ exports.trainAgent = onCall({
       totalChunks: allChunks.length,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-    
+
     console.log('🎉 Training completed successfully');
-    
+
     return {
       success: true,
       agentId,
@@ -487,6 +487,49 @@ exports.chatWithAgentExternal = onRequest({
 
     console.log('✅ Using agent:', agent.id || agentId);
 
+    // Get user IP and fetch geolocation data
+    let geoLocation = null;
+    try {
+      const userIp = request.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                     request.headers['x-real-ip'] ||
+                     request.connection?.remoteAddress ||
+                     request.socket?.remoteAddress;
+
+      console.log('🌍 User IP:', userIp);
+
+      // Skip localhost/private IPs
+      if (userIp && !userIp.includes('127.0.0.1') && !userIp.includes('::1') && !userIp.startsWith('192.168.')) {
+        const geoResponse = await fetch(`http://ip-api.com/json/${userIp}?fields=status,country,countryCode,city,lat,lon,timezone`);
+        const geoData = await geoResponse.json();
+
+        if (geoData.status === 'success') {
+          geoLocation = {
+            city: geoData.city,
+            country: geoData.country,
+            countryCode: geoData.countryCode,
+            lat: geoData.lat,
+            lon: geoData.lon,
+            timezone: geoData.timezone
+          };
+          console.log('✅ Geolocation:', geoLocation);
+        }
+      }
+    } catch (geoError) {
+      console.log('⚠️  Could not fetch geolocation:', geoError.message);
+    }
+
+    // Merge geolocation into sessionData
+    const enrichedSessionData = {
+      ...sessionData,
+      userInfo: {
+        ...sessionData?.userInfo,
+        location: {
+          ...sessionData?.userInfo?.location,
+          ...geoLocation
+        }
+      }
+    };
+
     // Verify domain whitelist
     const origin = request.headers.origin || request.headers.referer;
     if (agent.allowedDomains && agent.allowedDomains.length > 0) {
@@ -553,7 +596,7 @@ exports.chatWithAgentExternal = onRequest({
       }
     }
     
-    const result = await processChatMessage(agentId, message, sessionId, conversationHistory, agent.userId, anonymousUserId, sessionData);
+    const result = await processChatMessage(agentId, message, sessionId, conversationHistory, agent.userId, anonymousUserId, enrichedSessionData);
 
     response.status(200).json({ data: result });
 
@@ -700,7 +743,8 @@ IMPORTANT: You must respond with a JSON object in this exact format:
   "shouldAnalyze": "false" | "pending" | "true",
   "analysisReason": "brief explanation",
   "knowledgeGapDetected": true | false,
-  "unansweredQuestion": "the specific question/topic you couldn't answer (null if answered)"
+  "unansweredQuestion": "the specific question/topic you couldn't answer (null if answered)",
+  "requestEmail": true | false
 }
 
 Analysis Guidelines:
@@ -714,11 +758,18 @@ Knowledge Gap Detection:
 - Only detect real questions, not greetings or chitchat
 - Be specific with the question (not just "product info" but "product pricing for enterprise plan")
 
+Email Request:
+- Set requestEmail=true if the user has a problem, complaint, or technical issue that might need follow-up
+- In your reply, politely ask for their email to help resolve their issue (e.g., "Could you share your email so we can follow up on this?")
+- Don't ask for email on greetings, simple questions that were answered, or casual conversation
+- If user already provided their email in the conversation, set requestEmail=false
+
 Examples:
-- User: "hello" → shouldAnalyze: "false", knowledgeGapDetected: false
-- User: "what's your refund policy?" (not in KB) → knowledgeGapDetected: true, unansweredQuestion: "refund policy"
-- User: "how much does it cost?" (in KB) → knowledgeGapDetected: false
-- User: "thanks bye" → shouldAnalyze: "false", knowledgeGapDetected: false
+- User: "hello" → shouldAnalyze: "false", knowledgeGapDetected: false, requestEmail: false
+- User: "what's your refund policy?" (not in KB) → knowledgeGapDetected: true, unansweredQuestion: "refund policy", requestEmail: false
+- User: "I can't log in" → shouldAnalyze: "pending", requestEmail: true (ask for email in reply)
+- User: "My order is broken" → shouldAnalyze: "pending", requestEmail: true
+- User: "thanks bye" → shouldAnalyze: "false", knowledgeGapDetected: false, requestEmail: false
 
 Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if we need to save this conversation for business insights.`
       }
@@ -767,10 +818,14 @@ Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if w
     const analysisReason = parsedResponse.analysisReason || "No reason provided";
     const knowledgeGapDetected = parsedResponse.knowledgeGapDetected || false;
     const unansweredQuestion = parsedResponse.unansweredQuestion || null;
+    const requestEmail = parsedResponse.requestEmail || false;
 
     console.log(`📊 Analysis decision: ${shouldAnalyze} - ${analysisReason}`);
     if (knowledgeGapDetected) {
       console.log(`❓ Knowledge gap detected: "${unansweredQuestion}"`);
+    }
+    if (requestEmail) {
+      console.log(`📧 Email requested from user`);
     }
 
     // Ensure anonymousUserId is defined
@@ -783,14 +838,27 @@ Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if w
     const sessionRef = db.collection('users').doc(userId).collection('agents').doc(agentId).collection('sessions').doc(finalAnonymousUserId);
     const conversationRef = sessionRef.collection('conversations').doc(conversationId);
 
+    // Check if user provided email in their message and save it
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
+    const emailMatch = message.match(emailRegex);
+    const userEmail = emailMatch ? emailMatch[0] : null;
+
     // Update session metadata (user-level)
-    await sessionRef.set({
+    const sessionUpdateData = {
       anonymousUserId: finalAnonymousUserId,
       agentId: agentId,
       userInfo: sessionData?.userInfo || {},
       lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
       totalConversations: admin.firestore.FieldValue.increment(1)
-    }, { merge: true });
+    };
+
+    // Add email if detected
+    if (userEmail) {
+      sessionUpdateData.userEmail = userEmail;
+      console.log(`📧 User email detected and saved: ${userEmail}`);
+    }
+
+    await sessionRef.set(sessionUpdateData, { merge: true });
 
     // Update conversation metadata with analysis status
     await conversationRef.set({
@@ -846,10 +914,14 @@ Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if w
 
     // Update message usage AFTER successful chat
     // Each successful response = 1 message
+    const updatedUserDoc = await db.collection('users').doc(userId).get();
+    const currentMessagesUsed = (updatedUserDoc.data()?.messagesUsed || 0) + 1;
+    const messageLimit = updatedUserDoc.data()?.messageLimit || 100;
+
     await db.collection('users').doc(userId).update({
       messagesUsed: admin.firestore.FieldValue.increment(1)
     });
-    console.log(`📊 Updated message usage: +1 message`);
+    console.log(`📊 Updated message usage: ${currentMessagesUsed}/${messageLimit}`);
 
     return {
       response: aiResponse,
@@ -1067,11 +1139,8 @@ Respond with valid JSON only:
 
     console.log(`✅ Analysis complete for conversation ${conversationId}: ${analysis.mainCategory} - ${analysis.subCategory}`);
 
-    // Save analysis and delete messages
-    const batch = db.batch();
-
-    // Update conversation with analysis
-    batch.update(conversationRef, {
+    // Save analysis (keep messages for viewing)
+    await conversationRef.update({
       analyzed: true,
       analyzedAt: admin.firestore.FieldValue.serverTimestamp(),
       analysis: analysis,
@@ -1082,11 +1151,7 @@ Respond with valid JSON only:
       }
     });
 
-    // Delete all message documents to save storage
-    messagesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-
-    await batch.commit();
-    console.log(`🗑️  Deleted ${messagesSnapshot.docs.length} messages after analysis`);
+    console.log(`✅ Analysis saved, messages preserved for conversation ${conversationId}`);
 
   } catch (error) {
     console.error('❌ Error in immediate analysis:', error);
@@ -1266,6 +1331,7 @@ exports.getAgentConfig = onRequest({
           userIcon: agentData.userIcon || 'alien',
           primaryColor: agentData.primaryColor || '#f97316',
           returnUserDiscount: agentData.returnUserDiscount || null,
+          firstTimeDiscount: agentData.firstTimeDiscount || null,
           whitelabel: isWhitelabel // Growth and Scale plans get whitelabel
         });
         return;
@@ -1869,6 +1935,50 @@ exports.initializeUser = onCall({ cors: true }, async (request) => {
 
       await userRef.set(userData);
       console.log('✅ User document created successfully!');
+
+      // Send welcome email
+      if (userData.email) {
+        await sendEmail({
+          to: userData.email,
+          subject: '🎉 Welcome to Orchis!',
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #f97316; font-size: 28px; margin-bottom: 20px;">🎉 Welcome to Orchis!</h1>
+
+              <p style="font-size: 16px; color: #44403c; line-height: 1.6;">
+                Hey ${userData.displayName}!
+              </p>
+
+              <p style="font-size: 16px; color: #44403c; line-height: 1.6;">
+                You're all set! Now let's create your first AI agent and start automating customer support.
+              </p>
+
+              <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <h3 style="margin: 0 0 8px 0; color: #78350f;">Quick Start:</h3>
+                <ul style="margin: 8px 0; padding-left: 20px; color: #78350f;">
+                  <li>Create your AI agent</li>
+                  <li>Upload your knowledge base</li>
+                  <li>Embed widget on your website</li>
+                </ul>
+              </div>
+
+              <a href="https://orchis.app/dashboard"
+                 style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 16px;">
+                Create Your First Agent →
+              </a>
+
+              <p style="margin-top: 32px; color: #78716c; font-size: 14px;">
+                Need help? Reply to this email anytime!
+              </p>
+
+              <p style="color: #a8a29e; font-size: 12px; margin-top: 24px;">
+                — Team Orchis
+              </p>
+            </div>
+          `
+        });
+        console.log('📧 Welcome email sent to:', userData.email);
+      }
 
       return { success: true, created: true, userData };
     }

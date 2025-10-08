@@ -1,74 +1,76 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Leaf01Icon, SuperMarioToadIcon, PokemonIcon, Pacman01Icon } from '@hugeicons/core-free-icons';
 
 export default function Pricing() {
+  const navigate = useNavigate();
+
   const plans = [
     {
-      emoji: "🌱",
+      icon: Leaf01Icon,
       name: "Free",
       price: "$0",
       period: "/month",
       description: "Try it out",
       features: [
-        "10 message credits / month",
+        "100 one-time message credits",
         "1 AI agent",
-        "1 MB training data limit",
-        "Embed on unlimited sites",
-        "No backup or tickets"
-      ],
+        "Unlimited training data",
+        "Advanced analytics"
+            ],
       popular: false,
       note: "Perfect to test and see if you want to upgrade"
     },
     {
-      emoji: "⭐",
-      name: "Starter", 
+      icon: SuperMarioToadIcon,
+      name: "Starter",
       price: "$20",
       originalPrice: "$30",
       period: "/month",
       description: "For small businesses",
       features: [
-        "3,000 message credits / month",
+        "~1,500 messages/month",
         "1 AI agent",
-        "10 MB training data",
-        "Ticket tracking",
-        "Basic analytics (messages, users)",
+        "Unlimited training data",
+        "Advanced analytics",
         "Email support"
       ],
       popular: false
     },
     {
-      emoji: "🔥",
+      icon: PokemonIcon,
       name: "Growth",
       price: "$60",
       originalPrice: "$90",
       period: "/month",
       description: "Most popular",
       features: [
-        "15,000 message credits / month",
-        "2 AI agents",
-        "50 MB training data",
-        "Ticket tracking",
-        "Advanced analytics & insights",
-        "White-label (remove logo & branding)",
+        "~7,500 messages/month",
+        "5 AI agents",
+        "Unlimited training data",
+        "Advanced analytics",
+        "White-label branding",
         "Priority support"
       ],
       popular: true,
       note: "Best value for money, most users stay here"
     },
     {
-      emoji: "🚀",
+      icon: Pacman01Icon,
       name: "Scale",
-      price: "$199",
+      price: "$200",
+      originalPrice: "$300",
       period: "/month",
       description: "For growing teams",
       features: [
-        "60,000 message credits / month",
-        "5 AI agents",
-        "200 MB training data",
-        "Ticket tracking",
-        "Advanced dashboard + export (CSV/JSON)",
-        "White-label (remove logo & branding)",
-        "99.9% uptime SLA guarantee",
-        "API control over chatbot behavior"
+        "~50,000 messages/month",
+        "Unlimited AI agents",
+        "Unlimited training data",
+        "Advanced analytics",
+        "White-label branding",
+        "Priority support",
+        "Export data (CSV/JSON)"
       ],
       popular: false
     }
@@ -85,11 +87,11 @@ export default function Pricing() {
           <div className="text-center mb-12 lg:mb-20">
             <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">PRICING</div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-6 lg:mb-8 leading-tight">
-              Transparent pricing<br />
-              for when we launch
+              Simple, transparent<br />
+              pricing
             </h2>
             <p className="text-base lg:text-lg text-neutral-600 font-light max-w-2xl mx-auto">
-              Join our waitlist now for early access and special launch pricing.
+              Start for free. Upgrade when you're ready. No credit card required.
             </p>
           </div>
           
@@ -103,7 +105,10 @@ export default function Pricing() {
                   
                   <div className="mb-4 lg:mb-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">{plan.emoji}</span>
+                      <HugeiconsIcon
+                        icon={plan.icon}
+                        className={`w-5 h-5 ${plan.popular ? 'text-white' : 'text-neutral-900'}`}
+                      />
                       <h3 className={`text-lg font-thin ${plan.popular ? 'text-white' : 'text-neutral-900'}`}>
                         {plan.name}
                       </h3>
@@ -151,14 +156,14 @@ export default function Pricing() {
                     </div>
                   )}
                   
-                  <button 
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  <button
+                    onClick={() => navigate('/signin')}
                     className={`w-full py-2 lg:py-2 px-3 text-xs font-medium rounded-lg transition-colors mt-auto cursor-pointer ${
-                      plan.popular 
+                      plan.popular
                         ? 'bg-white text-neutral-900 hover:bg-neutral-100'
                         : 'border border-neutral-200 text-neutral-600 hover:border-neutral-900 hover:text-neutral-900'
                     }`}>
-                    Join Waitlist
+                    Get Started
                   </button>
                 </div>
               ))}

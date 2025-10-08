@@ -42,36 +42,50 @@
     }
 
     getOrCreateSessionId() {
-      // Key based on anonymousUserId for user-specific session tracking
+      // Key based on agentId for site-specific tracking
+      const lastVisitKey = `orchis_last_visit_${this.agentId}`;
       const sessionKey = `orchis_session_${this.anonymousUserId}`;
-      const lastVisitKey = `orchis_last_visit_${this.anonymousUserId}`;
 
       let sessionId = localStorage.getItem(sessionKey);
       const lastVisit = localStorage.getItem(lastVisitKey);
       const now = Date.now();
 
-      // Consider return user only if last visit was more than 1 hour ago
+      // Check if return user based on AGENT-SPECIFIC last visit
+      // Each agent has its own tracking - so user can be new on site A but return user on site B
       const ONE_HOUR = 60 * 60 * 1000;
-      const isActualReturnUser = sessionId && lastVisit && (now - parseInt(lastVisit)) > ONE_HOUR;
 
-      if (sessionId) {
-        if (isActualReturnUser) {
+      if (lastVisit) {
+        const timeSinceLastVisit = now - parseInt(lastVisit);
+
+        if (timeSinceLastVisit > ONE_HOUR) {
+          // More than 1 hour passed - this is a return user
           this.isReturnUser = true;
-          console.log('🔄 Return user detected (last visit: ' + new Date(parseInt(lastVisit)).toLocaleString() + ')');
+          console.log('🔄 Return user detected for agent ' + this.agentId);
+          console.log('   Last visit: ' + new Date(parseInt(lastVisit)).toLocaleString());
+          console.log('   Time since: ' + Math.round(timeSinceLastVisit / 1000 / 60) + ' minutes');
+
+          // NOW update the last visit timestamp (only for return users after 1h gap)
+          localStorage.setItem(lastVisitKey, now.toString());
         } else {
+          // Less than 1 hour - same session
           this.isReturnUser = false;
-          console.log('⏰ Same session (last visit was less than 1 hour ago)');
+          console.log('⏰ Same session for agent ' + this.agentId + ' (within 1 hour)');
+          // DON'T update lastVisit - keep the session active
         }
       } else {
-        // New user - create new session
-        sessionId = this.anonymousUserId; // Use anonymousUserId as sessionId (simpler!)
+        // First time visiting this agent/site
         this.isReturnUser = false;
-        console.log('✨ New user:', this.anonymousUserId);
-        localStorage.setItem(sessionKey, sessionId);
+        console.log('✨ New user for agent ' + this.agentId);
+
+        // Set first visit timestamp
+        localStorage.setItem(lastVisitKey, now.toString());
       }
 
-      // Update last visit timestamp
-      localStorage.setItem(lastVisitKey, now.toString());
+      // Create or get session ID (user-specific, not agent-specific)
+      if (!sessionId) {
+        sessionId = this.anonymousUserId;
+        localStorage.setItem(sessionKey, sessionId);
+      }
 
       return sessionId;
     }
@@ -299,9 +313,11 @@
       this.createWidget();
       this.bindEvents();
 
-      // Show return user discount popup if applicable
-      if (this.sessionManager.isReturnUser) {
+      // Show discount popups based on user type
+      if (this.sessionManager.isReturnUser && this.config.returnUserDiscount?.enabled) {
         setTimeout(() => this.showReturnUserDiscount(), 1500);
+      } else if (!this.sessionManager.isReturnUser && this.config.firstTimeDiscount?.enabled) {
+        setTimeout(() => this.showFirstTimeDiscount(), 1500);
       }
     },
 
@@ -322,6 +338,7 @@
         this.config.userIcon = agentData.userIcon || 'alien';
         this.config.primaryColor = agentData.primaryColor || this.config.primaryColor;
         this.config.returnUserDiscount = agentData.returnUserDiscount || null;
+        this.config.firstTimeDiscount = agentData.firstTimeDiscount || null;
         this.config.whitelabel = agentData.whitelabel || false; // Growth/Scale plans get whitelabel
 
         console.log('✅ Agent config loaded securely from backend:', this.config.projectName);
@@ -1247,9 +1264,22 @@
       // Check if discount is enabled and configured
       if (!discountConfig || !discountConfig.enabled) return;
 
-      // Check if already shown to this user
+      // Check if already shown and expired
       const shownKey = `orchis_discount_shown_${this.sessionManager.anonymousUserId}`;
-      if (localStorage.getItem(shownKey)) return;
+      const expiryKey = `orchis_discount_expiry_${this.sessionManager.anonymousUserId}`;
+      const savedExpiry = localStorage.getItem(expiryKey);
+
+      if (savedExpiry && Date.now() > parseInt(savedExpiry)) {
+        // Offer expired, clean up
+        localStorage.removeItem(shownKey);
+        localStorage.removeItem(expiryKey);
+        return;
+      }
+
+      if (localStorage.getItem(shownKey) && !savedExpiry) {
+        // Old format (no expiry), don't show again
+        return;
+      }
 
       // Insert offer banner after header
       const header = this.container.querySelector('.orchis-chat-header');
@@ -1302,13 +1332,27 @@
 
       // Countdown timer (10 minutes)
       const timerEl = offerBanner.querySelector('.orchis-timer');
-      const expiryTime = Date.now() + (10 * 60 * 1000);
+
+      // Get or create expiry time
+      let expiryTime;
+      if (savedExpiry) {
+        expiryTime = parseInt(savedExpiry);
+        console.log('🔄 Continuing offer timer from localStorage');
+      } else {
+        expiryTime = Date.now() + (10 * 60 * 1000);
+        localStorage.setItem(expiryKey, expiryTime.toString());
+      }
 
       const updateTimer = () => {
         const remaining = expiryTime - Date.now();
         if (remaining <= 0) {
           offerBanner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
-          setTimeout(() => offerBanner.remove(), 400);
+          setTimeout(() => {
+            offerBanner.remove();
+            // Clean up localStorage when expired
+            localStorage.removeItem(shownKey);
+            localStorage.removeItem(expiryKey);
+          }, 400);
           return;
         }
 
@@ -1330,6 +1374,124 @@
       localStorage.setItem(shownKey, 'true');
 
       console.log('🎁 Return user discount shown:', discountConfig.code);
+    },
+
+    showFirstTimeDiscount: function() {
+      const discountConfig = this.config.firstTimeDiscount;
+
+      // Check if discount is enabled and configured
+      if (!discountConfig || !discountConfig.enabled) return;
+
+      // Check if already shown and expired
+      const shownKey = `orchis_first_discount_shown_${this.sessionManager.anonymousUserId}`;
+      const expiryKey = `orchis_first_discount_expiry_${this.sessionManager.anonymousUserId}`;
+      const savedExpiry = localStorage.getItem(expiryKey);
+
+      if (savedExpiry && Date.now() > parseInt(savedExpiry)) {
+        // Offer expired, clean up
+        localStorage.removeItem(shownKey);
+        localStorage.removeItem(expiryKey);
+        return;
+      }
+
+      if (localStorage.getItem(shownKey) && !savedExpiry) {
+        // Old format (no expiry), don't show again
+        return;
+      }
+
+      // Insert offer banner after header
+      const header = this.container.querySelector('.orchis-chat-header');
+      if (!header) return;
+
+      const offerBanner = document.createElement('div');
+      offerBanner.className = 'orchis-offer-banner';
+      const couponCode = discountConfig.code || 'FIRST20';
+      offerBanner.innerHTML = `
+        <div class="orchis-offer-content">
+          <div class="orchis-offer-divider"></div>
+          <div class="orchis-offer-text">
+            <div class="orchis-offer-title">
+              ${discountConfig.title || 'Welcome! 👋'}
+              <span class="orchis-timer">10:00</span>
+            </div>
+            <div class="orchis-offer-subtitle">
+              ${discountConfig.message || 'Get a special discount on your first purchase'}
+              <span class="orchis-coupon-code" data-code="${couponCode}">
+                <strong>${couponCode}</strong>
+                <svg class="orchis-copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </span>
+            </div>
+          </div>
+          <button class="orchis-close-offer">×</button>
+        </div>
+      `;
+
+      // Insert after header
+      header.parentNode.insertBefore(offerBanner, header.nextSibling);
+
+      // Add copy functionality
+      const couponEl = offerBanner.querySelector('.orchis-coupon-code');
+      couponEl.addEventListener('click', () => {
+        navigator.clipboard.writeText(couponCode).then(() => {
+          couponEl.classList.add('orchis-copied');
+          setTimeout(() => couponEl.classList.remove('orchis-copied'), 1500);
+        });
+      });
+
+      // Add close functionality with animation
+      const closeBtn = offerBanner.querySelector('.orchis-close-offer');
+      closeBtn.addEventListener('click', () => {
+        offerBanner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+        setTimeout(() => offerBanner.remove(), 400);
+      });
+
+      // Countdown timer (10 minutes)
+      const timerEl = offerBanner.querySelector('.orchis-timer');
+
+      // Get or create expiry time
+      let expiryTime;
+      if (savedExpiry) {
+        expiryTime = parseInt(savedExpiry);
+        console.log('🔄 Continuing offer timer from localStorage');
+      } else {
+        expiryTime = Date.now() + (10 * 60 * 1000);
+        localStorage.setItem(expiryKey, expiryTime.toString());
+      }
+
+      const updateTimer = () => {
+        const remaining = expiryTime - Date.now();
+        if (remaining <= 0) {
+          offerBanner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+          setTimeout(() => {
+            offerBanner.remove();
+            // Clean up localStorage when expired
+            localStorage.removeItem(shownKey);
+            localStorage.removeItem(expiryKey);
+          }, 400);
+          return;
+        }
+
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        // Pulse animation when < 1 minute
+        if (remaining < 60000) {
+          timerEl.style.animation = 'orchis-timer-pulse 1s infinite';
+        }
+
+        requestAnimationFrame(updateTimer);
+      };
+
+      updateTimer();
+
+      // Mark as shown
+      localStorage.setItem(shownKey, 'true');
+
+      console.log('🎁 First time discount shown:', discountConfig.code);
     }
   };
 

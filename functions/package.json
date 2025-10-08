@@ -20,6 +20,7 @@
     "openai": "^5.22.0",
     "pdf-parse": "^1.1.1",
     "puppeteer-core": "^24.10.0",
+    "resend": "^6.1.2",
     "stripe": "^16.2.0"
   },
   "devDependencies": {

@@ -37,7 +37,7 @@ export default function UrgencyChart({ data = [] }) {
     category: item.category,
     count: item.count,
     percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : 0,
-    fill: 'rgba(249, 115, 22, 0.1)' // orange-500 with 10% opacity
+    fill: 'rgba(249, 115, 22, 1)' // orange-500 with 10% opacity
   }));
 
   const CustomTooltip = ({ active, payload }) => {

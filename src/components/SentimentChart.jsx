@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList } from 'recharts';
 
 const SENTIMENT_MAPPING = {
-  1: { label: 'Very Angry', icon: '😡', color: 'rgba(249, 115, 22, 0.1)' },
-  2: { label: 'Angry', icon: '😠', color: 'rgba(249, 115, 22, 0.1)' },
-  3: { label: 'Frustrated', icon: '😤', color: 'rgba(249, 115, 22, 0.1)' },
-  4: { label: 'Disappointed', icon: '😞', color: 'rgba(249, 115, 22, 0.1)' },
-  5: { label: 'Neutral', icon: '😐', color: 'rgba(249, 115, 22, 0.1)' },
-  6: { label: 'Satisfied', icon: '🙂', color: 'rgba(249, 115, 22, 0.1)' },
-  7: { label: 'Happy', icon: '😊', color: 'rgba(249, 115, 22, 0.1)' },
-  8: { label: 'Very Happy', icon: '😄', color: 'rgba(249, 115, 22, 0.1)' },
-  9: { label: 'Excited', icon: '😁', color: 'rgba(249, 115, 22, 0.1)' },
-  10: { label: 'Delighted', icon: '🤩', color: 'rgba(249, 115, 22, 0.1)' }
+  1: { label: 'Very Angry', icon: '😡', color: 'rgba(249, 115, 22, 1)' },
+  2: { label: 'Angry', icon: '😠', color: 'rgba(249, 115, 22, 1)' },
+  3: { label: 'Frustrated', icon: '😤', color: 'rgba(249, 116, 22, 1)' },
+  4: { label: 'Disappointed', icon: '😞', color: 'rgba(249, 115, 22, 1)' },
+  5: { label: 'Neutral', icon: '😐', color: 'rgba(249, 115, 22, 1)' },
+  6: { label: 'Satisfied', icon: '🙂', color: 'rgba(249, 115, 22, 1)' },
+  7: { label: 'Happy', icon: '😊', color: 'rgba(249, 115, 22, 1)' },
+  8: { label: 'Very Happy', icon: '😄', color: 'rgba(249, 115, 22, 1)' },
+  9: { label: 'Excited', icon: '😁', color: 'rgba(249, 115, 22, 1)' },
+  10: { label: 'Delighted', icon: '🤩', color: 'rgba(249, 115, 22, 1)' }
 };
 
 export default function SentimentChart({ data = [] }) {

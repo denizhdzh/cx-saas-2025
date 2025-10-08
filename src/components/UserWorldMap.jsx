@@ -26,8 +26,9 @@ export default function UserWorldMap({ data }) {
   
   // Transform data to country codes and counts
   const countryData = data.reduce((acc, item) => {
-    const country = item.country || 'unknown';
-    acc[country] = (acc[country] || 0) + item.count;
+    // Use countryCode (2-letter ISO) from data
+    const countryCode = item.countryCode || item.country || 'unknown';
+    acc[countryCode] = (acc[countryCode] || 0) + (item.count || 1);
     return acc;
   }, {});
 
@@ -102,8 +103,8 @@ export default function UserWorldMap({ data }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">No location data available</div>
-          <div className="text-stone-400 dark:text-stone-600 text-xs mt-1">User locations will appear here</div>
+          <div className="text-stone-400 dark:text-stone-500 text-sm">Not enough data yet</div>
+          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Start getting conversations to see insights</div>
         </div>
       </div>
     );

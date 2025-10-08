@@ -4,20 +4,22 @@ import { ChevronDownIcon, DocumentArrowUpIcon, CogIcon } from '@heroicons/react/
 import TicketChart from './TicketChart';
 import CategoryDonutChart from './CategoryDonutChart';
 import SentimentChart from './SentimentChart';
-import UserWorldMap from './UserWorldMap';
 import UrgencyChart from './UrgencyChart';
 import TopicChart from './TopicChart';
+import UserWorldMap from './UserWorldMap';
+import LanguageChart from './LanguageChart';
 import EngagementChart from './EngagementChart';
+import BrowserChart from './BrowserChart';
 import DeviceChart from './DeviceChart';
 import DetailedMetricsCard from './DetailedMetricsCard';
-import SessionListTable from './SessionListTable';
-import ReferrerChart from './ReferrerChart';
-import BrowserChart from './BrowserChart';
-import LanguageChart from './LanguageChart';
+import ReturnUserChart from './ReturnUserChart';
 import KnowledgeGapModal from './KnowledgeGapModal';
 import { useAgent } from '../contexts/AgentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getConversationAnalytics, getKnowledgeGaps } from '../utils/newAnalyticsFunctions';
+import { db } from '../firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function AgentDashboard({ agent, onShowEmbed }) {
   const navigate = useNavigate();
@@ -27,14 +29,20 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
   const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
   const agentDropdownRef = useRef(null);
   const timeDropdownRef = useRef(null);
-  
+
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState(null);
   const [knowledgeGaps, setKnowledgeGaps] = useState([]);
-  const [timeRange, setTimeRange] = useState('daily'); // hourly, daily, weekly, quarterly, alltime
+  const [timeRange, setTimeRange] = useState('weekly'); // hourly, daily, weekly, quarterly, alltime
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [selectedGap, setSelectedGap] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' or 'messages'
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [conversationMessages, setConversationMessages] = useState([]);
+  const [isConversationModalOpen, setIsConversationModalOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -75,6 +83,60 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     loadAnalytics();
   }, [agent?.id, timeRange, user?.uid]);
 
+  // Load sessions when Messages tab is active
+  useEffect(() => {
+    const loadSessions = async () => {
+      if (activeTab !== 'messages' || !agent?.id || !user?.uid) return;
+
+      setSessionsLoading(true);
+      try {
+        const sessionsRef = collection(db, 'users', user.uid, 'agents', agent.id, 'sessions');
+        const sessionsSnapshot = await getDocs(sessionsRef);
+
+        const allConversations = [];
+
+        for (const sessionDoc of sessionsSnapshot.docs) {
+          const sessionData = sessionDoc.data();
+          const anonymousUserId = sessionDoc.id;
+
+          const conversationsRef = collection(sessionDoc.ref, 'conversations');
+          const conversationsSnapshot = await getDocs(conversationsRef);
+
+          for (const convDoc of conversationsSnapshot.docs) {
+            const convData = convDoc.data();
+
+            // Show only analyzed conversations (those with analysis data)
+            if (convData.analysis && Object.keys(convData.analysis).length > 0) {
+              allConversations.push({
+                id: convDoc.id,
+                anonymousUserId,
+                ...convData,
+                userInfo: sessionData.userInfo || {},
+                userEmail: sessionData.userEmail || null,
+                conversationSummary: convData.conversationSummary || {},
+                analysis: convData.analysis || {}
+              });
+            }
+          }
+        }
+
+        allConversations.sort((a, b) => {
+          const timeA = a.lastMessageTime?.toDate?.() || new Date(0);
+          const timeB = b.lastMessageTime?.toDate?.() || new Date(0);
+          return timeB - timeA;
+        });
+
+        setSessions(allConversations);
+      } catch (error) {
+        console.error('Error loading sessions:', error);
+      } finally {
+        setSessionsLoading(false);
+      }
+    };
+
+    loadSessions();
+  }, [activeTab, agent?.id, user?.uid]);
+
   const handleAgentSelect = (selectedAgent) => {
     selectAgent(selectedAgent);
     setIsAgentDropdownOpen(false);
@@ -106,7 +168,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           userId: user.uid,
           agentId: agent.id,
           gapId: gap.id,
-          question: gap.question,
+          question: gap.representativeQuestion || gap.question,
           userAnswer: answer
         })
       });
@@ -122,6 +184,62 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       console.error('Error filling knowledge gap:', error);
       throw error;
     }
+  };
+
+  const handleSessionClick = async (session) => {
+    setSelectedSession(session);
+    setIsConversationModalOpen(true);
+
+    try {
+      const messagesRef = collection(
+        db,
+        'users',
+        user.uid,
+        'agents',
+        agent.id,
+        'sessions',
+        session.anonymousUserId,
+        'conversations',
+        session.id,
+        'messages'
+      );
+      const messagesSnapshot = await getDocs(messagesRef);
+
+      const messageList = messagesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })).sort((a, b) => {
+        const timeA = a.timestamp?.toDate?.() || new Date(0);
+        const timeB = b.timestamp?.toDate?.() || new Date(0);
+        return timeA - timeB;
+      });
+
+      setConversationMessages(messageList);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      setConversationMessages([]);
+    }
+  };
+
+  const getCategoryColor = (category) => {
+    const colors = {
+      'Feedback': 'bg-blue-500/5 text-blue-500 border-blue-500',
+      'Question': 'bg-purple-500/5 text-purple-500 border-purple-500',
+      'Support Request': 'bg-orange-500/5 text-orange-500 border-orange-500',
+      'Sales Inquiry': 'bg-green-500/5 text-green-500 border-green-500',
+      'Bug Report': 'bg-red-500/5 text-red-500 border-red-500',
+      'General': 'bg-stone-500/5 text-stone-500 border-stone-500'
+    };
+    return colors[category] || 'bg-stone-100 text-stone-800 border-stone-200';
+  };
+
+  const getUrgencyColor = (urgency) => {
+    const colors = {
+      'high': 'bg-red-500/5 text-red-500 border-red-500',
+      'medium': 'bg-yellow-500/5 text-yellow-500 border-yellow-500',
+      'low': 'bg-green-500/5 text-green-500 border-green-500'
+    };
+    return colors[urgency] || 'bg-stone-100 text-stone-800 border-stone-200';
   };
 
   if (!agent) {
@@ -258,14 +376,50 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             )}
           </div>
         </div>
+
+        {/* Tab System */}
+        <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              activeTab === 'analytics'
+                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
+            }`}
+          >
+            Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              activeTab === 'messages'
+                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
+            }`}
+          >
+            Messages
+          </button>
+        </div>
       </div>
 
+      {/* Tab Content */}
+      {activeTab === 'analytics' && (
+        <>
       {/* Analytics Dashboard */}
       <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
         {/* Top Metrics Row */}
         <div className="flex items-center gap-8 mb-8">
           <div>
             <div className="text-xs font-medium text-stone-500 mb-1">Total Conversations</div>
+            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+              {analyticsData?.summary?.totalConversations || '0'}
+            </div>
+          </div>
+
+          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
+
+          <div>
+            <div className="text-xs font-medium text-stone-500 mb-1">Analyzed</div>
             <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
               {analyticsData?.summary?.analyzedConversations || '0'}
             </div>
@@ -274,18 +428,9 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
 
           <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Resolved</div>
+            <div className="text-xs font-medium text-stone-500 mb-1">Non-Analyzed</div>
             <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
-              {analyticsData?.summary?.resolvedConversations || '0'}
-            </div>
-          </div>
-
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-
-          <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Unresolved</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
-              {analyticsData?.summary?.unresolvedConversations || '0'}
+              {analyticsData?.summary?.nonAnalyzedConversations || '0'}
             </div>
           </div>
 
@@ -301,19 +446,9 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
 
           <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Avg Sentiment</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
-              {analyticsData?.summary?.avgSentiment?.toFixed(1) || '5.0'}/10
-            </div>
-          </div>
-
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-
-          <div>
             <div className="text-xs font-medium text-stone-500 mb-1">Knowledge Gaps</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
               {knowledgeGaps?.length || '0'}
-              {knowledgeGaps?.length > 0 && <span className="text-2xl">⚠️</span>}
             </div>
           </div>
         </div>
@@ -333,7 +468,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             />
           ) : (
             <div className="h-full flex items-center justify-center">
-              <div className="text-stone-400 text-sm">No conversation data available for this time range</div>
+              <div className="text-center">
+                <div className="text-stone-400 text-sm">No conversations in this period</div>
+                <div className="text-stone-300 text-xs mt-1">Your customers haven't started any chats yet</div>
+              </div>
             </div>
           )}
         </div>
@@ -384,16 +522,70 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             <TopicChart data={analyticsData?.topicData || []} />
           </div>
         </div>
+
+        {/* Languages */}
+        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Languages</h3>
+            <div className="text-sm text-stone-500">User Preferences</div>
+          </div>
+          <div className="h-64">
+            <LanguageChart data={analyticsData?.languageData || {}} />
+          </div>
+        </div>
+
+        {/* Browsers */}
+        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Browsers</h3>
+            <div className="text-sm text-stone-500">Browser Distribution</div>
+          </div>
+          <div className="h-64">
+            <BrowserChart data={analyticsData?.browserData || {}} />
+          </div>
+        </div>
+
+        {/* Devices */}
+        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Devices</h3>
+            <div className="text-sm text-stone-500">Device Types</div>
+          </div>
+          <div className="h-64">
+            <DeviceChart data={analyticsData?.deviceData || {}} />
+          </div>
+        </div>
+
+        {/* Return Users */}
+        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Type</h3>
+            <div className="text-sm text-stone-500">New vs Return</div>
+          </div>
+          <div className="h-64">
+            <ReturnUserChart data={analyticsData?.returnUserData || []} />
+          </div>
+        </div>
       </div>
 
-
-      {/* Recent Conversations Table */}
+      {/* User Locations - Full Width */}
       <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Recent Conversations</h3>
-          <div className="text-sm text-stone-500">Last 10 analyzed chats</div>
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">User Locations</h3>
+          <div className="text-sm text-stone-500">Geographic Distribution</div>
         </div>
-        <SessionListTable sessions={analyticsData?.recentSessions || []} />
+        <div className="h-96">
+          <UserWorldMap data={analyticsData?.locationData || []} />
+        </div>
+      </div>
+
+      {/* Detailed Metrics */}
+      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Detailed Metrics</h3>
+          <div className="text-sm text-stone-500">Session Analytics</div>
+        </div>
+        <DetailedMetricsCard detailedMetrics={analyticsData?.detailedMetrics || {}} />
       </div>
 
       {/* Knowledge Gaps */}
@@ -410,8 +602,13 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                 className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800"
               >
                 <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                      {gap.category || 'General'}
+                    </span>
+                  </div>
                   <div className="text-sm font-medium text-stone-900 dark:text-stone-50 mb-1">
-                    {gap.question}
+                    {gap.representativeQuestion || gap.question || 'Unknown question'}
                   </div>
                   <div className="text-xs text-stone-500 dark:text-stone-400">
                     First asked: {gap.firstAsked?.toLocaleDateString()} • Last asked: {gap.lastAsked?.toLocaleDateString()}
@@ -434,12 +631,223 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         ) : (
           <div className="h-32 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No knowledge gaps detected</div>
-              <div className="text-stone-300 dark:text-stone-600 text-xs">Your agent is answering all questions successfully</div>
+              <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">You're all set!</div>
+              <div className="text-stone-300 dark:text-stone-600 text-xs">No unanswered questions detected so far</div>
             </div>
           </div>
         )}
       </div>
+
+        </>
+      )}
+
+      {/* Messages Tab */}
+      {activeTab === 'messages' && (
+        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          {sessionsLoading ? (
+            <div className="h-64 flex items-center justify-center">
+              <div className="text-stone-400 text-sm">Loading conversations...</div>
+            </div>
+          ) : sessions.length > 0 ? (
+            <div className="space-y-3">
+              {sessions.map((session) => (
+                <button
+                  key={session.id}
+                  onClick={() => handleSessionClick(session)}
+                  className="w-full flex items-start gap-4 p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-600 transition-colors text-left"
+                >
+                  {/* Left: Main Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      {session.analysis?.mainCategory ? (
+                        <>
+                          <span className={`text-xs px-2 py-1 rounded-full border ${getCategoryColor(session.analysis.mainCategory)}`}>
+                            {session.analysis.mainCategory}
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full border ${getUrgencyColor(session.analysis.urgency)}`}>
+                            {session.analysis.urgency || 'low'} priority
+                          </span>
+                          {session.analysis.resolved ? (
+                            <span className="text-xs px-2 py-1 rounded-full bg-green-500/5 text-green-500 border border-green-500">
+                              ✓ Resolved
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-1 rounded-full bg-orange-500/5 text-orange-500 border border-orange-500">
+                              Unresolved
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-xs px-2 py-1 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
+                          {session.shouldAnalyze === 'false' ? 'Trivial Chat' :
+                           session.shouldAnalyze === 'pending' ? 'Pending Analysis' :
+                           session.shouldAnalyze === 'true' ? 'Analyzing...' : 'Not Analyzed'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm font-medium text-stone-900 dark:text-stone-50 mb-1 truncate">
+                      {session.analysis?.summary || session.analysisReason || 'Conversation'}
+                    </div>
+                    <div className="text-xs text-stone-500 dark:text-stone-400">
+                      {session.lastMessageTime?.toDate?.().toLocaleString() || 'Unknown time'}
+                      {session.userEmail && <> • {session.userEmail}</>}
+                      {session.userInfo?.location?.city && (
+                        <> • {session.userInfo.location.city}, {session.userInfo.location.country}</>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Stats */}
+                  <div className="flex flex-col items-end gap-1">
+                    {session.analysis?.sentimentScore ? (
+                      <div className="text-xs text-stone-500">
+                        Sentiment: <span className="font-semibold text-stone-900 dark:text-stone-50">{session.analysis.sentimentScore}/10</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-stone-400">
+                        No sentiment data
+                      </div>
+                    )}
+                    <div className="text-xs text-stone-500">
+                      Click to view messages
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No customer conversations yet</div>
+                <div className="text-stone-300 dark:text-stone-600 text-xs">When someone reaches out with a question or issue, it'll appear here</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Conversation Detail Modal */}
+      {isConversationModalOpen && selectedSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between p-6 border-b border-stone-200 dark:border-stone-700">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`text-xs px-2 py-1 rounded-full border ${getCategoryColor(selectedSession.analysis?.mainCategory)}`}>
+                    {selectedSession.analysis?.mainCategory || 'General'}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full border ${getUrgencyColor(selectedSession.analysis?.urgency)}`}>
+                    {selectedSession.analysis?.urgency || 'low'} priority
+                  </span>
+                  {selectedSession.analysis?.resolved ? (
+                    <span className="text-xs px-2 py-1 rounded-full bg-green-500/5 text-green-500 border border-green-500">
+                      ✓ Resolved
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-1 rounded-full bg-orange-500/5 text-orange-500 border border-orange-500">
+                      Unresolved
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50 mb-1">
+                  {selectedSession.analysis?.summary || 'Conversation Details'}
+                </h2>
+                <div className="text-sm text-stone-500 dark:text-stone-400">
+                  {selectedSession.lastMessageTime?.toDate?.().toLocaleString()}
+                  {selectedSession.userEmail && <> • {selectedSession.userEmail}</>}
+                  {selectedSession.userInfo?.location && (
+                    <> • {selectedSession.userInfo.location.city}, {selectedSession.userInfo.location.country}</>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsConversationModalOpen(false);
+                  setSelectedSession(null);
+                  setConversationMessages([]);
+                }}
+                className="p-1 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-5 h-5 text-stone-500" />
+              </button>
+            </div>
+
+            {/* Modal Body - Analysis */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Analysis Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-3">AI Analysis</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg">
+                    <div className="text-xs text-stone-500 mb-1">Intent</div>
+                    <div className="text-sm font-medium text-stone-900 dark:text-stone-50 capitalize">
+                      {selectedSession.analysis?.intent || 'N/A'}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg">
+                    <div className="text-xs text-stone-500 mb-1">Sentiment Score</div>
+                    <div className="text-sm font-medium text-stone-900 dark:text-stone-50">
+                      {selectedSession.analysis?.sentimentScore || 5}/10
+                    </div>
+                  </div>
+                  <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg col-span-2">
+                    <div className="text-xs text-stone-500 mb-1">Sub-Category</div>
+                    <div className="text-sm font-medium text-stone-900 dark:text-stone-50">
+                      {selectedSession.analysis?.subCategory || 'N/A'}
+                    </div>
+                  </div>
+                  {selectedSession.analysis?.keyTopics && selectedSession.analysis.keyTopics.length > 0 && (
+                    <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg col-span-2">
+                      <div className="text-xs text-stone-500 mb-2">Key Topics</div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSession.analysis.keyTopics.map((topic, idx) => (
+                          <span key={idx} className="text-xs px-2 py-1 bg-orange-500/5 text-orange-500 rounded-full">
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Messages Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-3">Conversation</h3>
+                {conversationMessages.length > 0 ? (
+                  <div className="space-y-3">
+                    {conversationMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`p-3 rounded-lg ${
+                          msg.role === 'user'
+                            ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                            : 'bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700'
+                        }`}
+                      >
+                        <div className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1 capitalize">
+                          {msg.role}
+                        </div>
+                        <div className="text-sm text-stone-900 dark:text-stone-50 whitespace-pre-wrap">
+                          {msg.content}
+                        </div>
+                        <div className="text-xs text-stone-400 dark:text-stone-500 mt-1">
+                          {msg.timestamp?.toDate?.().toLocaleTimeString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-stone-50 dark:bg-stone-800/50 rounded-lg text-center text-sm text-stone-500">
+                    Messages have been archived after analysis
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Knowledge Gap Modal */}
       <KnowledgeGapModal

@@ -7,6 +7,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import AdminPage from './pages/AdminPage';
 import BlogIndex from './blog/components/BlogIndex';
 import BlogPost from './blog/components/BlogPost';
+import ConversationHistoryPage from './pages/ConversationHistoryPage';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { AgentProvider } from './contexts/AgentContext';
@@ -36,6 +37,11 @@ function App() {
               <Route path="/dashboard/:agentId" element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/conversations" element={
+                <ProtectedRoute>
+                  <ConversationHistoryPage />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFoundPage />} />

@@ -5,7 +5,7 @@ import { useAgent } from '../contexts/AgentContext';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CreditCardIcon, Settings03Icon, ArrowDown01Icon, SquareArrowMoveRightUpIcon, Alert02Icon } from '@hugeicons/core-free-icons';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, onSnapshot as onDocSnapshot } from 'firebase/firestore';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export default function Navbar() {
   const { agents } = useAgent();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  const [messageCredits, setMessageCredits] = useState({ used: 0, limit: 0 });
   const userDropdownRef = useRef(null);
 
   const getInitials = (name) => {
@@ -54,6 +55,24 @@ export default function Navbar() {
       unsubscribers.forEach(unsub => unsub());
     };
   }, [user, agents]);
+
+  // Listen for message credits
+  useEffect(() => {
+    if (!user) return;
+
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onDocSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setMessageCredits({
+          used: data.messagesUsed || 0,
+          limit: data.messageLimit || 0
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -149,6 +168,20 @@ export default function Navbar() {
             {isUserDropdownOpen && (
               <div className="absolute top-full right-0 min-w-[200px] mt-1 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg shadow-lg z-10">
                 <div className="p-1 space-y-0.5">
+                  {/* Message Credits */}
+                  <div className="px-2 py-2 mb-1">
+                    <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 mb-1">
+                      <span>Credits</span>
+                      <span>{messageCredits.limit - messageCredits.used} / {messageCredits.limit}</span>
+                    </div>
+                    <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-1.5">
+                      <div
+                        className="bg-orange-500 h-1.5 rounded-full transition-all"
+                        style={{ width: `${messageCredits.limit > 0 ? ((messageCredits.limit - messageCredits.used) / messageCredits.limit) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+
                   <button
                     onClick={handleSettings}
                     className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"

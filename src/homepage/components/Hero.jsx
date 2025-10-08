@@ -1,44 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import ChatWidgetMockup from './ChatWidgetMockup';
-import { addToWaitlist } from '../../utils/firebaseFunctions';
 
 export default function Hero() {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (!email.trim()) {
-      setError('Email is required');
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    try {
-      await addToWaitlist(email);
-      setIsSubmitted(true);
-      console.log('Email submitted to Firestore:', email);
-    } catch (error) {
-      if (error.message === 'DUPLICATE_EMAIL') {
-        setError('You\'re already on the waitlist! We\'ll notify you when we launch.');
-      } else {
-        setError('Failed to join waitlist. Please try again.');
-      }
-      console.error('Error submitting email:', error);
-    }
-  };
+  const navigate = useNavigate();
 
   return (
     <section className="relative">
@@ -68,51 +33,25 @@ export default function Hero() {
                 and speak like humans do.
               </p>
               
-              {/* Waitlist signup */}
+              {/* Get Started Button */}
               <div className="max-w-md mx-auto lg:mx-0">
-                {isSubmitted ? (
-                  <div className="text-center lg:text-left">
-                    <div className="inline-flex items-center px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
-                      <span className="text-sm text-green-700 font-medium">✓ Thanks! We'll be in touch soon.</span>
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-3">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <div className="flex-1">
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="Enter your email for early access"
-                          className={`w-full px-4 py-3 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-colors ${
-                            error ? 'border-red-500 bg-red-50' : 'border-neutral-200'
-                          }`}
-                        />
-                      </div>
-                      <button 
-                        type="submit"
-                        className="px-6 py-3 text-sm font-medium transition-colors rounded-xl text-white hover:opacity-90 whitespace-nowrap cursor-pointer"
-                        style={{
-                          borderWidth: '0.5px',
-                          borderStyle: 'solid',
-                          borderColor: 'rgb(20, 20, 20)',
-                          backgroundColor: 'rgba(0, 0, 0, 0)',
-                          boxShadow: 'rgba(255, 255, 255, 0.15) 0px 2px 0px 0px inset',
-                          background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%)'
-                        }}
-                      >
-                        Join Waitlist
-                      </button>
-                    </div>
-                    {error && (
-                      <p className="text-xs text-red-600 mt-2 px-1">{error}</p>
-                    )}
-                    <p className="text-xs text-neutral-500 text-center sm:text-left">
-                      Be the first to know when we launch. No spam, unsubscribe anytime.
-                    </p>
-                  </form>
-                )}
+                <button
+                  onClick={() => navigate('/signin')}
+                  className="px-8 py-4 text-base font-medium transition-colors rounded-xl text-white hover:opacity-90 cursor-pointer"
+                  style={{
+                    borderWidth: '0.5px',
+                    borderStyle: 'solid',
+                    borderColor: 'rgb(20, 20, 20)',
+                    backgroundColor: 'rgba(0, 0, 0, 0)',
+                    boxShadow: 'rgba(255, 255, 255, 0.15) 0px 2px 0px 0px inset',
+                    background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%)'
+                  }}
+                >
+                  Get Started Free →
+                </button>
+                <p className="text-xs text-neutral-500 text-center lg:text-left mt-3">
+                  100 free messages to get you started. No credit card required.
+                </p>
               </div>
             </div>
 

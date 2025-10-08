@@ -11,6 +11,56 @@ import {
 import { db } from '../firebase';
 
 /**
+ * Helper: Convert timezone to country code (approximate)
+ */
+function timezoneToCountry(timezone) {
+  const timezoneMap = {
+    'America/New_York': 'US',
+    'America/Chicago': 'US',
+    'America/Denver': 'US',
+    'America/Los_Angeles': 'US',
+    'America/Toronto': 'CA',
+    'America/Vancouver': 'CA',
+    'America/Mexico_City': 'MX',
+    'America/Sao_Paulo': 'BR',
+    'America/Argentina/Buenos_Aires': 'AR',
+    'Europe/London': 'GB',
+    'Europe/Paris': 'FR',
+    'Europe/Berlin': 'DE',
+    'Europe/Madrid': 'ES',
+    'Europe/Rome': 'IT',
+    'Europe/Istanbul': 'TR',
+    'Europe/Moscow': 'RU',
+    'Asia/Dubai': 'AE',
+    'Asia/Kolkata': 'IN',
+    'Asia/Shanghai': 'CN',
+    'Asia/Tokyo': 'JP',
+    'Asia/Seoul': 'KR',
+    'Asia/Singapore': 'SG',
+    'Asia/Bangkok': 'TH',
+    'Australia/Sydney': 'AU',
+    'Australia/Melbourne': 'AU',
+    'Pacific/Auckland': 'NZ',
+    'Africa/Cairo': 'EG',
+    'Africa/Johannesburg': 'ZA'
+  };
+
+  // Direct match
+  if (timezoneMap[timezone]) {
+    return timezoneMap[timezone];
+  }
+
+  // Try to match by prefix (e.g., "America/Phoenix" -> "US")
+  for (const [tz, country] of Object.entries(timezoneMap)) {
+    if (timezone.startsWith(tz.split('/')[0])) {
+      return country;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Get analytics for an agent based on the new conversation structure
  * Path: /users/{userId}/agents/{agentId}/sessions/{anonymousUserId}/conversations/{conversationId}
  */
@@ -40,9 +90,16 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
     const sessionsSnapshot = await getDocs(sessionsRef);
 
     const allConversations = [];
+    const allSessions = [];
 
-    // For each session, get all conversations
+    // For each session, get all conversations and session data
     for (const sessionDoc of sessionsSnapshot.docs) {
+      const sessionData = sessionDoc.data();
+      allSessions.push({
+        id: sessionDoc.id,
+        ...sessionData
+      });
+
       const conversationsRef = collection(
         db, 'users', userId, 'agents', agentId, 'sessions', sessionDoc.id, 'conversations'
       );
@@ -57,6 +114,7 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
           allConversations.push({
             id: convDoc.id,
             sessionId: sessionDoc.id,
+            userInfo: sessionData.userInfo || {},
             ...convData
           });
         }
@@ -68,8 +126,8 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
       conv.analyzed && conv.analysis
     );
 
-    // Build analytics from conversations (pass both all and analyzed)
-    const analytics = buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange);
+    // Build analytics from conversations (pass both all and analyzed, plus sessions)
+    const analytics = buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions);
 
     return analytics;
 
@@ -82,7 +140,7 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
 /**
  * Build analytics data structure from analyzed conversations
  */
-function buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange) {
+function buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions = []) {
   // Initialize chart data structure
   const chartData = {};
   const now = new Date();
@@ -301,15 +359,114 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
       timestamp: conv.lastMessageTime?.toDate?.() || new Date()
     }));
 
+  // Process session data for browser, device, language, location, return users
+  const browserCount = {};
+  const deviceCount = {};
+  const languageCount = {};
+  const locationData = [];
+  let returnUserCount = 0;
+  let newUserCount = 0;
+
+  allSessions.forEach(session => {
+    const userInfo = session.userInfo || {};
+
+    // Browser data
+    if (userInfo.device?.browser) {
+      browserCount[userInfo.device.browser] = (browserCount[userInfo.device.browser] || 0) + 1;
+    }
+
+    // Device data
+    if (userInfo.device?.deviceType) {
+      deviceCount[userInfo.device.deviceType] = (deviceCount[userInfo.device.deviceType] || 0) + 1;
+    }
+
+    // Language data
+    if (userInfo.language) {
+      languageCount[userInfo.language] = (languageCount[userInfo.language] || 0) + 1;
+    }
+
+    // Location data (for map)
+    // Priority: IP-based location (city+country) > timezone-based country
+    if (userInfo.location?.country && userInfo.location?.city) {
+      // IP-based location available
+      locationData.push({
+        city: userInfo.location.city,
+        country: userInfo.location.country,
+        countryCode: userInfo.location.countryCode,
+        count: 1
+      });
+    } else if (userInfo.location?.timezone) {
+      // Fallback: Estimate country from timezone
+      const countryCode = timezoneToCountry(userInfo.location.timezone);
+      if (countryCode) {
+        locationData.push({
+          city: 'Unknown',
+          country: countryCode,
+          countryCode: countryCode,
+          count: 1
+        });
+      }
+    }
+
+    // Return user tracking
+    if (userInfo.isReturnUser === true) {
+      returnUserCount++;
+    } else {
+      newUserCount++;
+    }
+  });
+
+  // Format return user data for donut chart
+  const returnUserData = [
+    { name: 'New Users', value: newUserCount },
+    { name: 'Return Users', value: returnUserCount }
+  ];
+
+  // Calculate detailed metrics
+  let totalTimeBeforeChat = 0;
+  let totalSessionDuration = 0;
+  let totalScrollDepth = 0;
+  let totalMessagesCount = 0;
+  let sessionsWithData = 0;
+
+  allSessions.forEach(session => {
+    const userInfo = session.userInfo || {};
+
+    // Average messages per session (from totalConversations in session)
+    if (session.totalConversations) {
+      totalMessagesCount += session.totalConversations;
+    }
+
+    // Session duration could be calculated from firstVisit to lastVisit if needed
+    // For now we'll skip or use placeholder values
+    sessionsWithData++;
+  });
+
+  const detailedMetrics = {
+    avgTimeOnPageBeforeChat: 0, // Would need widget open timestamp to calculate
+    avgSessionDuration: 0, // Would need session close timestamp to calculate
+    avgScrollDepth: 0, // Not tracked currently
+    returnVisitorRate: allSessions.length > 0 ? (returnUserCount / allSessions.length) * 100 : 0,
+    avgMessagesPerSession: allSessions.length > 0 ? totalMessagesCount / allSessions.length : 0,
+    totalSessions: allSessions.length
+  };
+
   return {
     chartData,
     categoryData,
     sentimentData,
     urgencyData,
     topicData,
+    browserData: browserCount,
+    deviceData: deviceCount,
+    languageData: languageCount,
+    locationData,
+    returnUserData,
+    detailedMetrics,
     summary: {
       totalConversations,
       analyzedConversations: analyzedCount,
+      nonAnalyzedConversations: totalConversations - analyzedCount,
       resolvedConversations,
       unresolvedConversations,
       resolutionRate,
@@ -330,15 +487,18 @@ export const getKnowledgeGaps = async (agentId, userId) => {
     }
 
     const knowledgeGapsRef = collection(db, 'users', userId, 'agents', agentId, 'knowledgeGaps');
-    const q = query(knowledgeGapsRef, where('filled', '!=', true));
-    const knowledgeGapsSnapshot = await getDocs(q);
+    // Get all knowledge gaps (no filter, we'll filter client-side)
+    const knowledgeGapsSnapshot = await getDocs(knowledgeGapsRef);
 
-    const gaps = knowledgeGapsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      firstAsked: doc.data().firstAsked?.toDate?.(),
-      lastAsked: doc.data().lastAsked?.toDate?.()
-    }));
+    const gaps = knowledgeGapsSnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        firstAsked: doc.data().firstAsked?.toDate?.(),
+        lastAsked: doc.data().lastAsked?.toDate?.()
+      }))
+      // Filter out filled gaps (where filled === true)
+      .filter(gap => gap.filled !== true);
 
     // Sort by count (most asked first)
     gaps.sort((a, b) => (b.count || 0) - (a.count || 0));

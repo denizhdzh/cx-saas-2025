@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,8 +65,8 @@ export default function Header() {
             </Link>
           </nav>
           
-          {/* Join Waitlist Button */}
-          <button 
+          {/* Sign Up / Dashboard Button */}
+          <button
             className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-medium transition-colors rounded-xl text-white cursor-pointer"
             style={{
               borderWidth: '0.5px',
@@ -73,17 +76,9 @@ export default function Header() {
               boxShadow: 'rgba(255, 255, 255, 0.15) 0px 2px 0px 0px inset',
               background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(40, 40, 40, 0.9) 100%)'
             }}
-            onClick={() => {
-              document.querySelector('input[type="email"]')?.scrollIntoView({ 
-                behavior: 'smooth',
-                block: 'center'
-              });
-              setTimeout(() => {
-                document.querySelector('input[type="email"]')?.focus();
-              }, 500);
-            }}
+            onClick={() => navigate(user ? '/dashboard' : '/signin')}
           >
-            Join Waitlist
+            {user ? 'Dashboard' : 'Sign Up'}
           </button>
         </div>
       </div>

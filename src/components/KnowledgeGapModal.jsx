@@ -50,9 +50,26 @@ export default function KnowledgeGapModal({ gap, isOpen, onClose, onSubmit }) {
               Question ({gap.count}x asked)
             </label>
             <div className="p-4 bg-stone-50 dark:bg-stone-900/50 rounded-lg border border-stone-200 dark:border-stone-800">
+              {gap.category && (
+                <span className="inline-block text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 mb-2">
+                  {gap.category}
+                </span>
+              )}
               <p className="text-sm text-stone-900 dark:text-stone-50 font-medium">
-                {gap.question}
+                {gap.representativeQuestion || gap.question || 'Unknown question'}
               </p>
+              {gap.recentQuestions && gap.recentQuestions.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-stone-200 dark:border-stone-700">
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">Recent variations:</p>
+                  <ul className="space-y-1">
+                    {gap.recentQuestions.slice(0, 3).map((q, idx) => (
+                      <li key={idx} className="text-xs text-stone-600 dark:text-stone-400">
+                        • {q.question}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 

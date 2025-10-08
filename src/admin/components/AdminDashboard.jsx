@@ -46,7 +46,7 @@ export default function AdminDashboard() {
               <span className="text-sm text-neutral-500">/</span>
               <span className="text-sm font-medium text-neutral-900">Admin</span>
             </div>
-            
+
             <button
               onClick={handleLogout}
               className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"

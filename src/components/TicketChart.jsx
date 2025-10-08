@@ -10,8 +10,8 @@ export default function TicketChart({
   // Transform chartData object to array format for Recharts
   const data = Object.keys(chartData).sort().map(date => ({
     date,
-    resolved: chartData[date]?.resolved || 0,
-    unresolved: (chartData[date]?.analyzed || 0) - (chartData[date]?.resolved || 0)
+    analyzed: chartData[date]?.analyzed || 0,
+    nonAnalyzed: (chartData[date]?.total || 0) - (chartData[date]?.analyzed || 0)
   }));
 
   // If no data, create empty array
@@ -23,8 +23,8 @@ export default function TicketChart({
       date.setDate(today.getDate() - i);
       emptyData.push({
         date: date.toISOString().split('T')[0],
-        resolved: 0,
-        unresolved: 0
+        analyzed: 0,
+        nonAnalyzed: 0
       });
     }
     return (
@@ -56,19 +56,20 @@ export default function TicketChart({
                   return value.split(' ')[1] || value;
                 } else if (timeRange === 'daily') {
                   // Show day (e.g., "Jan 1")
-                  const date = new Date(value);
+                  const date = new Date(value + 'T00:00:00');
                   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                 } else if (timeRange === 'weekly') {
                   // Show date (e.g., "Jan 1")
-                  const date = new Date(value);
+                  const date = new Date(value + 'T00:00:00');
                   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                 } else if (timeRange === 'quarterly') {
                   // Show "Week of Jan 1"
-                  return value.replace('Week of ', '');
+                  const date = new Date(value + 'T00:00:00');
+                  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                 } else if (timeRange === 'alltime') {
                   // Show month-year (e.g., "Jan 2025")
                   const [year, month] = value.split('-');
-                  const date = new Date(year, parseInt(month) - 1);
+                  const date = new Date(year, parseInt(month) - 1, 1);
                   return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
                 }
                 return value;
@@ -83,17 +84,28 @@ export default function TicketChart({
 
             <Tooltip
               formatter={(value, name) => {
-                const label = name === 'resolved' ? 'Resolved' : 'Unresolved';
+                const label = name === 'analyzed' ? 'Analyzed' : 'Non-Analyzed';
                 return [Number(value).toLocaleString(), label];
               }}
               labelFormatter={(value) => {
-                const date = new Date(value);
-                return date.toLocaleDateString(undefined, {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                });
+                if (timeRange === 'hourly') {
+                  return value;
+                } else if (timeRange === 'alltime') {
+                  const [year, month] = value.split('-');
+                  const date = new Date(year, parseInt(month) - 1, 1);
+                  return date.toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'long'
+                  });
+                } else {
+                  const date = new Date(value + 'T00:00:00');
+                  return date.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  });
+                }
               }}
               contentStyle={{
                 backgroundColor: 'white',
@@ -104,17 +116,17 @@ export default function TicketChart({
             />
 
             <Bar
-              dataKey="resolved"
-              name="Resolved"
-              fill="#22c55e"
+              dataKey="analyzed"
+              name="Analyzed"
+              fill="#ea580c"
               stackId="a"
               radius={[0, 0, 0, 0]}
             />
 
             <Bar
-              dataKey="unresolved"
-              name="Unresolved"
-              fill="#ef4444"
+              dataKey="nonAnalyzed"
+              name="Non-Analyzed"
+              fill="#6366f1"
               stackId="a"
               radius={[4, 4, 0, 0]}
             />
@@ -138,7 +150,7 @@ export default function TicketChart({
           className="text-stone-500 [&_.recharts-text]:text-xs focus:outline-none [&>*]:focus:outline-none"
         >
           <CartesianGrid vertical={false} stroke="currentColor" className="text-stone-200 dark:text-stone-800" />
-          
+
           <XAxis
             axisLine={false}
             tickLine={false}
@@ -153,19 +165,20 @@ export default function TicketChart({
                 return value.split(' ')[1] || value;
               } else if (timeRange === 'daily') {
                 // Show day (e.g., "Jan 1")
-                const date = new Date(value);
+                const date = new Date(value + 'T00:00:00');
                 return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
               } else if (timeRange === 'weekly') {
                 // Show date (e.g., "Jan 1")
-                const date = new Date(value);
+                const date = new Date(value + 'T00:00:00');
                 return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
               } else if (timeRange === 'quarterly') {
                 // Show "Week of Jan 1"
-                return value.replace('Week of ', '');
+                const date = new Date(value + 'T00:00:00');
+                return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
               } else if (timeRange === 'alltime') {
                 // Show month-year (e.g., "Jan 2025")
                 const [year, month] = value.split('-');
-                const date = new Date(year, parseInt(month) - 1);
+                const date = new Date(year, parseInt(month) - 1, 1);
                 return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
               }
               return value;
@@ -180,17 +193,28 @@ export default function TicketChart({
 
           <Tooltip
             formatter={(value, name) => {
-              const label = name === 'resolved' ? 'Resolved' : 'Unresolved';
+              const label = name === 'analyzed' ? 'Analyzed' : 'Non-Analyzed';
               return [Number(value).toLocaleString(), label];
             }}
             labelFormatter={(value) => {
-              const date = new Date(value);
-              return date.toLocaleDateString(undefined, {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              });
+              if (timeRange === 'hourly') {
+                return value;
+              } else if (timeRange === 'alltime') {
+                const [year, month] = value.split('-');
+                const date = new Date(year, parseInt(month) - 1, 1);
+                return date.toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'long'
+                });
+              } else {
+                const date = new Date(value + 'T00:00:00');
+                return date.toLocaleDateString(undefined, {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                });
+              }
             }}
             contentStyle={{
               backgroundColor: 'white',
@@ -201,17 +225,17 @@ export default function TicketChart({
           />
 
           <Bar
-            dataKey="resolved"
-            name="Resolved"
-            fill="#22c55e"
+            dataKey="analyzed"
+            name="Analyzed"
+            fill="#ea580c"
             stackId="a"
             radius={[0, 0, 0, 0]}
           />
 
           <Bar
-            dataKey="unresolved"
-            name="Unresolved"
-            fill="#ef4444"
+            dataKey="nonAnalyzed"
+            name="Non-Analyzed"
+            fill="#f59e0b"
             stackId="a"
             radius={[4, 4, 0, 0]}
           />

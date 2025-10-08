@@ -29,12 +29,22 @@ export default function DashboardPage() {
 
   // Find and select the agent based on URL parameter
   useEffect(() => {
-    if (agentId && agents.length > 0 && agentId !== 'billing' && agentId !== 'create' && agentId !== 'settings') {
+    console.log('🔍 DashboardPage useEffect triggered:', { agentId, agentsCount: agents.length });
+
+    // Skip this effect entirely if we're on create, billing, or settings pages
+    if (agentId === 'create' || agentId === 'billing' || agentId === 'settings') {
+      console.log('⏭️ Skipping effect for special page:', agentId);
+      return;
+    }
+
+    if (agentId && agents.length > 0) {
       const agent = agents.find(a => a.id === agentId);
       if (agent && (!selectedAgent || selectedAgent.id !== agentId)) {
+        console.log('✅ Selecting agent:', agent.id);
         selectAgent(agent);
       } else if (!agent) {
         // Agent not found, redirect to dashboard
+        console.log('❌ Agent not found, navigating to /dashboard');
         navigate('/dashboard');
       }
     }
