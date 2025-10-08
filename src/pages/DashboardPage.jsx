@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PlusIcon, CpuChipIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 import { Helmet } from 'react-helmet-async';
 import Navbar from '../components/Navbar';
@@ -17,6 +17,7 @@ import { doc, getDoc } from 'firebase/firestore';
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { agentId } = useParams();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const isBillingPage = agentId === 'billing';
   const isCreatePage = agentId === 'create';
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [showCreateView, setShowCreateView] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [subscriptionData, setSubscriptionData] = useState(null);
+  const [initialSection, setInitialSection] = useState(null);
 
   // Find and select the agent based on URL parameter
   useEffect(() => {
@@ -49,6 +51,22 @@ export default function DashboardPage() {
       }
     }
   }, [agentId, agents, selectedAgent, selectAgent, navigate]);
+
+  // Check for query params to show embed view
+  useEffect(() => {
+    const view = searchParams.get('view');
+    const section = searchParams.get('section');
+
+    if (view === 'agentsettings') {
+      setShowEmbedView(true);
+      if (section) {
+        setInitialSection(section);
+      }
+    } else {
+      setShowEmbedView(false);
+      setInitialSection(null);
+    }
+  }, [searchParams]);
 
   // Fetch subscription data
   useEffect(() => {
@@ -205,19 +223,23 @@ export default function DashboardPage() {
           <title>{selectedAgent?.name || 'Agent'} - Orchis</title>
           <meta name="description" content="Manage your AI agent" />
         </Helmet>
-        
+
         <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
           <Navbar />
-          
+
           {/* View Content */}
           {showEmbedView ? (
-            <EmbedView 
-              agent={selectedAgent} 
-              onBack={() => setShowEmbedView(false)}
+            <EmbedView
+              agent={selectedAgent}
+              onBack={() => {
+                setShowEmbedView(false);
+                setInitialSection(null);
+              }}
+              initialSection={initialSection}
             />
           ) : (
-            <AgentDashboard 
-              agent={selectedAgent} 
+            <AgentDashboard
+              agent={selectedAgent}
               onShowEmbed={() => setShowEmbedView(true)}
             />
           )}

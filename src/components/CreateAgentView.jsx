@@ -19,7 +19,8 @@ import {
   ArrowRightIcon,
   ArrowLeftIcon,
   SparklesIcon,
-  PencilIcon
+  PencilIcon,
+  GiftIcon
 } from '@heroicons/react/24/outline';
 
 export default function CreateAgentView({ onBack }) {
@@ -48,6 +49,22 @@ export default function CreateAgentView({ onBack }) {
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [currentAgentCount, setCurrentAgentCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Discount forms (Step 3)
+  const [returnUserDiscountForm, setReturnUserDiscountForm] = useState({
+    enabled: false,
+    title: 'Welcome back! 🎉',
+    message: 'We have a special offer just for you',
+    code: 'WELCOME15',
+    discountPercent: 15
+  });
+  const [firstTimeDiscountForm, setFirstTimeDiscountForm] = useState({
+    enabled: false,
+    title: 'Welcome! 👋',
+    message: 'Get a special discount on your first purchase',
+    code: 'FIRST20',
+    discountPercent: 20
+  });
 
   // Fetch user subscription and agent count on mount
   useEffect(() => {
@@ -395,7 +412,10 @@ export default function CreateAgentView({ onBack }) {
         trainingStatus: 'training',
         allowedDomains: allowedDomains,
         userId: user.uid,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        // Add discount settings
+        returnUserDiscount: returnUserDiscountForm.enabled ? returnUserDiscountForm : null,
+        firstTimeDiscount: firstTimeDiscountForm.enabled ? firstTimeDiscountForm : null
       };
 
       const agentResult = await createAgent(agentData);
@@ -459,14 +479,21 @@ export default function CreateAgentView({ onBack }) {
       return formData.projectName && formData.websiteUrl && logoPreview;
     }
     if (currentStep === 2) {
-      // Check limit before allowing to go to step 3
+      return uploadedFiles.filter(f => f.status === 'ready').length > 0;
+    }
+    if (currentStep === 3) {
+      // Step 3 is optional, always allow next
+      return true;
+    }
+    if (currentStep === 4) {
+      // Check limit before training
       if (subscriptionData) {
         const { agentLimit } = subscriptionData;
         if (agentLimit !== -1 && currentAgentCount >= agentLimit) {
-          return false; // Don't allow proceeding if at limit
+          return false;
         }
       }
-      return uploadedFiles.filter(f => f.status === 'ready').length > 0;
+      return true;
     }
     return true;
   };
@@ -480,8 +507,10 @@ export default function CreateAgentView({ onBack }) {
     } else if (currentStep === 2) {
       stepTitle = 'Upload Documents';
     } else if (currentStep === 3) {
+      stepTitle = 'Marketing (Optional)';
+    } else if (currentStep === 4) {
       if (trainingComplete) {
-        displayStep = 4;
+        displayStep = 5;
         stepTitle = 'Embed Code';
       } else if (isTraining) {
         stepTitle = 'Training Agent...';
@@ -491,9 +520,9 @@ export default function CreateAgentView({ onBack }) {
     }
 
     return (
-      <div className="mb-6 text-center">
+      <div className="mb-6">
         <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">
-          Step {displayStep} of 4
+          Step {displayStep} of 5
         </div>
         <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
           {stepTitle}
@@ -679,7 +708,184 @@ export default function CreateAgentView({ onBack }) {
     </div>
   );
 
-  const renderStep3 = () => {
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      {/* Info Banner */}
+      <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <GiftIcon className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-1">
+              Boost Conversions with Smart Discounts
+            </h3>
+            <p className="text-xs text-stone-600 dark:text-stone-400">
+              Set up automatic discount popups for first-time and return visitors. You can always configure these later in Agent Settings.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* First Time Visitor Discount */}
+      <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">First-Time Visitor Discount</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Show a welcome offer to new visitors</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={firstTimeDiscountForm.enabled}
+              onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, enabled: e.target.checked})}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-orange-600"></div>
+          </label>
+        </div>
+
+        {firstTimeDiscountForm.enabled && (
+          <div className="space-y-3 pt-3 border-t border-stone-200 dark:border-stone-700">
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Popup Title
+              </label>
+              <input
+                type="text"
+                value={firstTimeDiscountForm.title}
+                onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, title: e.target.value})}
+                className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="Welcome! 👋"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Message
+              </label>
+              <textarea
+                value={firstTimeDiscountForm.message}
+                onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, message: e.target.value})}
+                className="form-textarea text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="Get a special discount on your first purchase"
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Discount Code
+                </label>
+                <input
+                  type="text"
+                  value={firstTimeDiscountForm.code}
+                  onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, code: e.target.value.toUpperCase()})}
+                  className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl font-mono"
+                  placeholder="FIRST20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Discount %
+                </label>
+                <input
+                  type="number"
+                  value={firstTimeDiscountForm.discountPercent}
+                  onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, discountPercent: parseInt(e.target.value) || 0})}
+                  className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                  placeholder="20"
+                  min="0"
+                  max="100"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Return User Discount */}
+      <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Return User Discount</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Reward visitors who come back after 1+ hour</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={returnUserDiscountForm.enabled}
+              onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, enabled: e.target.checked})}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-orange-600"></div>
+          </label>
+        </div>
+
+        {returnUserDiscountForm.enabled && (
+          <div className="space-y-3 pt-3 border-t border-stone-200 dark:border-stone-700">
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Popup Title
+              </label>
+              <input
+                type="text"
+                value={returnUserDiscountForm.title}
+                onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, title: e.target.value})}
+                className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="Welcome back! 🎉"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Message
+              </label>
+              <textarea
+                value={returnUserDiscountForm.message}
+                onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, message: e.target.value})}
+                className="form-textarea text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="We have a special offer just for you"
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Discount Code
+                </label>
+                <input
+                  type="text"
+                  value={returnUserDiscountForm.code}
+                  onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, code: e.target.value.toUpperCase()})}
+                  className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl font-mono"
+                  placeholder="WELCOME15"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Discount %
+                </label>
+                <input
+                  type="number"
+                  value={returnUserDiscountForm.discountPercent}
+                  onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, discountPercent: parseInt(e.target.value) || 0})}
+                  className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                  placeholder="15"
+                  min="0"
+                  max="100"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => {
     if (trainingComplete && createdAgentId) {
       // Show embed code after training
       const embedCode = `<!-- Orchis Chatbot -->
@@ -815,20 +1021,20 @@ export default function CreateAgentView({ onBack }) {
 
       {/* Welcome Message */}
       {currentAgentCount === 0 ? (
-        <div className="mb-6 text-center">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-2">
             Welcome, {user?.displayName || 'there'}! 👋
           </h1>
-          <p className="text-sm text-stone-600 dark:text-stone-400 max-w-md mx-auto">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             Let's create your first AI agent together. We're excited to have you on board and can't wait to see what you build!
           </p>
         </div>
       ) : (
-        <div className="mb-6 text-center">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-2">
             Create New Agent
           </h1>
-          <p className="text-sm text-stone-600 dark:text-stone-400 max-w-md mx-auto">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             Ready to expand your AI toolkit? Let's set up another intelligent agent to help your business grow.
           </p>
         </div>
@@ -840,6 +1046,7 @@ export default function CreateAgentView({ onBack }) {
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
+        {currentStep === 4 && renderStep4()}
       </div>
 
       <div className="flex items-center justify-between">
@@ -855,20 +1062,30 @@ export default function CreateAgentView({ onBack }) {
         )}
 
         <div className={`flex items-center gap-2 ${trainingComplete ? 'w-full' : ''}`}>
-          {currentStep < 3 && (
+          {/* Skip button for step 3 (Marketing) */}
+          {currentStep === 3 && (
+            <button
+              onClick={() => setCurrentStep(4)}
+              className="btn-secondary text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1.5"
+            >
+              Skip for now
+            </button>
+          )}
+
+          {currentStep < 4 && (
             <button
               onClick={() => {
-                // Check limit when clicking Next from step 2
-                if (currentStep === 2 && subscriptionData) {
+                // Check limit when clicking Next from step 3
+                if (currentStep === 3 && subscriptionData) {
                   const { agentLimit } = subscriptionData;
                   if (agentLimit !== -1 && currentAgentCount >= agentLimit) {
                     setShowUpgradeModal(true);
                     return;
                   }
                 }
-                setCurrentStep(prev => Math.min(3, prev + 1));
+                setCurrentStep(prev => Math.min(4, prev + 1));
               }}
-              disabled={currentStep === 1 ? !canGoToNextStep() : (currentStep === 2 && uploadedFiles.filter(f => f.status === 'ready').length === 0)}
+              disabled={!canGoToNextStep()}
               className="btn-primary text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Next
@@ -876,7 +1093,7 @@ export default function CreateAgentView({ onBack }) {
             </button>
           )}
 
-          {currentStep === 3 && !trainingComplete && (
+          {currentStep === 4 && !trainingComplete && (
             <button
               onClick={handleTrainAgent}
               disabled={isTraining || uploadedFiles.filter(f => f.status === 'ready').length === 0}

@@ -1038,7 +1038,7 @@
           
           // Update header
           const headerName = this.container.querySelector('.orchis-agent-name');
-          headerName.textContent = `${this.config.projectName} AI & ${capitalizedName}`;
+          headerName.textContent = `${this.config.projectName} & ${capitalizedName}`;
         }
       }
 
@@ -1194,7 +1194,7 @@
 
         return `
           <div class="orchis-message orchis-${message.role}-message">
-            <div class="orchis-message-label">${message.role === 'user' ? 'You' : this.config.projectName + ' AI'}</div>
+            <div class="orchis-message-label">${message.role === 'user' ? 'You' : this.config.projectName + ''}</div>
             <div class="orchis-message-content">${message.content}${this.isTyping && this.messages[this.messages.length - 1].id === message.id ? '<span style="animation: blink 1s infinite;">|</span>' : ''}</div>
             ${suggestionsHTML}
           </div>

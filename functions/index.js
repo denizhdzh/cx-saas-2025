@@ -1630,73 +1630,73 @@ exports.stripeWebhook = onRequest({ cors: true }, async (request, response) => {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error('⛔ Webhook signature verification failed:', err.message);
     return response.status(400).send(`Webhook Error: ${err.message}`);
   }
+
+  console.log(`📨 Webhook received: ${event.type}`);
 
   // Handle the event
   try {
     switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        const userId = session.metadata.userId;
-
-        // Get subscription details
-        const subscription = await stripe.subscriptions.retrieve(session.subscription);
-        const priceId = subscription.items.data[0].price.id;
-
-        // Determine plan based on price ID
-        let planName = 'free';
-        let tokenLimit = 100;
-        let agentLimit = 1; // Free plan gets 1 agent
-
-        if (priceId === STRIPE_PRICES.starter_monthly || priceId === STRIPE_PRICES.starter_yearly) {
-          planName = 'starter';
-          tokenLimit = 1500;
-          agentLimit = 1;
-        } else if (priceId === STRIPE_PRICES.growth_monthly || priceId === STRIPE_PRICES.growth_yearly) {
-          planName = 'growth';
-          tokenLimit = 7500;
-          agentLimit = 5;
-        } else if (priceId === STRIPE_PRICES.scale_monthly || priceId === STRIPE_PRICES.scale_yearly) {
-          planName = 'scale';
-          tokenLimit = 50000;
-          agentLimit = -1; // Unlimited
-        }
-
-        // Update user subscription status
-        await db.collection('users').doc(userId).update({
-          subscriptionStatus: 'active',
-          subscriptionPlan: planName,
-          stripeSubscriptionId: session.subscription,
-          stripePriceId: priceId,
-          messageLimit: tokenLimit,
-          agentLimit: agentLimit,
-          messagesUsed: 0,
-          currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-        break;
-      }
-
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
-        const customer = subscription.customer;
+        const previousAttributes = event.data.previous_attributes;
 
-        // Find user by customer ID
-        const usersSnapshot = await db.collection('users')
-          .where('stripeCustomerId', '==', customer)
-          .limit(1)
-          .get();
+        // Only process when status changes to 'active' (initial purchase completion)
+        if (previousAttributes?.status === 'incomplete' && subscription.status === 'active') {
+          console.log('🎉 New subscription activated!');
 
-        if (!usersSnapshot.empty) {
-          const userDoc = usersSnapshot.docs[0];
-          await userDoc.ref.update({
-            subscriptionStatus: subscription.status,
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
-            updatedAt: new Date().toISOString()
-          });
+          const customer = subscription.customer;
+          const priceId = subscription.items.data[0].price.id;
+          const subscriptionId = subscription.id;
+
+          // Find user by customer ID
+          const usersSnapshot = await db.collection('users')
+            .where('stripeCustomerId', '==', customer)
+            .limit(1)
+            .get();
+
+          if (!usersSnapshot.empty) {
+            const userDoc = usersSnapshot.docs[0];
+
+            // Determine plan based on price ID
+            let planName = 'free';
+            let messageLimit = 100;
+            let agentLimit = 1;
+
+            if (priceId === STRIPE_PRICES.starter_monthly || priceId === STRIPE_PRICES.starter_yearly) {
+              planName = 'starter';
+              messageLimit = 1500;
+              agentLimit = 1;
+            } else if (priceId === STRIPE_PRICES.growth_monthly || priceId === STRIPE_PRICES.growth_yearly) {
+              planName = 'growth';
+              messageLimit = 7500;
+              agentLimit = 5;
+            } else if (priceId === STRIPE_PRICES.scale_monthly || priceId === STRIPE_PRICES.scale_yearly) {
+              planName = 'scale';
+              messageLimit = 50000;
+              agentLimit = -1; // Unlimited
+            }
+
+            // Update user with subscription info
+            await userDoc.ref.update({
+              subscriptionStatus: 'active',
+              subscriptionPlan: planName,
+              stripeSubscriptionId: subscriptionId,
+              stripePriceId: priceId,
+              messageLimit: messageLimit,
+              agentLimit: agentLimit,
+              currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
+              currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+
+            console.log(`✅ User ${userDoc.id} upgraded to ${planName} plan`);
+          }
+        } else {
+          // Other updates (renewals, etc.)
+          console.log(`📝 Subscription updated: ${subscription.status}`);
         }
         break;
       }
@@ -1723,6 +1723,8 @@ exports.stripeWebhook = onRequest({ cors: true }, async (request, response) => {
             messagesUsed: 0,
             updatedAt: new Date().toISOString()
           });
+
+          console.log(`❌ Subscription canceled for user ${userDoc.id}`);
         }
         break;
       }
@@ -1730,6 +1732,15 @@ exports.stripeWebhook = onRequest({ cors: true }, async (request, response) => {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
         const customer = invoice.customer;
+        const billingReason = invoice.billing_reason;
+
+        // Get subscription ID from new API structure
+        const subscriptionId = invoice.parent?.subscription_details?.subscription || invoice.subscription;
+
+        if (!subscriptionId) {
+          console.log('⚠️  No subscription ID found in invoice');
+          break;
+        }
 
         // Find user by customer ID
         const usersSnapshot = await db.collection('users')
@@ -1739,17 +1750,77 @@ exports.stripeWebhook = onRequest({ cors: true }, async (request, response) => {
 
         if (!usersSnapshot.empty) {
           const userDoc = usersSnapshot.docs[0];
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
 
-          // Reset message usage for new billing period
-          await userDoc.ref.update({
-            messagesUsed: 0,
-            currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
-            updatedAt: new Date().toISOString()
-          });
+          // Prepare billing record
+          const billingRecord = {
+            invoiceId: invoice.id,
+            subscriptionId: subscriptionId,
+            amount: invoice.amount_paid / 100, // Convert cents to dollars
+            currency: invoice.currency.toUpperCase(),
+            status: invoice.status,
+            billingReason: billingReason,
+            hostedInvoiceUrl: invoice.hosted_invoice_url,
+            invoicePdf: invoice.invoice_pdf,
+            paidAt: new Date(invoice.status_transitions.paid_at * 1000).toISOString(),
+            periodStart: new Date(invoice.period_start * 1000).toISOString(),
+            periodEnd: new Date(invoice.period_end * 1000).toISOString(),
+            createdAt: new Date().toISOString()
+          };
 
-          console.log(`✅ Monthly reset: messagesUsed = 0 for user ${userDoc.id}`);
+          // Save billing record to user's billings subcollection
+          await userDoc.ref.collection('billings').doc(invoice.id).set(billingRecord);
+
+          // Get subscription details
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const priceId = subscription.items.data[0].price.id;
+
+          // Determine plan based on price ID
+          let planName = 'free';
+          let messageLimit = 100;
+          let agentLimit = 1;
+
+          if (priceId === STRIPE_PRICES.starter_monthly || priceId === STRIPE_PRICES.starter_yearly) {
+            planName = 'starter';
+            messageLimit = 1500;
+            agentLimit = 1;
+          } else if (priceId === STRIPE_PRICES.growth_monthly || priceId === STRIPE_PRICES.growth_yearly) {
+            planName = 'growth';
+            messageLimit = 7500;
+            agentLimit = 5;
+          } else if (priceId === STRIPE_PRICES.scale_monthly || priceId === STRIPE_PRICES.scale_yearly) {
+            planName = 'scale';
+            messageLimit = 50000;
+            agentLimit = -1; // Unlimited
+          }
+
+          // If this is a subscription_create (initial payment), update full subscription info
+          if (billingReason === 'subscription_create') {
+            await userDoc.ref.update({
+              subscriptionStatus: 'active',
+              subscriptionPlan: planName,
+              stripeSubscriptionId: subscriptionId,
+              stripePriceId: priceId,
+              messageLimit: messageLimit,
+              agentLimit: agentLimit,
+              messagesUsed: 0,
+              currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
+              currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+            console.log(`💰 Initial payment: User ${userDoc.id} upgraded to ${planName} plan`);
+          }
+          // If this is a subscription_cycle (renewal), just reset message usage
+          else if (billingReason === 'subscription_cycle') {
+            await userDoc.ref.update({
+              messagesUsed: 0,
+              currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
+              currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+            console.log(`🔄 Monthly renewal: messagesUsed reset for user ${userDoc.id}`);
+          }
+
+          console.log(`📄 Invoice saved: ${invoice.id} (${billingReason})`);
         }
         break;
       }
@@ -1770,17 +1841,19 @@ exports.stripeWebhook = onRequest({ cors: true }, async (request, response) => {
             subscriptionStatus: 'past_due',
             updatedAt: new Date().toISOString()
           });
+
+          console.log(`⚠️  Payment failed for user ${userDoc.id}`);
         }
         break;
       }
 
       default:
-        console.log(`Unhandled event type ${event.type}`);
+        console.log(`ℹ️  Unhandled event type: ${event.type}`);
     }
 
     response.json({ received: true });
   } catch (error) {
-    console.error('Webhook handler error:', error);
+    console.error('❌ Webhook handler error:', error);
     response.status(500).json({ error: 'Webhook handler failed' });
   }
 });

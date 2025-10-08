@@ -8,13 +8,15 @@ import {
   Cancel01Icon,
   SuperMarioToadIcon,
   PokemonIcon,
-  Pacman01Icon
+  Pacman01Icon,
+  Download01Icon,
+  Invoice01Icon
 } from '@hugeicons/core-free-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 
 export default function PricingDashboard() {
   const navigate = useNavigate();
@@ -24,9 +26,10 @@ export default function PricingDashboard() {
   const [loading, setLoading] = useState(false);
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [billings, setBillings] = useState([]);
   
   const allFeatures = [
-    { name: "messages/month", starter: "~1,500", growth: "~7,500", scale: "~50,000" },
+    { name: "messages/month", starter: "1,500", growth: "7,500", scale: "50,000" },
     { name: "AI Agents", starter: "1", growth: "5", scale: "Unlimited" },
     { name: "Unlimited training data", starter: true, growth: true, scale: true },
     { name: "Advanced analytics", starter: true, growth: true, scale: true },
@@ -37,7 +40,7 @@ export default function PricingDashboard() {
     { name: "Export data (CSV/JSON)", starter: false, growth: false, scale: true }
   ];
 
-  // Fetch user subscription data
+  // Fetch user subscription data and billing history
   useEffect(() => {
     const fetchSubscriptionData = async () => {
       if (!user) return;
@@ -54,6 +57,16 @@ export default function PricingDashboard() {
             agentLimit: userData.agentLimit || 0
           });
         }
+
+        // Fetch billing history
+        const billingsRef = collection(db, 'users', user.uid, 'billings');
+        const billingsQuery = query(billingsRef, orderBy('paidAt', 'desc'));
+        const billingsSnapshot = await getDocs(billingsQuery);
+        const billingsData = billingsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setBillings(billingsData);
       } catch (error) {
         console.error('Error fetching subscription data:', error);
       } finally {
@@ -202,13 +215,13 @@ export default function PricingDashboard() {
               <h3 className="text-lg font-medium text-stone-900 dark:text-stone-50">
                 {subscriptionData.plan === 'free' ? 'One-Time Message Credits' : 'Monthly Usage'}
               </h3>
-              <span className="text-sm text-stone-600 dark:text-stone-400 capitalize">
+              <span className="text-sm text-orange-500 capitalize">
                 {subscriptionData.plan} Plan
               </span>
             </div>
             <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400 mb-3">
-              <span>{formatNumber(subscriptionData.messagesUsed)} messages</span>
-              <span>{formatNumber(subscriptionData.messageLimit)} messages {subscriptionData.plan === 'free' ? 'total' : 'limit'}</span>
+              <span>{subscriptionData.messagesUsed.toLocaleString()} messages</span>
+              <span>{subscriptionData.messageLimit.toLocaleString()} messages {subscriptionData.plan === 'free' ? 'total' : 'limit'}</span>
             </div>
             <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-3">
               <div
@@ -379,6 +392,91 @@ export default function PricingDashboard() {
           </button>
         </div>
       </div>
+      )}
+
+      {/* Billing History - Show if there are any billings */}
+      {billings.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-xl font-thin text-stone-900 dark:text-stone-50 mb-6">Billing History</h2>
+          <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-stone-200 dark:border-stone-700">
+                    <th className="text-left py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="text-right py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                      Invoice
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {billings.map((billing, index) => (
+                    <tr
+                      key={billing.id}
+                      className={`${
+                        index !== billings.length - 1 ? 'border-b border-stone-200 dark:border-stone-700' : ''
+                      } hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors`}
+                    >
+                      <td className="py-4 px-6 text-sm text-stone-900 dark:text-stone-50">
+                        {new Date(billing.paidAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </td>
+                      <td className="py-4 px-6 text-sm text-stone-700 dark:text-stone-300">
+                        {billing.billingReason === 'subscription_create' ? 'Initial Subscription' : 'Monthly Renewal'}
+                      </td>
+                      <td className="py-4 px-6 text-sm font-medium text-stone-900 dark:text-stone-50">
+                        ${billing.amount.toFixed(2)} {billing.currency}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          billing.status === 'paid'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {billing.status === 'paid' ? 'Paid' : 'Unpaid'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <a
+                            href={billing.hostedInvoiceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors"
+                          >
+                            <HugeiconsIcon icon={Invoice01Icon} className="w-4 h-4" />
+                          </a>
+                          <a
+                            href={billing.invoicePdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-50 transition-colors"
+                          >
+                            <HugeiconsIcon icon={Download01Icon} className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* FAQ Section */}

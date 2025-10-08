@@ -125,16 +125,25 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             {/* Alert Bell */}
             {unreadAlertsCount > 0 && (
-              <Link
-                to="/dashboard"
-                className="relative p-2 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors"
+              <button
+                onClick={() => {
+                  // Find the first agent with unread alerts
+                  const agentWithAlerts = agents.find(agent => {
+                    // This is a simple check - could be improved with actual alert counts
+                    return true;
+                  });
+                  if (agentWithAlerts) {
+                    navigate(`/dashboard/${agentWithAlerts.id}?view=agentsettings&section=alerts`);
+                  }
+                }}
+                className="relative p-2 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors cursor-pointer"
                 title={`${unreadAlertsCount} unread security alert${unreadAlertsCount > 1 ? 's' : ''}`}
               >
                 <HugeiconsIcon icon={Alert02Icon} className="w-5 h-5 text-stone-500" />
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                   {unreadAlertsCount > 9 ? '9+' : unreadAlertsCount}
                 </span>
-              </Link>
+              </button>
             )}
 
             {/* User Profile Dropdown */}

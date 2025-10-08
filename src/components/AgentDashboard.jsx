@@ -258,7 +258,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       {/* Controls Row */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          {/* Agent Dropdown */}
+          {/* Widget Preview */}
           <div className="relative" ref={agentDropdownRef}>
             <button
               onClick={() => setIsAgentDropdownOpen(!isAgentDropdownOpen)}
@@ -313,13 +313,13 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                   ))}
 
                   {/* Agent Settings */}
-                  <div className="border-t border-stone-100 dark:border-stone-700 mt-1 p-1">
+                  <div className="border-t border-stone-100 dark:border-stone-700 mt-1">
                     <button
                       onClick={handleAgentSettings}
-                      className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors group"
+                      className="w-full flex items-center gap-1 px-2 py-1 mt-1 text-left rounded-md hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors group"
                     >
                       <CogIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                      <span className="text-sm font-medium text-stone-700 dark:text-stone-300">Embed Settings</span>
+                      <span className="text-sm font-medium text-stone-700 dark:text-stone-300">Agent Settings</span>
                     </button>
                   </div>
                 </div>
@@ -579,14 +579,6 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         </div>
       </div>
 
-      {/* Detailed Metrics */}
-      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Detailed Metrics</h3>
-          <div className="text-sm text-stone-500">Session Analytics</div>
-        </div>
-        <DetailedMetricsCard detailedMetrics={analyticsData?.detailedMetrics || {}} />
-      </div>
 
       {/* Knowledge Gaps */}
       <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">

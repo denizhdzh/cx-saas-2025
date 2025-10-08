@@ -18,7 +18,7 @@ import {
 } from '@hugeicons/core-free-icons';
 
 
-export default function EmbedView({ agent, onBack }) {
+export default function EmbedView({ agent, onBack, initialSection = null }) {
   const { updateAgent } = useAgent();
   const { user } = useAuth();
   const { showNotification } = useNotification();
@@ -47,7 +47,7 @@ export default function EmbedView({ agent, onBack }) {
   });
   const [newLogo, setNewLogo] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
-  const [activeSection, setActiveSection] = useState('branding');
+  const [activeSection, setActiveSection] = useState(initialSection || 'branding');
   const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
@@ -77,6 +77,13 @@ export default function EmbedView({ agent, onBack }) {
       setLogoPreview(agent.logoUrl || null);
     }
   }, [agent]);
+
+  // Set active section when initialSection changes
+  useEffect(() => {
+    if (initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection]);
 
   // Listen for alerts
   useEffect(() => {
