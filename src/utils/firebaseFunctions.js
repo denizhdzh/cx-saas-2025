@@ -205,28 +205,5 @@ export const deleteBlogPost = async (id) => {
   }
 };
 
-// Stats functions
-export const getWaitlistStats = async () => {
-  try {
-    const querySnapshot = await getDocs(collection(db, 'waitlist'));
-    const totalCount = querySnapshot.size;
-    
-    // Get recent signups (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const recentSignups = querySnapshot.docs.filter(doc => {
-      const data = doc.data();
-      const timestamp = data.timestamp?.toDate();
-      return timestamp && timestamp > sevenDaysAgo;
-    }).length;
-    
-    return {
-      total: totalCount,
-      recent: recentSignups
-    };
-  } catch (error) {
-    console.error('Error getting waitlist stats: ', error);
-    throw error;
-  }
-};
+// Admin stats function
+export const getAdminStats = httpsCallable(functions, 'getAdminStats');

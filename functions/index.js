@@ -72,23 +72,37 @@ function chunkText(text, chunkSize = 1000, overlap = 200) {
 // Extract text from different file types
 async function extractTextFromFile(buffer, mimeType, filename) {
   try {
+    console.log(`📄 Extracting text from: ${filename}`);
+    console.log(`📋 MIME type: ${mimeType}`);
+    console.log(`📦 Buffer size: ${buffer.length} bytes`);
+
     switch (mimeType) {
       case 'application/pdf':
+        console.log('🔄 Processing as PDF...');
         const pdfData = await pdfParse(buffer);
+        console.log(`✅ PDF extracted: ${pdfData.text.length} characters`);
         return pdfData.text;
-        
+
       case 'text/plain':
-        return buffer.toString('utf-8');
-        
+        console.log('🔄 Processing as TXT...');
+        const textContent = buffer.toString('utf-8');
+        console.log(`✅ TXT extracted: ${textContent.length} characters`);
+        console.log(`📝 First 100 chars: ${textContent.substring(0, 100)}`);
+        return textContent;
+
       case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        console.log('🔄 Processing as DOCX...');
         const docResult = await mammoth.extractRawText({ buffer });
+        console.log(`✅ DOCX extracted: ${docResult.value.length} characters`);
         return docResult.value;
-        
+
       default:
+        console.error(`❌ Unsupported MIME type: ${mimeType}`);
         throw new Error(`Unsupported file type: ${mimeType}`);
     }
   } catch (error) {
-    console.error(`Error extracting text from ${filename}:`, error);
+    console.error(`❌ Error extracting text from ${filename}:`, error);
+    console.error(`❌ Error stack:`, error.stack);
     throw error;
   }
 }
@@ -316,44 +330,62 @@ exports.processDocument = onCall({
   }
 
   const { agentId, fileName, fileUrl } = request.data;
-  
+
+  console.log(`\n🚀 ========== PROCESS DOCUMENT START ==========`);
+  console.log(`👤 User: ${request.auth.uid}`);
+  console.log(`🤖 Agent ID: ${agentId}`);
+  console.log(`📄 File Name: ${fileName}`);
+  console.log(`🔗 File URL: ${fileUrl}`);
+
   try {
     // Extract file path from download URL
     const urlParts = fileUrl.split('/o/')[1].split('?')[0];
     const filePath = decodeURIComponent(urlParts);
-    
+    console.log(`📂 File Path: ${filePath}`);
+
     // Download file from storage
+    console.log(`⬇️  Downloading file from storage...`);
     const file = storage.bucket().file(filePath);
     const [fileBuffer] = await file.download();
     const [metadata] = await file.getMetadata();
-    
+    console.log(`✅ File downloaded successfully`);
+    console.log(`📋 File metadata:`, JSON.stringify(metadata, null, 2));
+
     // Extract text from file
+    console.log(`\n📝 ========== TEXT EXTRACTION START ==========`);
     const text = await extractTextFromFile(fileBuffer, metadata.contentType, fileName);
+    console.log(`✅ ========== TEXT EXTRACTION SUCCESS ==========`);
     
     // For temp processing, just return the text content
     if (agentId === 'temp') {
+      console.log(`🗑️  Temp file - deleting after processing`);
       // Delete temp file after processing
       try {
         await file.delete();
+        console.log(`✅ Temp file deleted`);
       } catch (deleteError) {
-        console.log('Temp file already deleted or not found');
+        console.log('⚠️  Temp file already deleted or not found');
       }
-      
+
+      console.log(`✅ ========== PROCESS DOCUMENT SUCCESS (TEMP) ==========\n`);
       return {
         success: true,
         textContent: text,
         message: 'Text extracted successfully'
       };
     }
-    
+
     // Create chunks for real agents
+    console.log(`\n✂️  ========== CHUNKING TEXT ==========`);
     const chunks = chunkText(text);
-    
+    console.log(`✅ Created ${chunks.length} chunks`);
+
     // Store chunks in Firestore using correct user structure
+    console.log(`\n💾 ========== STORING CHUNKS ==========`);
     const batch = db.batch();
     const chunksData = [];
     const agentRef = db.collection('users').doc(request.auth.uid).collection('agents').doc(agentId);
-    
+
     chunks.forEach((chunk, index) => {
       const chunkDoc = agentRef.collection('chunks').doc();
       const chunkData = {
@@ -371,30 +403,36 @@ exports.processDocument = onCall({
           totalChunks: chunks.length
         }
       };
-      
+
       batch.set(chunkDoc, chunkData);
       chunksData.push(chunkData);
     });
-    
+
     // Update agent document count
     batch.update(agentRef, {
       documentCount: admin.firestore.FieldValue.increment(1),
       trainingStatus: 'trained',
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-    
+
+    console.log(`💾 Committing batch write to Firestore...`);
     await batch.commit();
-    
+    console.log(`✅ Batch write successful`);
+
+    console.log(`✅ ========== PROCESS DOCUMENT SUCCESS ==========\n`);
     return {
       success: true,
       textContent: text,
       chunksCreated: chunks.length,
       chunks: chunksData
     };
-    
+
   } catch (error) {
-    console.error('Error processing document:', error);
-    throw new Error('Failed to process document');
+    console.error(`\n❌ ========== PROCESS DOCUMENT ERROR ==========`);
+    console.error(`❌ Error message:`, error.message);
+    console.error(`❌ Error stack:`, error.stack);
+    console.error(`❌ ========== PROCESS DOCUMENT FAILED ==========\n`);
+    throw new Error('Failed to process document: ' + error.message);
   }
 });
 
@@ -719,10 +757,12 @@ async function processChatMessage(agentId, message, sessionId, conversationHisto
     }
 
     // Build conversation messages with history
+    const platformInfo = agentData.websiteUrl ? `\n\nPLATFORM INFO:\n- Company/Platform: ${agentName}\n- Website: ${agentData.websiteUrl}\n- You are the official customer service agent for this platform` : '';
+
     const messages = [
       {
         role: "system",
-        content: `You are ${agentName}, a helpful and friendly AI customer service assistant with access to a knowledge base.
+        content: `You are ${agentName}, a helpful and friendly AI customer service assistant with access to a knowledge base.${platformInfo}
 
 RESPONSE GUIDELINES:
 1. Be warm, engaging and conversational - show genuine interest in helping
@@ -731,8 +771,9 @@ RESPONSE GUIDELINES:
 4. Show empathy and enthusiasm - make users feel heard and valued
 5. For greetings: respond warmly and ask how you can help today
 6. Keep responses natural (2-4 sentences) but add personality
-7. If you don't know something, be honest but offer to help find out
+7. If you don't know something about ${agentName}, be honest and say "I don't have that information in my knowledge base yet" - never pretend or make up information
 8. Use page context to answer questions about current page content, URL, or what they're viewing
+9. You are the ${agentName} assistant - always answer from the perspective of representing ${agentName}
 
 KNOWLEDGE BASE:
 ${context}${pageContext}
@@ -1680,6 +1721,7 @@ exports.stripeWebhook = onRequest({ cors: true }, async (request, response) => {
             }
 
             // Update user with subscription info
+            const subscriptionItem = subscription.items.data[0];
             await userDoc.ref.update({
               subscriptionStatus: 'active',
               subscriptionPlan: planName,
@@ -1687,8 +1729,8 @@ exports.stripeWebhook = onRequest({ cors: true }, async (request, response) => {
               stripePriceId: priceId,
               messageLimit: messageLimit,
               agentLimit: agentLimit,
-              currentPeriodStart: new Date(subscription.current_period_start * 1000).toISOString(),
-              currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+              currentPeriodStart: new Date(subscriptionItem.current_period_start * 1000).toISOString(),
+              currentPeriodEnd: new Date(subscriptionItem.current_period_end * 1000).toISOString(),
               updatedAt: new Date().toISOString()
             });
 
@@ -2062,6 +2104,54 @@ exports.initializeUser = onCall({ cors: true }, async (request) => {
   } catch (error) {
     console.error('❌ Error initializing user:', error);
     throw new Error('Failed to initialize user: ' + error.message);
+  }
+});
+
+// Get admin stats
+exports.getAdminStats = onCall({ cors: true }, async (request) => {
+  try {
+    console.log('📊 Fetching admin stats...');
+
+    // Get all users
+    const usersSnapshot = await db.collection('users').get();
+    const totalUsers = usersSnapshot.size;
+
+    // Count users by subscription plan
+    const planDistribution = {
+      free: 0,
+      starter: 0,
+      growth: 0,
+      scale: 0
+    };
+
+    let totalAgents = 0;
+
+    // Process each user
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      const plan = userData.subscriptionPlan || 'free';
+
+      // Count plan distribution
+      if (planDistribution.hasOwnProperty(plan)) {
+        planDistribution[plan]++;
+      }
+
+      // Count agents for this user
+      const agentsSnapshot = await userDoc.ref.collection('agents').get();
+      totalAgents += agentsSnapshot.size;
+    }
+
+    console.log('✅ Admin stats fetched successfully');
+
+    return {
+      totalUsers,
+      planDistribution,
+      totalAgents
+    };
+
+  } catch (error) {
+    console.error('❌ Error fetching admin stats:', error);
+    throw new Error('Failed to fetch admin stats: ' + error.message);
   }
 });
 

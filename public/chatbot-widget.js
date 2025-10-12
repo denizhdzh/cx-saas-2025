@@ -856,10 +856,21 @@
           transform: rotate(90deg);
         }
 
+        /* Desktop max-height */
+        .orchis-chat-widget {
+          max-height: 600px;
+        }
+
         @media (max-width: 480px) {
+          .orchis-widget-container {
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%);
+          }
+
           .orchis-chat-widget {
             width: calc(100vw - 32px);
-            height: 70vh;
+            height: auto;
             max-height: 500px;
           }
 
@@ -1026,20 +1037,6 @@
       // Start chat session if first message
       if (this.messages.length === 0) {
         this.sessionManager.startChat();
-      }
-
-      // Check if user is providing their name
-      if (!this.userName && message.length < 50) {
-        const possibleName = message.trim().split(' ')[0];
-        if (possibleName.length > 1 && !possibleName.includes('?') && !possibleName.includes('.')) {
-          const capitalizedName = possibleName.charAt(0).toUpperCase() + possibleName.slice(1).toLowerCase();
-          this.userName = capitalizedName;
-          localStorage.setItem(`chatbot_user_${this.config.agentId}`, capitalizedName);
-          
-          // Update header
-          const headerName = this.container.querySelector('.orchis-agent-name');
-          headerName.textContent = `${this.config.projectName} & ${capitalizedName}`;
-        }
       }
 
       // Add user message to both local and session manager

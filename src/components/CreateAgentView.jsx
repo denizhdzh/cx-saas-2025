@@ -101,23 +101,28 @@ export default function CreateAgentView({ onBack }) {
 
     console.log('👂 Setting up Firestore listener for agent:', createdAgentId);
 
+    let hasNotifiedSuccess = false;
+    let hasNotifiedFailure = false;
+
     const agentRef = doc(db, 'users', user.uid, 'agents', createdAgentId);
     const unsubscribe = onSnapshot(agentRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         console.log('📊 Training status update:', data.trainingStatus);
 
-        if (data.trainingStatus === 'trained') {
+        if (data.trainingStatus === 'trained' && !hasNotifiedSuccess) {
           console.log('✅ Training complete!');
           setIsTraining(false);
           setTrainingComplete(true);
           showNotification('Agent trained successfully! 🎉', 'success');
+          hasNotifiedSuccess = true;
         } else if (data.trainingStatus === 'training') {
           console.log('🔄 Still training...');
-        } else if (data.trainingStatus === 'failed') {
+        } else if (data.trainingStatus === 'failed' && !hasNotifiedFailure) {
           console.log('❌ Training failed');
           setIsTraining(false);
           showNotification('Training failed. Please try again.', 'error');
+          hasNotifiedFailure = true;
         }
       }
     }, (error) => {
@@ -128,7 +133,7 @@ export default function CreateAgentView({ onBack }) {
       console.log('🔇 Cleaning up Firestore listener');
       unsubscribe();
     };
-  }, [createdAgentId, user, showNotification]);
+  }, [createdAgentId, user]); // showNotification'ı dependency'den çıkardık
 
   const handleFetchMetadata = async () => {
     if (!formData.websiteUrl) {
@@ -392,21 +397,30 @@ export default function CreateAgentView({ onBack }) {
     try {
       // Extract domain from website URL for allowed domains
       let allowedDomains = [];
+      let normalizedUrl = formData.websiteUrl;
+
       if (formData.websiteUrl) {
         try {
-          const url = new URL(formData.websiteUrl);
+          // Auto-add https:// if missing
+          if (!formData.websiteUrl.startsWith('http://') && !formData.websiteUrl.startsWith('https://')) {
+            normalizedUrl = 'https://' + formData.websiteUrl.trim();
+          }
+
+          const url = new URL(normalizedUrl);
           // Remove 'www.' prefix if present
           const domain = url.hostname.replace(/^www\./, '');
           allowedDomains = [domain];
           console.log('✅ Extracted domain for allowedDomains:', domain);
         } catch (e) {
           console.warn('Could not extract domain from URL:', e);
+          // If URL parsing fails, just leave allowedDomains empty
         }
       }
 
 
       const agentData = {
         ...formData,
+        websiteUrl: normalizedUrl, // Use normalized URL with https://
         logoUrl: logoPreview,
         documentCount: readyFiles.length,
         trainingStatus: 'training',
@@ -417,6 +431,13 @@ export default function CreateAgentView({ onBack }) {
         returnUserDiscount: returnUserDiscountForm.enabled ? returnUserDiscountForm : null,
         firstTimeDiscount: firstTimeDiscountForm.enabled ? firstTimeDiscountForm : null
       };
+
+      console.log('📦 Agent Data being sent:', {
+        returnUserDiscount: agentData.returnUserDiscount,
+        firstTimeDiscount: agentData.firstTimeDiscount,
+        returnUserEnabled: returnUserDiscountForm.enabled,
+        firstTimeEnabled: firstTimeDiscountForm.enabled
+      });
 
       const agentResult = await createAgent(agentData);
       const agentId = agentResult.id || agentResult;

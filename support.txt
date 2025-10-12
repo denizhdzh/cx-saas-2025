@@ -1,0 +1,306 @@
+====================================================================
+============
+ORCHIS AI SUPPORT DOCUMENT
+====================================================================
+============
+ABOUT ORCHIS
+====================================================================
+============
+Orchis is an AI customer support platform that provides intelligent,
+context-aware chatbot agents for websites. The platform enables
+businesses
+to automate customer support with AI agents that understand context
+and
+speak like humans, delivering a 94% resolution rate.
+Key Value Proposition:
+- Your customers deserve conversations, not confusion
+- AI agents that actually understand context, learn from your
+business,
+and speak like humans do
+PRICING PLANS
+============
+====================================================================
+FREE PLAN - $0/month
+-----------------------------------
+• 100 one-time message credits
+• 1 AI agent
+• Unlimited training data
+• Advanced analytics
+• Perfect to test and see if you want to upgrade
+• No credit card required
+STARTER PLAN - $20/month (Original: $30/month - SAVE 33%)
+-----------------------------------
+• ~1,500 messages/month
+• 1 AI agent
+• Unlimited training data
+• Advanced analytics
+• Email support
+• For small businesses
+GROWTH PLAN - $60/month (Original: $90/month - SAVE 33%) ⭐ MOST
+POPULAR
+-----------------------------------
+• ~7,500 messages/month
+• 5 AI agents
+• Unlimited training data
+• Advanced analytics
+• White-label branding
+• Priority support
+• Best value for money, most users stay here
+SCALE PLAN - $200/month (Original: $300/month - SAVE 33%)
+-----------------------------------
+• ~50,000 messages/month
+• Unlimited AI agents
+• Unlimited training data
+• Advanced analytics
+• White-label branding
+• Priority support
+• Export data (CSV/JSON)
+• For growing teams
+All Plans Include:
+• No credit card required
+• Cancel anytime
+• 99.9% uptime
+• GDPR compliant
+• 24/7 support
+KEY FEATURES & CAPABILITIES
+====================================================================
+============
+1. INTELLIGENT RESPONSES
+- Contextual understanding that actually solves problems
+- AI learns from your knowledge base and provides accurate
+answers
+- No generic "I don't understand" responses
+2. ELEGANT DESIGN
+- Live Activity-style interface that feels native to your website
+- Design that doesn't fight against your brand
+- Customizable appearance with white-label branding (Growth &
+Scale plans)
+3. SIMPLE SETUP
+- One line of code to embed on your website
+- Live in 60 seconds
+- No complex configuration required
+- No technical expertise needed
+4. ADVANCED ANALYTICS
+- Track conversation metrics
+- Monitor resolution rates
+- Analyze customer interactions
+- Export data capabilities (Scale plan)
+5. TRAINING DATA
+- Upload documents (PDF, DOCX, TXT)
+- AI automatically processes and learns from your content
+- Unlimited training data on all plans
+SETUP PROCESS (3 SIMPLE STEPS)
+====================================================================
+============
+STEP 1: Upload Your Content
+- Drag and drop your documentation files
+- Supported formats: PDF, DOCX, TXT
+- AI instantly understands and processes your content
+STEP 2: Set Live Activities
+- Configure notifications and real-time updates
+- Customize agent responses and behavior
+- Set up automated workflows
+STEP 3: Add to Website
+- Copy one line of code
+- Paste into your website's HTML
+- AI agent goes live instantly
+Total Setup Time: Under 60 seconds
+PERFORMANCE STATISTICS
+====================================================================
+============
+Resolution Rate: 94%
+- Issues resolved instantly without human intervention
+- No waiting, no tickets, no frustration
+Response Time: 0.8 seconds
+- Average time to respond to customer queries
+- Faster than typing "hello"
+Availability: 24/7
+- Round-the-clock customer support
+- No downtime or breaks
+Concurrent Conversations: Unlimited (∞)
+- Handle multiple customers simultaneously
+- Scale effortlessly during high-traffic periods
+- Handle Black Friday traffic without breaking
+FREQUENTLY ASKED QUESTIONS
+====================================================================
+============
+Q: When will Orchis be available to use?
+A: We're currently in development and accepting waitlist signups for
+early
+access. Join our waitlist to be among the first to try Orchis
+when we
+launch and get special early access pricing.
+Q: How does the 60-second setup work?
+A: Once we launch, you'll be able to upload your knowledge base,
+customize
+your AI agent's responses, and embed it on your website in under
+60
+seconds. No coding or technical setup required.
+Q: What's included in the Free plan?
+A: Our Free plan includes 100 message credits per month, 1 AI agent,
+1 MB
+training data limit, and the ability to embed on unlimited sites.
+Perfect
+for testing our platform.
+Q: How do message credits work?
+A: Each conversation exchange between a customer and your AI agent
+counts as
+one message credit. Our plans range from 10 credits (Free) to
+60,000
+credits (Scale) per month.
+Q: Will my data be secure?
+A: We use enterprise-grade encryption and follow GDPR compliance
+standards.
+Your knowledge base data is used to train and improve your AI
+agent's
+responses. Data is processed securely and never shared with other
+customers
+or third parties.
+Q: How can I get early access?
+A: Simply join our waitlist by entering your email above. We'll
+notify you as
+soon as Orchis is ready to launch, and you'll get priority access
+to our
+platform.
+TECHNICAL OVERVIEW
+====================================================================
+============
+Technology Stack:
+- AI-powered natural language processing
+- Secure cloud infrastructure
+- Real-time message processing
+- Enterprise-grade encryption
+Integration:
+- Simple JavaScript widget
+- Works with any website platform
+- No backend changes required
+- Cross-browser compatible
+Support Channels:
+- Email support (Starter plan and above)
+- Priority support (Growth and Scale plans)
+- 24/7 availability
+- Comprehensive documentation
+PROBLEM-SOLUTION NARRATIVE
+====================================================================
+============
+THE REALITY:
+Your support team is drowning in repetitive tickets
+Traditional Customer Support Flow:
+1. Customer needs help with integration (9:15 AM)
+→ Creates support ticket, waits for response
+2. Support agent researches answer (2:45 PM)
+→ Spends 20 minutes finding the same info again
+3. Customer gets frustrated (Next day)
+→ Considers switching to competitor's solution
+THE SOLUTION:
+AI agents that know your SaaS inside and out
+Orchis AI Flow:
+1. Customer asks about integration (9:15 AM)
+→ AI instantly provides step-by-step guide with links
+2. Follow-up question (9:16 AM)
+→ AI provides API documentation and code samples
+3. Customer successfully integrates (Same day)
+→ Upgrades to higher plan, refers new customers
+Same question. Instant solution. Happy customer.
+COMPARISON WITH TRADITIONAL CHATBOTS
+====================================================================
+============
+TRADITIONAL CHATBOTS:
+- Generic responses that make customers more frustrated
+- Can't understand complex questions
+- Often respond with "Sorry, I don't understand"
+- Require weeks of configuration and training
+- Need 47+ dependencies and complex setup
+- Blue popup corner boxes with flashing buttons
+- Interrupt user experience
+ORCHIS AI:
+- Contextual understanding that actually solves problems
+- Understands complex technical questions
+- Provides specific, helpful answers with documentation links
+- Setup in 60 seconds with one line of code
+- Elegant Live Activity-style interface
+- Feels native to your website
+- Enhances user experience
+"Most AI tools make simple things complicated.
+We make complicated things simple."
+GETTING STARTED
+====================================================================
+============
+To Get Started with Orchis:
+1. Visit: https://orchis.app
+2. Click "Get Started Free"
+3. Sign up for a free account
+4. Start with 100 free messages
+5. No credit card required
+Benefits:
+• 100 free messages to test the platform
+• Setup in under 60 seconds
+• No credit card required
+• No spam, no tricks
+• Cancel anytime
+SUPPORT CONTACT
+
+
+For Additional Support:
+- Visit the documentation
+- Contact email support (deniz@orchis.app)
+- 24/7 availability
+
+HOW TO GET YOUR EMBED CODE:
+1. Go to your Dashboard
+2. Select your AI agent
+3. Click on agent dropdown and choose "Agent Settings"
+4. Navigate to the "Embed Code" section
+5. Click "Copy Code" button
+6. Paste the code before the closing </body> tag in your website HTML
+
+
+
+AGENT SETTINGS SECTIONS:
+The AGENT Settings page has 5 main sections:
+
+1. BRANDING SETTINGS
+   - Customize your AI agent name
+   - Upload your company logo (appears in chat widget)
+   - Logo should be square format for best results
+   - Changes reflect immediately in the widget
+
+2. ALLOWED DOMAINS (SECURITY)
+   - Configure which websites can use your widget
+   - Add one domain per line (e.g., example.com)
+   - Use wildcards for subdomains (*.example.com)
+   - Leave empty to allow all domains
+   - Security features include:
+     * Domain restriction
+     * HMAC cryptographic signatures
+     * Replay protection (requests expire after 5 minutes)
+
+3. DISCOUNTS & PROMOTIONS
+   Two types of automated discount popups:
+
+   A. Return User Discount:
+      - Shows to visitors who return after 1 hour
+      - Customize popup title, message, discount code, and percentage
+      - Toggle on/off with a switch
+      - Example: "Welcome back! 🎉" with 15% discount code
+
+   B. First Time Visitor Discount:
+      - Shows to brand new visitors
+      - Customize popup title, message, discount code, and percentage
+      - Toggle on/off with a switch
+      - Example: "Welcome! 👋" with 20% discount code
+
+4. SECURITY ALERTS
+   - View all unauthorized access attempts
+   - See which domains tried to use your widget without permission
+   - Read/unread alert system
+   - Shows timestamp and message preview
+   - Mark alerts as read individually or all at once
+
+5. EMBED CODE
+   - Copy your unique embed code
+   - Installation instructions provided
+   - Important: Place code before </body> tag, not in <head>
+   - Better performance and SEO when placed in body
+
+END OF SUPPORT DOCUMENT

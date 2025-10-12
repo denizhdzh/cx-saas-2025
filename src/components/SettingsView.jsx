@@ -4,12 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from 'firebase/auth';
+import { updateProfile, deleteUser } from 'firebase/auth';
 import { auth } from '../firebase';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   UserIcon,
-  LockPasswordIcon,
   Delete02Icon,
   ArrowLeft01Icon,
   Mail01Icon,
@@ -25,11 +24,6 @@ export default function SettingsView({ onBack }) {
     displayName: '',
     email: '',
     photoURL: ''
-  });
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
   });
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [loading, setLoading] = useState(true);
@@ -67,7 +61,6 @@ export default function SettingsView({ onBack }) {
 
   const sections = [
     { id: 'account', title: 'Account', icon: UserIcon },
-    { id: 'password', title: 'Password', icon: LockPasswordIcon },
     { id: 'delete', title: 'Delete Account', icon: Delete02Icon }
   ];
 
@@ -108,40 +101,6 @@ export default function SettingsView({ onBack }) {
     } catch (error) {
       console.error('Error updating account:', error);
       showNotification('Error updating account: ' + error.message, 'error');
-    }
-  };
-
-  const handlePasswordChange = async () => {
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showNotification('New passwords do not match!', 'error');
-      return;
-    }
-
-    if (passwordForm.newPassword.length < 6) {
-      showNotification('Password must be at least 6 characters', 'error');
-      return;
-    }
-
-    try {
-      // Reauthenticate user
-      const credential = EmailAuthProvider.credential(
-        user.email,
-        passwordForm.currentPassword
-      );
-      await reauthenticateWithCredential(auth.currentUser, credential);
-
-      // Update password
-      await updatePassword(auth.currentUser, passwordForm.newPassword);
-
-      showNotification('Password changed successfully!', 'success');
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (error) {
-      console.error('Error changing password:', error);
-      if (error.code === 'auth/wrong-password') {
-        showNotification('Current password is incorrect', 'error');
-      } else {
-        showNotification('Error changing password: ' + error.message, 'error');
-      }
     }
   };
 
@@ -254,60 +213,6 @@ export default function SettingsView({ onBack }) {
             className="btn-primary text-sm py-2 px-4"
           >
             Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderPasswordSection = () => (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">
-            Current Password
-          </label>
-          <input
-            type="password"
-            value={passwordForm.currentPassword}
-            onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-            className="form-input text-sm bg-transparent border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-50"
-            placeholder="Enter current password"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">
-            New Password
-          </label>
-          <input
-            type="password"
-            value={passwordForm.newPassword}
-            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-            className="form-input text-sm bg-transparent border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-50"
-            placeholder="Enter new password (min 6 characters)"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">
-            Confirm New Password
-          </label>
-          <input
-            type="password"
-            value={passwordForm.confirmPassword}
-            onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-            className="form-input text-sm bg-transparent border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-50"
-            placeholder="Confirm new password"
-          />
-        </div>
-
-        <div className="pt-4">
-          <button
-            onClick={handlePasswordChange}
-            className="btn-primary text-sm py-2 px-4"
-          >
-            Change Password
           </button>
         </div>
       </div>
@@ -449,7 +354,6 @@ export default function SettingsView({ onBack }) {
           </h2>
 
           {activeSection === 'account' && renderAccountSection()}
-          {activeSection === 'password' && renderPasswordSection()}
           {activeSection === 'delete' && renderDeleteSection()}
         </div>
       </div>

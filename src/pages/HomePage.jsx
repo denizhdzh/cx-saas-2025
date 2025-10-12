@@ -67,7 +67,6 @@ export default function HomePage() {
         <Hero />
         <ProblemSolution />
         <BentoFeatures />
-        <Features />
         <Pricing />
         <FAQ />
         <CTA />

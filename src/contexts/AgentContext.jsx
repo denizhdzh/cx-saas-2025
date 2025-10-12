@@ -51,19 +51,28 @@ export const AgentProvider = ({ children }) => {
         createdAt: new Date(),
         updatedAt: new Date(),
         status: 'active',
-        documentCount: 0,
-        trainingStatus: 'not_trained'
+        documentCount: agentData.documentCount || 0,
+        trainingStatus: agentData.trainingStatus || 'not_trained'
       };
+
+      console.log('🔍 [AgentContext] Creating agent with data:', {
+        hasReturnDiscount: !!newAgent.returnUserDiscount,
+        hasFirstTimeDiscount: !!newAgent.firstTimeDiscount,
+        returnDiscount: newAgent.returnUserDiscount,
+        firstTimeDiscount: newAgent.firstTimeDiscount
+      });
 
       // Use user subcollection structure: users/{userId}/agents
       const agentsRef = collection(db, 'users', user.uid, 'agents');
       const docRef = await addDoc(agentsRef, newAgent);
       const createdAgent = { id: docRef.id, ...newAgent };
-      
+
+      console.log('✅ [AgentContext] Agent created with ID:', docRef.id);
+
       setAgents(prev => [...prev, createdAgent]);
       return createdAgent;
     } catch (error) {
-      console.error('Error creating agent:', error);
+      console.error('❌ [AgentContext] Error creating agent:', error);
       throw error;
     }
   };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminLogout, getWaitlistStats } from '../../utils/firebaseFunctions';
+import { adminLogout, getAdminStats } from '../../utils/firebaseFunctions';
 import BlogManager from './BlogManager';
 import RoadmapManager from './RoadmapManager';
 import { seedDataFromAdmin } from '../seedRoadmapData';
@@ -15,8 +15,8 @@ export default function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const waitlistStats = await getWaitlistStats();
-      setStats(waitlistStats);
+      const result = await getAdminStats();
+      setStats(result.data);
     } catch (error) {
       console.error('Error loading stats:', error);
     } finally {
@@ -34,6 +34,20 @@ export default function AdminDashboard() {
     { id: 'blog', label: 'Blog Posts', icon: '📝' },
     { id: 'roadmap', label: 'Roadmap', icon: '🗺️' },
   ];
+
+  const planColors = {
+    free: 'bg-neutral-100 text-neutral-700 border-neutral-300',
+    starter: 'bg-blue-50 text-blue-700 border-blue-300',
+    growth: 'bg-purple-50 text-purple-700 border-purple-300',
+    scale: 'bg-orange-50 text-orange-700 border-orange-300'
+  };
+
+  const planIcons = {
+    free: '🆓',
+    starter: '🚀',
+    growth: '📈',
+    scale: '⚡'
+  };
 
   return (
     <div className="min-h-screen bg-neutral-100">
@@ -81,7 +95,7 @@ export default function AdminDashboard() {
           <div className="space-y-8">
             <div>
               <h1 className="text-3xl font-thin text-neutral-900 mb-2">Dashboard</h1>
-              <p className="text-neutral-600">Overview of your application metrics</p>
+              <p className="text-neutral-600">Platform metrics and analytics</p>
             </div>
 
             {loading ? (
@@ -96,36 +110,90 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-xl border border-neutral-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">Total Waitlist</h3>
-                    <span className="text-2xl">📧</span>
+              <>
+                {/* Main Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="bg-white p-6 rounded-xl border border-neutral-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-neutral-500">Total Users</h3>
+                      <span className="text-2xl">👥</span>
+                    </div>
+                    <div className="text-3xl font-thin text-neutral-900">{stats?.totalUsers || 0}</div>
+                    <p className="text-sm text-neutral-500 mt-1">Registered accounts</p>
                   </div>
-                  <div className="text-3xl font-thin text-neutral-900">{stats?.total || 0}</div>
-                  <p className="text-sm text-neutral-500 mt-1">Total signups</p>
+
+                  <div className="bg-white p-6 rounded-xl border border-neutral-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-neutral-500">Total Agents</h3>
+                      <span className="text-2xl">🤖</span>
+                    </div>
+                    <div className="text-3xl font-thin text-neutral-900">{stats?.totalAgents || 0}</div>
+                    <p className="text-sm text-neutral-500 mt-1">AI agents created</p>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl border border-neutral-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-neutral-500">Avg Agents/User</h3>
+                      <span className="text-2xl">📊</span>
+                    </div>
+                    <div className="text-3xl font-thin text-neutral-900">
+                      {stats?.totalUsers > 0
+                        ? (stats.totalAgents / stats.totalUsers).toFixed(1)
+                        : '0'}
+                    </div>
+                    <p className="text-sm text-neutral-500 mt-1">Average per user</p>
+                  </div>
                 </div>
 
+                {/* Plan Distribution */}
                 <div className="bg-white p-6 rounded-xl border border-neutral-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">Recent Signups</h3>
-                    <span className="text-2xl">🔥</span>
-                  </div>
-                  <div className="text-3xl font-thin text-neutral-900">{stats?.recent || 0}</div>
-                  <p className="text-sm text-neutral-500 mt-1">Last 7 days</p>
-                </div>
+                  <h3 className="text-lg font-medium text-neutral-900 mb-6">Subscription Plan Distribution</h3>
 
-                <div className="bg-white p-6 rounded-xl border border-neutral-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium text-neutral-500">Conversion Rate</h3>
-                    <span className="text-2xl">📈</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {Object.entries(stats?.planDistribution || {}).map(([plan, count]) => (
+                      <div
+                        key={plan}
+                        className={`p-4 rounded-lg border-2 ${planColors[plan]}`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-2xl">{planIcons[plan]}</span>
+                          <span className="text-2xl font-thin">{count}</span>
+                        </div>
+                        <div className="text-sm font-medium capitalize">{plan}</div>
+                        <div className="text-xs opacity-70 mt-1">
+                          {stats.totalUsers > 0
+                            ? `${((count / stats.totalUsers) * 100).toFixed(1)}%`
+                            : '0%'}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-3xl font-thin text-neutral-900">
-                    {stats?.total > 0 ? Math.round((stats.recent / stats.total) * 100) : 0}%
+
+                  {/* Plan Bar Chart */}
+                  <div className="mt-6">
+                    <div className="h-8 flex rounded-lg overflow-hidden">
+                      {Object.entries(stats?.planDistribution || {}).map(([plan, count]) => {
+                        const percentage = stats.totalUsers > 0
+                          ? (count / stats.totalUsers) * 100
+                          : 0;
+
+                        if (percentage === 0) return null;
+
+                        return (
+                          <div
+                            key={plan}
+                            className={`${planColors[plan].split(' ')[0]} flex items-center justify-center text-xs font-medium`}
+                            style={{ width: `${percentage}%` }}
+                            title={`${plan}: ${count} users (${percentage.toFixed(1)}%)`}
+                          >
+                            {percentage > 10 && `${percentage.toFixed(0)}%`}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <p className="text-sm text-neutral-500 mt-1">Weekly growth</p>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Quick Actions */}
@@ -175,6 +243,15 @@ export default function AdminDashboard() {
                   <div className="text-2xl mb-2">🌱</div>
                   <div className="font-medium text-neutral-900">Seed Data</div>
                   <div className="text-sm text-neutral-500">Add sample roadmap data</div>
+                </button>
+
+                <button
+                  onClick={loadStats}
+                  className="p-4 border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-left cursor-pointer"
+                >
+                  <div className="text-2xl mb-2">🔄</div>
+                  <div className="font-medium text-neutral-900">Refresh Stats</div>
+                  <div className="text-sm text-neutral-500">Reload dashboard data</div>
                 </button>
               </div>
             </div>

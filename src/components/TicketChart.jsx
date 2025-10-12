@@ -192,10 +192,7 @@ export default function TicketChart({
           />
 
           <Tooltip
-            formatter={(value, name) => {
-              const label = name === 'analyzed' ? 'Analyzed' : 'Non-Analyzed';
-              return [Number(value).toLocaleString(), label];
-            }}
+            formatter={(value, name) => [Number(value).toLocaleString(), name === 'Analyzed' ? 'Analyzed' : 'Non-Analyzed']}
             labelFormatter={(value) => {
               if (timeRange === 'hourly') {
                 return value;
