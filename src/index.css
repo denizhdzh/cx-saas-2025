@@ -104,7 +104,10 @@
     @apply bg-white border border-stone-100 text-stone-900 hover:bg-stone-50;
     @apply dark:bg-stone-800/50 dark:border-stone-700 dark:text-stone-50 dark:hover:bg-stone-800;
   }
-  
+   .btn-landing {
+    @apply px-4 py-1.5 text-sm font-medium transition-colors rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-neutral-800 border border-neutral-950 text-stone-50 hover:opacity-80;
+  }
   .btn-ghost {
     @apply px-3 py-1.5 text-xs font-medium text-neutral-700 hover:text-neutral-900 transition-colors cursor-pointer;
   }

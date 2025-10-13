@@ -114,7 +114,7 @@ export default function Navbar() {
           {/* Logo and Brand */}
           <Link to="/dashboard" className="flex items-center gap-2">
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt="Orchis Logo"
               className="w-5 h-5"
             />

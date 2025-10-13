@@ -3,11 +3,8 @@ import React from 'react';
 export default function ProblemSolution() {
   return (
     <section className="relative py-16 lg:py-24">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-2 relative">
-        {/* Vertical lines - hidden on mobile */}
-        <div className="hidden lg:block absolute left-6 top-0 bottom-0 w-px bg-neutral-200"></div>
-        <div className="hidden lg:block absolute right-6 top-0 bottom-0 w-px bg-neutral-200"></div>
-        
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-2 relative">
+
         <div className="mx-4 sm:mx-6">
           {/* Story progression */}
           <div className="space-y-20 lg:space-y-32">
@@ -20,7 +17,7 @@ export default function ProblemSolution() {
               </h2>
               
               {/* Timeline of frustration */}
-              <div className="bg-neutral-50 rounded-2xl p-6 sm:p-8 lg:p-12 max-w-3xl mx-auto">
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6 sm:p-8 lg:p-12 max-w-4xl mx-auto">
                 <div className="space-y-6 lg:space-y-8">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-left">
                     <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
@@ -67,7 +64,7 @@ export default function ProblemSolution() {
               </h2>
               
               {/* Success timeline */}
-              <div className="bg-white rounded-2xl border border-neutral-200 p-6 sm:p-8 lg:p-12 max-w-3xl mx-auto">
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6 sm:p-8 lg:p-12 max-w-4xl mx-auto">
                 <div className="space-y-6 lg:space-y-8">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-left">
                     <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">

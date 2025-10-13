@@ -36,7 +36,7 @@ export default function SignInPage() {
               {/* Minimal Brand */}
               <div className="mb-8 lg:mb-16">
                 <div className="flex items-center gap-2 mb-6 lg:mb-8">
-                  <img src="/logo.png" alt="Orchis Logo" className="w-5 h-5" />
+                  <img src="/logo.webp" alt="Orchis Logo" className="w-5 h-5" />
                   <span className="text-xs text-stone-400 dark:text-stone-500 font-bold">
                     ORCHIS
                   </span>
@@ -55,11 +55,11 @@ export default function SignInPage() {
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4 lg:gap-8 mb-8 lg:mb-16">
                 <div>
-                  <div className="text-xl lg:text-2xl font-light text-stone-900 dark:text-stone-50 mb-1">94%</div>
+                  <div className="text-xl lg:text-2xl font-light text-stone-900 dark:text-stone-50 mb-1">Up to 70%</div>
                   <div className="text-[10px] lg:text-xs text-stone-500 dark:text-stone-400 uppercase tracking-wider">Resolution</div>
                 </div>
                 <div>
-                  <div className="text-xl lg:text-2xl font-light text-stone-900 dark:text-stone-50 mb-1">1.2s</div>
+                  <div className="text-xl lg:text-2xl font-light text-stone-900 dark:text-stone-50 mb-1">0.8s</div>
                   <div className="text-[10px] lg:text-xs text-stone-500 dark:text-stone-400 uppercase tracking-wider">Response</div>
                 </div>
                 <div>

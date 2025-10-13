@@ -356,7 +356,7 @@
       const styles = `
         .orchis-widget-container {
           position: fixed;
-          z-index: 999999;
+          z-index: 2147483647;
           font-family: system-ui, -apple-system, sans-serif;
         }
         

@@ -6,41 +6,44 @@ export default function FAQ() {
   
   const faqs = [
     {
-      question: "When will Orchis be available to use?",
-      answer: "We're currently in development and accepting waitlist signups for early access. Join our waitlist to be among the first to try Orchis when we launch and get special early access pricing."
+      question: "What makes Orchis different from other chatbots?",
+      answer: "Most chatbots fail silently. Orchis tracks every question it can't answer as a 'knowledge gap'—you see exactly what docs to write, fill gaps with one click, and AI learns instantly. We also include built-in discount campaign systems (return user & first-time visitor offers) and advanced analytics that auto-categorize conversations by intent, sentiment, and urgency."
+    },
+    {
+      question: "How does knowledge gap detection work?",
+      answer: "When AI can't confidently answer a question, it automatically flags it as a knowledge gap in your dashboard. You see all unanswered questions, how many times each was asked, and can fill them with one click. Once filled, AI learns immediately and handles that question perfectly for every future customer."
+    },
+    {
+      question: "What are discount campaigns?",
+      answer: "Discount campaigns let you show time-limited discount popups to visitors. Set up return user discounts (triggers after 1+ hour gap) or first-time visitor offers. Each includes custom title, message, discount code, and countdown timer. No coding required—configure everything in your dashboard."
+    },
+    {
+      question: "Can I customize the widget design?",
+      answer: "Yes! Customize colors, logo, position, and messaging. Growth and Scale plans include white-label branding (removes all Orchis branding). The widget uses a modern Live Activity-style interface that feels native to your website, not like a traditional chatbot popup."
     },
     {
       question: "How does the 60-second setup work?",
-      answer: "Once we launch, you'll be able to upload your knowledge base, customize your AI agent's responses, and embed it on your website in under 60 seconds. No coding or technical setup required."
+      answer: "Upload your docs (PDF, DOCX, TXT), AI processes them in seconds. Optionally set up discount campaigns. Copy one line of code, paste it in your website. Done. Your AI agent is live and answering customer questions immediately."
     },
     {
       question: "What's included in the Free plan?",
-      answer: "Our Free plan includes 10 message credits per month, 1 AI agent, 1 MB training data limit, and the ability to embed on unlimited sites. Perfect for testing our platform."
+      answer: "100 messages per month, 1 AI agent, 3 document uploads, basic analytics, and 7 days conversation history. Perfect for testing the platform. No credit card required."
     },
     {
-      question: "How do message credits work?",
-      answer: "Each conversation exchange between a customer and your AI agent counts as one message credit. Our plans range from 10 credits (Free) to 60,000 credits (Scale) per month."
+      question: "How do the analytics work?",
+      answer: "Every conversation is automatically analyzed by AI. You see category breakdowns (Question, Support, Sales, Bug Report, Feedback), sentiment scores (0-10), urgency levels (low/medium/high), topics, user locations, devices, browsers, languages, and return vs new user rates. All in real-time."
     },
     {
       question: "Will my data be secure?",
-      answer: "We use enterprise-grade encryption and follow GDPR compliance standards. Your knowledge base data is used to train and improve your AI agent's responses. Data is processed securely and never shared with other customers or third parties."
-    },
-    {
-      question: "How can I get early access?",
-      answer: "Simply join our waitlist by entering your email above. We'll notify you as soon as Orchis is ready to launch, and you'll get priority access to our platform."
+      answer: "Yes. Enterprise-grade encryption, GDPR compliant, 99.9% uptime SLA. Your documents are used only to train your AI agent—never shared with other customers or third parties. Scale plan includes custom widget domain and full data export."
     }
   ];
 
   return (
     <section className="relative">
-      {/* Section separator line */}
-      <div className="w-full h-px bg-neutral-200 mb-24"></div>
       
-      <div className="max-w-6xl mx-auto px-2 py-24 relative">
-        {/* Vertical lines */}
-        <div className="absolute left-6 top-0 bottom-0 w-px bg-neutral-200"></div>
-        <div className="absolute right-6 top-0 bottom-0 w-px bg-neutral-200"></div>
-        
+      <div className="max-w-5xl mx-auto px-2 py-24 relative">
+
         <div className="mx-6">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             {/* Left side - Heading and description */}
