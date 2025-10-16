@@ -1,0 +1,1325 @@
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useAgent } from '../contexts/AgentContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { storage, functions, db } from '../firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+
+// Lazy load Lottie (heavy library, only used in success animation)
+const DotLottieReact = lazy(() =>
+  import('@lottiefiles/dotlottie-react').then(module => ({
+    default: module.DotLottieReact
+  }))
+);
+
+import UpgradeModal from './UpgradeModal';
+import {
+  CloudArrowUpIcon,
+  DocumentTextIcon,
+  TrashIcon,
+  CheckCircleIcon,
+  GlobeAltIcon,
+  PhotoIcon,
+  ArrowRightIcon,
+  ArrowLeftIcon,
+  SparklesIcon,
+  PencilIcon,
+  GiftIcon
+} from '@heroicons/react/24/outline';
+
+export default function CreateAgentView({ onBack }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { createAgent } = useAgent();
+  const { showNotification } = useNotification();
+
+  const [currentStep, setCurrentStep] = useState(1);
+
+  const [formData, setFormData] = useState({
+    projectName: '',
+    websiteUrl: '',
+    trainingText: '',
+    privacyUrl: '',
+    termsUrl: ''
+  });
+
+  const [logo, setLogo] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isTraining, setIsTraining] = useState(false);
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const [trainingComplete, setTrainingComplete] = useState(false);
+  const [createdAgentId, setCreatedAgentId] = useState(null);
+
+  // Fetch progress states
+  const [fetchProgress, setFetchProgress] = useState({
+    current: 0,
+    total: 4,
+    currentStep: '',
+    completed: []
+  });
+  const [metadataFetched, setMetadataFetched] = useState(false);
+
+  // Modal states
+  const [showTextModal, setShowTextModal] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+  const [showReturnUserModal, setShowReturnUserModal] = useState(false);
+
+  // Subscription and limit tracking
+  const [subscriptionData, setSubscriptionData] = useState(null);
+  const [currentAgentCount, setCurrentAgentCount] = useState(0);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Discount forms (Step 3)
+  const [returnUserDiscountForm, setReturnUserDiscountForm] = useState({
+    enabled: false,
+    title: 'Welcome back! 🎉',
+    message: 'We have a special offer just for you',
+    code: 'WELCOME15',
+    discountPercent: 15
+  });
+  const [firstTimeDiscountForm, setFirstTimeDiscountForm] = useState({
+    enabled: false,
+    title: 'Welcome! 👋',
+    message: 'Get a special discount on your first purchase',
+    code: 'FIRST20',
+    discountPercent: 20
+  });
+
+  // Fetch user subscription and agent count on mount
+  useEffect(() => {
+    const fetchSubscriptionData = async () => {
+      if (!user) return;
+
+      try {
+        // Get user subscription data
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setSubscriptionData({
+            plan: userData.subscriptionPlan || 'free',
+            agentLimit: userData.agentLimit || 0,
+            status: userData.subscriptionStatus || 'free'
+          });
+        }
+
+        // Count existing agents
+        const agentsRef = collection(db, 'users', user.uid, 'agents');
+        const agentsSnapshot = await getDocs(agentsRef);
+        setCurrentAgentCount(agentsSnapshot.size);
+      } catch (error) {
+        console.error('Error fetching subscription data:', error);
+      }
+    };
+
+    fetchSubscriptionData();
+  }, [user]);
+
+  // Listen to training status updates from Firestore
+  useEffect(() => {
+    if (!createdAgentId || !user) return;
+
+    console.log('👂 Setting up Firestore listener for agent:', createdAgentId);
+
+    let hasNotifiedSuccess = false;
+    let hasNotifiedFailure = false;
+
+    const agentRef = doc(db, 'users', user.uid, 'agents', createdAgentId);
+    const unsubscribe = onSnapshot(agentRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        console.log('📊 Training status update:', data.trainingStatus);
+
+        if (data.trainingStatus === 'trained' && !hasNotifiedSuccess) {
+          console.log('✅ Training complete!');
+          setIsTraining(false);
+          setTrainingComplete(true);
+          showNotification('Agent trained successfully! 🎉', 'success');
+          hasNotifiedSuccess = true;
+        } else if (data.trainingStatus === 'training') {
+          console.log('🔄 Still training...');
+        } else if (data.trainingStatus === 'failed' && !hasNotifiedFailure) {
+          console.log('❌ Training failed');
+          setIsTraining(false);
+          showNotification('Training failed. Please try again.', 'error');
+          hasNotifiedFailure = true;
+        }
+      }
+    }, (error) => {
+      console.error('❌ Firestore listener error:', error);
+    });
+
+    return () => {
+      console.log('🔇 Cleaning up Firestore listener');
+      unsubscribe();
+    };
+  }, [createdAgentId, user]); // showNotification'ı dependency'den çıkardık
+
+  const handleFetchMetadata = async () => {
+    if (!formData.websiteUrl) {
+      showNotification('Please enter a website URL', 'error');
+      return;
+    }
+
+    setIsFetchingMetadata(true);
+    setFetchProgress({ current: 0, total: 4, currentStep: 'Starting...', completed: [] });
+
+    const fetchSteps = [
+      { key: 'logo', label: 'Finding logo' },
+      { key: 'title', label: 'Reading site title' },
+      { key: 'description', label: 'Getting description' },
+      { key: 'metadata', label: 'Finalizing details' }
+    ];
+
+    try {
+      // Auto-add https:// if missing
+      let urlString = formData.websiteUrl.trim();
+      if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+        urlString = 'https://' + urlString;
+      }
+
+      const url = new URL(urlString);
+
+      // Animate progress steps
+      for (let i = 0; i < fetchSteps.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        setFetchProgress({
+          current: i + 1,
+          total: fetchSteps.length,
+          currentStep: fetchSteps[i].label,
+          completed: fetchSteps.slice(0, i + 1).map(s => s.key)
+        });
+      }
+
+      // Call Firebase Function to fetch metadata
+      const fetchMetadata = httpsCallable(functions, 'fetchWebsiteMetadata');
+      const result = await fetchMetadata({ url: urlString });
+
+      const { siteName, description } = result.data;
+
+      // Use Google's favicon service
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=128`;
+      setLogoPreview(faviconUrl);
+
+      setFormData(prev => ({
+        ...prev,
+        websiteUrl: urlString,
+        name: siteName,
+        projectName: siteName,
+        description: description
+      }));
+
+      setMetadataFetched(true);
+      showNotification('Information loaded successfully!', 'success');
+    } catch (error) {
+      console.error('Error fetching metadata:', error);
+      showNotification('Could not load information. Using URL as fallback.', 'error');
+
+      // Fallback to basic info
+      try {
+        let urlString = formData.websiteUrl.trim();
+        if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+          urlString = 'https://' + urlString;
+        }
+        const url = new URL(urlString);
+        const faviconUrl = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=128`;
+        const siteName = url.hostname.replace('www.', '').split('.')[0];
+
+        setLogoPreview(faviconUrl);
+        setFormData(prev => ({
+          ...prev,
+          websiteUrl: urlString,
+          name: siteName.charAt(0).toUpperCase() + siteName.slice(1),
+          projectName: siteName.charAt(0).toUpperCase() + siteName.slice(1)
+        }));
+        setMetadataFetched(true);
+      } catch (fallbackError) {
+        console.error('Fallback failed:', fallbackError);
+      }
+    } finally {
+      setIsFetchingMetadata(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLogo(file);
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFileUpload = async (files) => {
+    const newFiles = Array.from(files).filter(file => {
+      const validTypes = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const isValidType = validTypes.includes(file.type) && file.size <= 10 * 1024 * 1024;
+      const isDuplicate = uploadedFiles.some(existingFile =>
+        existingFile.name === file.name && existingFile.size === file.size
+      );
+      return isValidType && !isDuplicate;
+    });
+
+    if (newFiles.length === 0) return;
+
+    const fileObjects = newFiles.map((file, index) => ({
+      id: `${Date.now()}-${Math.random()}-${index}`,
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      status: 'processing',
+      progress: 0,
+      textContent: null
+    }));
+
+    setUploadedFiles(prev => [...prev, ...fileObjects]);
+
+    const fileInput = document.getElementById('file-upload-create');
+    if (fileInput) fileInput.value = '';
+
+    fileObjects.forEach(async (fileObj) => {
+      try {
+        // Smooth progress animation: 0 -> 10 -> 30 -> 60 -> 90 -> 100
+        const animateProgress = async (targetProgress, duration) => {
+          const steps = 20;
+          const increment = targetProgress / steps;
+          const delay = duration / steps;
+
+          for (let i = 0; i <= steps; i++) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            setUploadedFiles(prev => prev.map(f =>
+              f.id === fileObj.id
+                ? { ...f, progress: Math.min(targetProgress, Math.round(i * increment)) }
+                : f
+            ));
+          }
+        };
+
+        // Start uploading (0-30%)
+        setUploadedFiles(prev => prev.map(f =>
+          f.id === fileObj.id
+            ? { ...f, status: 'uploading', progress: 0 }
+            : f
+        ));
+        await animateProgress(30, 800);
+
+        // Processing (30-60%)
+        setUploadedFiles(prev => prev.map(f =>
+          f.id === fileObj.id
+            ? { ...f, status: 'processing' }
+            : f
+        ));
+        await animateProgress(60, 600);
+
+        // Extracting (60-90%)
+        setUploadedFiles(prev => prev.map(f =>
+          f.id === fileObj.id
+            ? { ...f, status: 'extracting' }
+            : f
+        ));
+        await animateProgress(90, 400);
+
+        // Actual backend processing
+        const fileContent = await processFileWithBackend(fileObj.file);
+
+        // Complete (90-100%)
+        await animateProgress(100, 300);
+
+        setUploadedFiles(prev => prev.map(f =>
+          f.id === fileObj.id
+            ? { ...f, status: 'ready', textContent: fileContent }
+            : f
+        ));
+
+      } catch (error) {
+        console.error('Processing failed:', error);
+        setUploadedFiles(prev => prev.map(f =>
+          f.id === fileObj.id
+            ? { ...f, status: 'error', error: error.message }
+            : f
+        ));
+      }
+    });
+  };
+
+  const processFileWithBackend = async (file) => {
+    try {
+      const storageRef = ref(storage, `temp/${user.uid}/${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      await uploadTask;
+      const downloadURL = await getDownloadURL(storageRef);
+
+      const processDocument = httpsCallable(functions, 'processDocument');
+      const result = await processDocument({
+        fileName: file.name,
+        fileUrl: downloadURL,
+        agentId: 'temp'
+      });
+
+      return result.data.textContent || 'No text extracted';
+    } catch (error) {
+      console.error('Backend processing error:', error);
+      throw error;
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileUpload(e.dataTransfer.files);
+  };
+
+  const removeFile = (fileId) => {
+    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getFileIcon = (type) => {
+    if (type.includes('pdf')) return '📄';
+    if (type.includes('text')) return '📝';
+    if (type.includes('word')) return '📘';
+    return '📄';
+  };
+
+  const handleTrainAgent = async () => {
+    const readyFiles = uploadedFiles.filter(f => f.status === 'ready');
+    if (readyFiles.length === 0) {
+      showNotification('Please wait for file processing to complete', 'error');
+      return;
+    }
+
+    if (!formData.projectName || !formData.websiteUrl) {
+      showNotification('Please enter agent name and website URL', 'error');
+      return;
+    }
+
+    // Check agent limit before creating
+    if (subscriptionData) {
+      const { agentLimit } = subscriptionData;
+
+      // If agentLimit is not -1 (unlimited) and current count >= limit, show upgrade modal
+      if (agentLimit !== -1 && currentAgentCount >= agentLimit) {
+        setShowUpgradeModal(true);
+        return;
+      }
+    }
+
+    setIsTraining(true);
+
+    // Give time for UI to update before heavy operations
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    try {
+      // Extract domain from website URL for allowed domains
+      let allowedDomains = [];
+      let normalizedUrl = formData.websiteUrl;
+
+      if (formData.websiteUrl) {
+        try {
+          // Auto-add https:// if missing
+          if (!formData.websiteUrl.startsWith('http://') && !formData.websiteUrl.startsWith('https://')) {
+            normalizedUrl = 'https://' + formData.websiteUrl.trim();
+          }
+
+          const url = new URL(normalizedUrl);
+          // Remove 'www.' prefix if present
+          const domain = url.hostname.replace(/^www\./, '');
+          allowedDomains = [domain];
+          console.log('✅ Extracted domain for allowedDomains:', domain);
+        } catch (e) {
+          console.warn('Could not extract domain from URL:', e);
+          // If URL parsing fails, just leave allowedDomains empty
+        }
+      }
+
+
+      const agentData = {
+        ...formData,
+        websiteUrl: normalizedUrl, // Use normalized URL with https://
+        logoUrl: logoPreview,
+        documentCount: readyFiles.length,
+        trainingStatus: 'training',
+        allowedDomains: allowedDomains,
+        userId: user.uid,
+        createdAt: new Date().toISOString(),
+        // Add discount settings
+        returnUserDiscount: returnUserDiscountForm.enabled ? returnUserDiscountForm : null,
+        firstTimeDiscount: firstTimeDiscountForm.enabled ? firstTimeDiscountForm : null
+      };
+
+      console.log('📦 Agent Data being sent:', {
+        returnUserDiscount: agentData.returnUserDiscount,
+        firstTimeDiscount: agentData.firstTimeDiscount,
+        returnUserEnabled: returnUserDiscountForm.enabled,
+        firstTimeEnabled: firstTimeDiscountForm.enabled
+      });
+
+      const agentResult = await createAgent(agentData);
+      const agentId = agentResult.id || agentResult;
+
+      setUploadedFiles(prev => prev.map(file =>
+        file.status === 'ready'
+          ? { ...file, status: 'training' }
+          : file
+      ));
+
+      const documents = readyFiles.map(file => ({
+        id: file.id,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        textContent: file.textContent,
+        processedAt: new Date().toISOString()
+      }));
+
+      const trainAgent = httpsCallable(functions, 'trainAgent');
+
+      // Start training - backend processes fully before returning
+      await trainAgent({
+        agentId: agentId,
+        documents: documents,
+        agentConfig: {
+          projectName: formData.projectName,
+          userId: user.uid
+        }
+      });
+
+      setUploadedFiles(prev => prev.map(file => ({
+        ...file,
+        status: 'processed'
+      })));
+
+      console.log('✅ Training completed! Agent ID:', agentId);
+
+      setIsTraining(false);
+      setTrainingComplete(true);
+      setCreatedAgentId(agentId);
+      showNotification('Agent created and trained successfully! 🎉', 'success');
+
+    } catch (error) {
+      console.error('❌ Error training agent:', error);
+
+      setUploadedFiles(prev => prev.map(file =>
+        file.status === 'training'
+          ? { ...file, status: 'ready' }
+          : file
+      ));
+
+      showNotification('Error: ' + (error.message || 'Could not create agent'), 'error');
+      setIsTraining(false);
+    }
+  };
+
+  const canGoToNextStep = () => {
+    if (currentStep === 1) {
+      return formData.projectName && formData.websiteUrl && logoPreview;
+    }
+    if (currentStep === 2) {
+      return uploadedFiles.filter(f => f.status === 'ready').length > 0;
+    }
+    if (currentStep === 3) {
+      // Step 3 is optional, always allow next
+      return true;
+    }
+    if (currentStep === 4) {
+      // Check limit before training
+      if (subscriptionData) {
+        const { agentLimit } = subscriptionData;
+        if (agentLimit !== -1 && currentAgentCount >= agentLimit) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return true;
+  };
+
+  const renderStepIndicator = () => {
+    let displayStep = currentStep;
+    let stepTitle = '';
+
+    if (currentStep === 1) {
+      stepTitle = 'Agent Details';
+    } else if (currentStep === 2) {
+      stepTitle = 'Upload Documents';
+    } else if (currentStep === 3) {
+      stepTitle = 'Marketing (Optional)';
+    } else if (currentStep === 4) {
+      if (trainingComplete) {
+        displayStep = 5;
+        stepTitle = 'Embed Code';
+      } else if (isTraining) {
+        stepTitle = 'Training Agent...';
+      } else {
+        stepTitle = 'Train Agent';
+      }
+    }
+
+    return (
+      <div className="mb-6">
+        <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">
+          Step {displayStep} of 5
+        </div>
+        <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
+          {stepTitle}
+        </h2>
+      </div>
+    );
+  };
+
+  const renderStep1 = () => {
+    // Show fetching animation
+    if (isFetchingMetadata) {
+      return (
+        <div className="space-y-4 text-center py-6">
+          <div className="flex justify-center mb-4">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-stone-200 dark:border-stone-700 rounded-full"></div>
+              <div className="absolute top-0 left-0 w-16 h-16 border-4 border-stone-900 dark:border-stone-50 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          </div>
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">
+            Analyzing your website...
+          </h3>
+          <div className="max-w-xs mx-auto">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-stone-700 dark:text-stone-300 font-medium">{fetchProgress.currentStep}</span>
+              <span className="text-xs text-stone-900 dark:text-stone-50 font-bold">
+                {Math.round((fetchProgress.current / fetchProgress.total) * 100)}%
+              </span>
+            </div>
+            <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-stone-900 dark:bg-stone-50 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${(fetchProgress.current / fetchProgress.total) * 100}%` }}
+              ></div>
+            </div>
+            <div className="mt-4 space-y-2 text-left">
+              {['logo', 'title', 'description', 'metadata'].map((step, idx) => (
+                <div key={step} className="flex items-center gap-2 text-xs">
+                  {fetchProgress.completed.includes(step) ? (
+                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border-2 border-stone-300 dark:border-stone-600"></div>
+                  )}
+                  <span className={fetchProgress.completed.includes(step) ? 'text-green-600' : 'text-stone-500'}>
+                    {['Found logo', 'Grabbed site title', 'Reading description', 'Finalizing details'][idx]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Show success state with editable fields
+    if (metadataFetched && logoPreview) {
+      return (
+        <div className="space-y-4">
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center gap-2 text-sm text-green-600 font-medium mb-3">
+              <CheckCircleIcon className="w-5 h-5" />
+              <span>Got it! Review your details:</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center mb-4">
+            <div className="relative">
+              <img
+                src={logoPreview}
+                alt="Logo"
+                className="w-20 h-20 rounded-xl object-cover border-2 border-stone-200 dark:border-stone-700"
+              />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="hidden"
+                id="logo-upload-step1-edit"
+              />
+              <label
+                htmlFor="logo-upload-step1-edit"
+                className="absolute -bottom-2 -right-2 p-1.5 bg-stone-900 dark:bg-stone-50 text-white dark:text-stone-900 rounded-lg cursor-pointer hover:bg-stone-700 dark:hover:bg-stone-200 transition-colors shadow-lg"
+                title="Change logo"
+              >
+                <PencilIcon className="w-3 h-3" />
+              </label>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Project Name
+              </label>
+              <input
+                type="text"
+                name="projectName"
+                value={formData.projectName}
+                onChange={handleInputChange}
+                className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="Acme Corp"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Website URL
+              </label>
+              <input
+                type="url"
+                name="websiteUrl"
+                value={formData.websiteUrl}
+                onChange={handleInputChange}
+                className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="https://example.com"
+              />
+            </div>
+
+            {formData.description && (
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Description (Optional)
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="form-textarea text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                  placeholder="Brief description of your business"
+                  rows={2}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Initial input state
+    return (
+      <div className="space-y-4">
+        <div className="text-center mb-4">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            Enter your website URL and we'll fetch everything automatically
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+            Website URL
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              name="websiteUrl"
+              value={formData.websiteUrl}
+              onChange={handleInputChange}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && formData.websiteUrl) {
+                  handleFetchMetadata();
+                }
+              }}
+              className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl flex-1"
+              placeholder="https://example.com"
+            />
+            <button
+              onClick={handleFetchMetadata}
+              disabled={!formData.websiteUrl || isFetchingMetadata}
+              className="btn-primary text-xs py-2 px-4 rounded-xl inline-flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              <SparklesIcon className="w-4 h-4" />
+              Auto-fill
+            </button>
+          </div>
+          <p className="text-xs text-stone-500 mt-2">
+            We'll automatically grab your logo, site title, and description
+          </p>
+        </div>
+
+        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-3">
+          <p className="text-xs text-stone-700 dark:text-stone-300">
+            <strong>Tip:</strong> Paste your website URL and click Auto-fill. We'll do the rest!
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderStep2 = () => (
+    <div className="space-y-4">
+      <div
+        className={`border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${
+          isDragging ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/10' : 'border-stone-300 dark:border-stone-700'
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <CloudArrowUpIcon className="w-8 h-8 text-stone-400 mx-auto mb-2" />
+        <p className="text-xs text-stone-600 dark:text-stone-400 mb-2">
+          Drop files or click to browse
+        </p>
+        <input
+          type="file"
+          multiple
+          accept=".pdf,.txt,.docx"
+          onChange={(e) => handleFileUpload(e.target.files)}
+          className="hidden"
+          id="file-upload-create"
+        />
+        <label
+          htmlFor="file-upload-create"
+          className="btn-secondary text-xs py-1.5 px-4 rounded-xl inline-flex items-center gap-1.5 cursor-pointer"
+        >
+          <DocumentTextIcon className="w-3.5 h-3.5" />
+          Choose Files
+        </label>
+      </div>
+
+      {uploadedFiles.length > 0 && (
+        <div className="space-y-2">
+          {uploadedFiles.map((file) => (
+            <div key={file.id} className="border border-stone-200 dark:border-stone-700 rounded-2xl p-3 bg-white dark:bg-stone-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-lg">{getFileIcon(file.type)}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-stone-900 dark:text-stone-50 truncate">{file.name}</p>
+
+                    {(file.status === 'uploading' || file.status === 'processing' || file.status === 'extracting') && (
+                      <div className="mt-1.5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-orange-600 font-medium">
+                            {file.status === 'uploading' && 'Uploading...'}
+                            {file.status === 'processing' && 'Processing...'}
+                            {file.status === 'extracting' && 'Extracting text...'}
+                          </span>
+                          <span className="text-xs text-orange-600 font-bold">{file.progress}%</span>
+                        </div>
+                        <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-orange-500 to-orange-400 h-1.5 rounded-full transition-all duration-300 relative"
+                            style={{ width: `${file.progress}%` }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 mt-1">
+                      {file.status === 'ready' && (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                          <CheckCircleIcon className="w-3 h-3" />
+                          Ready
+                        </span>
+                      )}
+                      {file.status === 'error' && (
+                        <span className="text-xs text-red-600 font-medium">Error</span>
+                      )}
+                      <span className="text-xs text-stone-400">{formatFileSize(file.size)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {file.status !== 'uploading' && (
+                  <button
+                    onClick={() => removeFile(file.id)}
+                    className="p-1 text-stone-400 hover:text-red-500 transition-colors ml-2"
+                  >
+                    <TrashIcon className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      {/* Info Banner */}
+      <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-2xl p-4">
+        <div className="flex items-start gap-3">
+          <GiftIcon className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-1">
+              Boost Conversions with Smart Discounts
+            </h3>
+            <p className="text-xs text-stone-600 dark:text-stone-400">
+              Set up automatic discount popups for first-time and return visitors. You can always configure these later in Agent Settings.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* First Time Visitor Discount */}
+      <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">First-Time Visitor Discount</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Show a welcome offer to new visitors</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={firstTimeDiscountForm.enabled}
+              onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, enabled: e.target.checked})}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-orange-600"></div>
+          </label>
+        </div>
+
+        {firstTimeDiscountForm.enabled && (
+          <div className="space-y-3 pt-3 border-t border-stone-200 dark:border-stone-700">
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Popup Title
+              </label>
+              <input
+                type="text"
+                value={firstTimeDiscountForm.title}
+                onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, title: e.target.value})}
+                className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="Welcome! 👋"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Message
+              </label>
+              <textarea
+                value={firstTimeDiscountForm.message}
+                onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, message: e.target.value})}
+                className="form-textarea text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="Get a special discount on your first purchase"
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Discount Code
+                </label>
+                <input
+                  type="text"
+                  value={firstTimeDiscountForm.code}
+                  onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, code: e.target.value.toUpperCase()})}
+                  className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl font-mono"
+                  placeholder="FIRST20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Discount %
+                </label>
+                <input
+                  type="number"
+                  value={firstTimeDiscountForm.discountPercent}
+                  onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, discountPercent: parseInt(e.target.value) || 0})}
+                  className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                  placeholder="20"
+                  min="0"
+                  max="100"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Return User Discount */}
+      <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Return User Discount</h3>
+            <p className="text-xs text-stone-500 mt-0.5">Reward visitors who come back after 1+ hour</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={returnUserDiscountForm.enabled}
+              onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, enabled: e.target.checked})}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-orange-600"></div>
+          </label>
+        </div>
+
+        {returnUserDiscountForm.enabled && (
+          <div className="space-y-3 pt-3 border-t border-stone-200 dark:border-stone-700">
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Popup Title
+              </label>
+              <input
+                type="text"
+                value={returnUserDiscountForm.title}
+                onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, title: e.target.value})}
+                className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="Welcome back! 🎉"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                Message
+              </label>
+              <textarea
+                value={returnUserDiscountForm.message}
+                onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, message: e.target.value})}
+                className="form-textarea text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                placeholder="We have a special offer just for you"
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Discount Code
+                </label>
+                <input
+                  type="text"
+                  value={returnUserDiscountForm.code}
+                  onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, code: e.target.value.toUpperCase()})}
+                  className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl font-mono"
+                  placeholder="WELCOME15"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+                  Discount %
+                </label>
+                <input
+                  type="number"
+                  value={returnUserDiscountForm.discountPercent}
+                  onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, discountPercent: parseInt(e.target.value) || 0})}
+                  className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                  placeholder="15"
+                  min="0"
+                  max="100"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => {
+    if (trainingComplete && createdAgentId) {
+      // Show embed code after training
+      const embedCode = `<!-- Orchis Chatbot -->
+<script>
+(function(){
+  if(!window.OrchisChatbot){
+    const script = document.createElement('script');
+    script.src = 'https://orchis.app/chatbot-widget.js';
+    script.onload = function() {
+      if(window.OrchisChatbot) {
+        window.OrchisChatbot.init({
+          agentId: '${createdAgentId}'
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }
+})();
+</script>`;
+
+      return (
+        <div className="space-y-4">
+          <div className="bg-stone-100 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircleIcon className="w-5 h-5 text-stone-900 dark:text-stone-50" />
+              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Training Complete!</h3>
+            </div>
+            <p className="text-xs text-stone-600 dark:text-stone-400 mb-4">
+              Your agent is ready to use. Copy the embed code below to add it to your website.
+            </p>
+
+            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-stone-700 dark:text-stone-300">Embed Code</span>
+              </div>
+              <pre className="text-xs text-stone-600 dark:text-stone-400 overflow-x-auto whitespace-pre-wrap break-all">
+                <code>{embedCode}</code>
+              </pre>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isTraining) {
+      // Show minimal training animation
+      const trainingDocsCount = uploadedFiles.filter(f => f.status === 'training' || f.status === 'processed').length;
+      return (
+        <div className="space-y-4">
+          <div className="bg-stone-100 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-6 text-center">
+            <div className="flex justify-center mb-4">
+              <Suspense fallback={<div style={{ width: '120px', height: '120px' }} />}>
+                <DotLottieReact
+                  src="https://lottie.host/56d69763-6dce-4f89-a793-a99e449bfb8e/3bKiUL2DRP.lottie"
+                  loop
+                  autoplay
+                  style={{ width: '120px', height: '120px' }}
+                />
+              </Suspense>
+            </div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-2">Training Your Agent...</h3>
+            <p className="text-xs text-stone-600 dark:text-stone-400">
+              Processing {trainingDocsCount} document{trainingDocsCount !== 1 ? 's' : ''}. This may take a minute.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Default review state
+    return (
+      <div className="space-y-4">
+        <div className="bg-stone-50 dark:bg-stone-800/30 border border-stone-200 dark:border-stone-700 rounded-2xl p-4">
+          <div className="flex items-start gap-3 mb-3">
+            {logoPreview && (
+              <img
+                src={logoPreview}
+                alt="Agent logo"
+                className="w-12 h-12 rounded-xl object-cover border border-stone-200 dark:border-stone-700 flex-shrink-0"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-stone-900 dark:text-stone-50">{formData.name}</div>
+              <div className="text-xs text-stone-600 dark:text-stone-400">{formData.projectName}</div>
+              {formData.websiteUrl && (
+                <div className="text-xs text-blue-500 mt-1 truncate">{formData.websiteUrl}</div>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-stone-200 dark:border-stone-700 pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-stone-700 dark:text-stone-300">Training Documents</span>
+              <span className="text-xs font-bold text-green-600">{uploadedFiles.filter(f => f.status === 'ready').length}</span>
+            </div>
+            <div className="space-y-1.5">
+              {uploadedFiles.filter(f => f.status === 'ready').map((file) => (
+                <div key={file.id} className="flex items-center gap-2 text-xs">
+                  <CheckCircleIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                  <span className="text-stone-700 dark:text-stone-300 truncate flex-1">{file.name}</span>
+                  <span className="text-stone-500 text-xs">{formatFileSize(file.size)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-2xl p-3">
+          <p className="text-xs text-stone-700 dark:text-stone-300">
+            Ready to train your agent with {uploadedFiles.filter(f => f.status === 'ready').length} document{uploadedFiles.filter(f => f.status === 'ready').length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="max-w-xl mx-auto px-6 py-6">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 px-2 py-1 text-stone-500 hover:text-stone-900 dark:hover:text-stone-50 transition-colors rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 mb-4 text-xs"
+      >
+        <ArrowLeftIcon className="w-3 h-3" />
+        Back
+      </button>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentPlan={subscriptionData?.plan}
+        agentLimit={subscriptionData?.agentLimit}
+        currentAgentCount={currentAgentCount}
+      />
+
+      {/* Welcome Message */}
+      {currentAgentCount === 0 ? (
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-2">
+            Welcome, {user?.displayName || 'there'}! 👋
+          </h1>
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            Let's create your first AI Chatbot together. We're excited to have you on board and can't wait to see what you build!
+          </p>
+        </div>
+      ) : (
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-2">
+            Create New Agent
+          </h1>
+          <p className="text-sm text-stone-600 dark:text-stone-400">
+            Ready to expand your AI toolkit? Let's set up another intelligent agent to help your business grow.
+          </p>
+        </div>
+      )}
+
+      {renderStepIndicator()}
+
+      <div className="bg-white dark:bg-stone-800/50 rounded-3xl border border-stone-200 dark:border-stone-800 p-5 mb-4">
+        {currentStep === 1 && renderStep1()}
+        {currentStep === 2 && renderStep2()}
+        {currentStep === 3 && renderStep3()}
+        {currentStep === 4 && renderStep4()}
+      </div>
+
+      <div className="flex items-center justify-between">
+        {!trainingComplete && (
+          <button
+            onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
+            disabled={currentStep === 1}
+            className="btn-secondary text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ArrowLeftIcon className="w-3 h-3" />
+            Previous
+          </button>
+        )}
+
+        <div className={`flex items-center gap-2 ${trainingComplete ? 'w-full' : ''}`}>
+          {/* Skip button for step 3 (Marketing) */}
+          {currentStep === 3 && (
+            <button
+              onClick={() => setCurrentStep(4)}
+              className="btn-secondary text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1.5"
+            >
+              Skip for now
+            </button>
+          )}
+
+          {currentStep < 4 && (
+            <button
+              onClick={() => {
+                // Check limit when clicking Next from step 3
+                if (currentStep === 3 && subscriptionData) {
+                  const { agentLimit } = subscriptionData;
+                  if (agentLimit !== -1 && currentAgentCount >= agentLimit) {
+                    setShowUpgradeModal(true);
+                    return;
+                  }
+                }
+                setCurrentStep(prev => Math.min(4, prev + 1));
+              }}
+              disabled={!canGoToNextStep()}
+              className="btn-primary text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Next
+              <ArrowRightIcon className="w-3 h-3" />
+            </button>
+          )}
+
+          {currentStep === 4 && !trainingComplete && (
+            <button
+              onClick={handleTrainAgent}
+              disabled={isTraining || uploadedFiles.filter(f => f.status === 'ready').length === 0}
+              className="btn-primary text-xs py-1.5 px-4 rounded-xl inline-flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {isTraining ? (
+                <>
+                  <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full"></div>
+                  Training...
+                </>
+              ) : (
+                <>
+                  <SparklesIcon className="w-3.5 h-3.5" />
+                  Train & Create
+                </>
+              )}
+            </button>
+          )}
+
+          {trainingComplete && createdAgentId && (
+            <>
+              <button
+                onClick={() => {
+                  const embedCode = `<!-- Orchis Chatbot -->
+<script>
+(function(){
+  if(!window.OrchisChatbot){
+    const script = document.createElement('script');
+    script.src = 'https://orchis.app/chatbot-widget.js';
+    script.onload = function() {
+      if(window.OrchisChatbot) {
+        window.OrchisChatbot.init({
+          agentId: '${createdAgentId}'
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }
+})();
+</script>`;
+                  navigator.clipboard.writeText(embedCode);
+                  showNotification('Embed code copied to clipboard!', 'success');
+                }}
+                className="flex-1 btn-secondary text-xs py-2 rounded-xl inline-flex items-center justify-center gap-1.5"
+              >
+                Copy Embed Code
+              </button>
+              <button
+                onClick={() => {
+                  console.log('🚀 Navigating to:', `/dashboard/${createdAgentId}`);
+                  navigate(`/dashboard/${createdAgentId}`);
+                }}
+                className="flex-1 btn-primary text-xs py-2 rounded-xl inline-flex items-center justify-center gap-1.5"
+              >
+                Go to Dashboard
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

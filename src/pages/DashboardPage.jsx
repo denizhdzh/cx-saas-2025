@@ -31,11 +31,24 @@ export default function DashboardPage() {
 
   // Find and select the agent based on URL parameter
   useEffect(() => {
-    console.log('🔍 DashboardPage useEffect triggered:', { agentId, agentsCount: agents.length });
+    console.log('🔍 DashboardPage useEffect triggered:', {
+      agentId,
+      agentsCount: agents.length,
+      currentPath: window.location.pathname,
+      isCreatePage,
+      isBillingPage,
+      isSettingsPage
+    });
 
     // Skip this effect entirely if we're on create, billing, or settings pages
     if (agentId === 'create' || agentId === 'billing' || agentId === 'settings') {
       console.log('⏭️ Skipping effect for special page:', agentId);
+      return;
+    }
+
+    // Don't do anything if we're on the main dashboard page (no agentId)
+    if (!agentId) {
+      console.log('⏭️ No agentId, staying on main dashboard');
       return;
     }
 
@@ -92,14 +105,17 @@ export default function DashboardPage() {
   }, [user]);
 
   const handleCreateAgent = () => {
+    console.log('🎯 handleCreateAgent called - navigating to /dashboard/create');
     // Check if user has reached their agent limit
     if (subscriptionData) {
       const { agentLimit } = subscriptionData;
       if (agentLimit !== -1 && agents.length >= agentLimit) {
+        console.log('⛔ Agent limit reached, showing upgrade modal');
         setShowUpgradeModal(true);
         return;
       }
     }
+    console.log('✅ Navigating to /dashboard/create');
     navigate('/dashboard/create');
   };
 
@@ -135,21 +151,11 @@ export default function DashboardPage() {
     );
   }
 
-  // Force onboarding: if no agents exist AND not on special pages, show create page
-  if (agents.length === 0 && !isBillingPage && !isCreatePage && !isSettingsPage) {
-    return (
-      <>
-        <Helmet>
-          <title>Create Your First Agent - Orchis</title>
-          <meta name="description" content="Create your first AI agent to get started" />
-        </Helmet>
-
-        <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
-          <Navbar />
-          <CreateAgentView onBack={() => {}} />
-        </div>
-      </>
-    );
+  // Force onboarding: if no agents exist AND not on special pages, redirect to create page with proper URL
+  if (agents.length === 0 && !isBillingPage && !isCreatePage && !isSettingsPage && !loading) {
+    console.log('🆕 No agents found, redirecting to /dashboard/create');
+    navigate('/dashboard/create', { replace: true });
+    return null;
   }
 
   // If billing page, show pricing dashboard
@@ -172,9 +178,13 @@ export default function DashboardPage() {
   // If create page, show create agent view (with limit check)
   if (isCreatePage) {
     // Check if user has reached their agent limit before showing create view
-    const isAtLimit = subscriptionData && subscriptionData.agentLimit !== -1 && agents.length >= subscriptionData.agentLimit;
+    // Only check if subscriptionData is loaded and user has at least 1 agent
+    // (If agents.length is 0, this is their first agent - always allow access to create page)
+    const shouldCheckLimit = subscriptionData && agents.length > 0;
+    const isAtLimit = shouldCheckLimit && subscriptionData.agentLimit !== -1 && agents.length >= subscriptionData.agentLimit;
 
     if (isAtLimit) {
+      console.log('⛔ Agent limit reached on create page, redirecting to dashboard');
       // Redirect to dashboard and show upgrade modal
       setTimeout(() => {
         navigate('/dashboard');

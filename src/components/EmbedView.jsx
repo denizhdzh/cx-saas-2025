@@ -31,19 +31,19 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
   const [securityForm, setSecurityForm] = useState({
     allowedDomains: ''
   });
-  const [returnUserDiscountForm, setReturnUserDiscountForm] = useState({
-    enabled: false,
-    title: 'Welcome back! 🎉',
-    message: 'We have a special offer just for you',
-    code: 'WELCOME15',
-    discountPercent: 15
-  });
-  const [firstTimeDiscountForm, setFirstTimeDiscountForm] = useState({
-    enabled: false,
+  const [popups, setPopups] = useState([]);
+  const [editingPopup, setEditingPopup] = useState(null);
+  const [popupForm, setPopupForm] = useState({
+    trigger: 'first_visit',
+    triggerValue: 3,
+    contentType: 'discount',
     title: 'Welcome! 👋',
     message: 'Get a special discount on your first purchase',
     code: 'FIRST20',
-    discountPercent: 20
+    discountPercent: 20,
+    buttonText: 'Get Discount',
+    buttonLink: '',
+    videoUrl: ''
   });
   const [newLogo, setNewLogo] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -60,20 +60,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
       setSecurityForm({
         allowedDomains: agent.allowedDomains ? agent.allowedDomains.join('\n') : ''
       });
-      setReturnUserDiscountForm({
-        enabled: agent.returnUserDiscount?.enabled || false,
-        title: agent.returnUserDiscount?.title || 'Welcome back! 🎉',
-        message: agent.returnUserDiscount?.message || 'We have a special offer just for you',
-        code: agent.returnUserDiscount?.code || 'WELCOME15',
-        discountPercent: agent.returnUserDiscount?.discountPercent || 15
-      });
-      setFirstTimeDiscountForm({
-        enabled: agent.firstTimeDiscount?.enabled || false,
-        title: agent.firstTimeDiscount?.title || 'Welcome! 👋',
-        message: agent.firstTimeDiscount?.message || 'Get a special discount on your first purchase',
-        code: agent.firstTimeDiscount?.code || 'FIRST20',
-        discountPercent: agent.firstTimeDiscount?.discountPercent || 20
-      });
+      setPopups(agent.popups || []);
       setLogoPreview(agent.logoUrl || null);
     }
   }, [agent]);
@@ -185,47 +172,88 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
     }
   };
 
-  const handleReturnUserDiscountSave = async () => {
-    try {
-      const updatedAgentData = {
-        returnUserDiscount: {
-          enabled: returnUserDiscountForm.enabled,
-          title: returnUserDiscountForm.title,
-          message: returnUserDiscountForm.message,
-          code: returnUserDiscountForm.code,
-          discountPercent: returnUserDiscountForm.discountPercent
-        },
-        updatedAt: new Date().toISOString()
-      };
+  const handleAddPopup = () => {
+    const newPopup = {
+      id: Date.now().toString(),
+      ...popupForm
+    };
+    const updatedPopups = [...popups, newPopup];
+    setPopups(updatedPopups);
+    savePopups(updatedPopups);
 
-      await updateAgent(agent.id, updatedAgentData);
-
-      showNotification('Return user discount settings updated successfully!', 'success');
-    } catch (error) {
-      console.error('Error updating return user discount settings:', error);
-      showNotification('Error updating return user discount settings: ' + error.message, 'error');
-    }
+    // Reset form
+    setPopupForm({
+      trigger: 'first_visit',
+      triggerValue: 3,
+      contentType: 'discount',
+      title: 'Welcome! 👋',
+      message: 'Get a special discount on your first purchase',
+      code: 'FIRST20',
+      discountPercent: 20,
+      buttonText: 'Get Discount',
+      buttonLink: '',
+      videoUrl: ''
+    });
   };
 
-  const handleFirstTimeDiscountSave = async () => {
+  const handleUpdatePopup = () => {
+    const updatedPopups = popups.map(p =>
+      p.id === editingPopup.id ? { ...popupForm, id: editingPopup.id } : p
+    );
+    setPopups(updatedPopups);
+    savePopups(updatedPopups);
+    setEditingPopup(null);
+
+    // Reset form
+    setPopupForm({
+      trigger: 'first_visit',
+      triggerValue: 3,
+      contentType: 'discount',
+      title: 'Welcome! 👋',
+      message: 'Get a special discount on your first purchase',
+      code: 'FIRST20',
+      discountPercent: 20,
+      buttonText: 'Get Discount',
+      buttonLink: '',
+      videoUrl: ''
+    });
+  };
+
+  const handleDeletePopup = (popupId) => {
+    const updatedPopups = popups.filter(p => p.id !== popupId);
+    setPopups(updatedPopups);
+    savePopups(updatedPopups);
+  };
+
+  const handleEditPopup = (popup) => {
+    setEditingPopup(popup);
+    setPopupForm({
+      trigger: popup.trigger,
+      triggerValue: popup.triggerValue,
+      contentType: popup.contentType,
+      title: popup.title,
+      message: popup.message,
+      code: popup.code || 'FIRST20',
+      discountPercent: popup.discountPercent || 20,
+      buttonText: popup.buttonText || 'Get Discount',
+      buttonLink: popup.buttonLink || '',
+      videoUrl: popup.videoUrl || ''
+    });
+  };
+
+  const savePopups = async (popupsData) => {
     try {
       const updatedAgentData = {
-        firstTimeDiscount: {
-          enabled: firstTimeDiscountForm.enabled,
-          title: firstTimeDiscountForm.title,
-          message: firstTimeDiscountForm.message,
-          code: firstTimeDiscountForm.code,
-          discountPercent: firstTimeDiscountForm.discountPercent
-        },
+        popups: popupsData,
         updatedAt: new Date().toISOString()
       };
 
       await updateAgent(agent.id, updatedAgentData);
 
-      showNotification('First time discount settings updated successfully!', 'success');
+      showNotification('Popups updated successfully!', 'success');
     } catch (error) {
-      console.error('Error updating first time discount settings:', error);
-      showNotification('Error updating first time discount settings: ' + error.message, 'error');
+      console.error('Error updating popups:', error);
+      showNotification('Error updating popups: ' + error.message, 'error');
     }
   };
 
@@ -272,7 +300,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
   const sections = [
     { id: 'branding', title: 'Branding', icon: Store01Icon },
     { id: 'security', title: 'Allowed Domains', icon: BinaryCodeIcon },
-    { id: 'discounts', title: 'Discounts', icon: GiftIcon },
+    { id: 'discounts', title: 'Dynamic Contents', icon: GiftIcon },
     { id: 'alerts', title: 'Security Alerts', icon: Alert02Icon },
     { id: 'embed', title: 'Embed Code', icon: Copy01Icon }
   ];
@@ -379,196 +407,275 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
     </div>
   );
 
+  const getTriggerLabel = (trigger, value) => {
+    const labels = {
+      first_visit: 'First Visit',
+      return_visit: 'Return Visit',
+      exit_intent: 'Exit Intent',
+      time_delay: `After ${value}s`,
+      scroll_depth: `Scroll ${value}%`
+    };
+    return labels[trigger] || trigger;
+  };
+
+  const getContentTypeLabel = (type) => {
+    const labels = {
+      discount: 'Discount',
+      announcement: 'Announcement',
+      video: 'Video',
+      link: 'Link'
+    };
+    return labels[type] || type;
+  };
+
   const renderDiscountsSection = () => (
-    <div className="space-y-8">
-      {/* Return User Discount Box */}
-      <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-6">
-        <h3 className="text-base font-semibold text-black dark:text-white mb-4">Return User Discount</h3>
-        <div className="space-y-4">
-          {/* Enable Toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="block text-sm font-medium text-black dark:text-white">
-                Enable Return User Discount
-              </label>
-              <p className="text-xs text-stone-500 mt-1">
-                Show special discount popup to returning visitors (after 1 hour)
-              </p>
+    <div className="space-y-6">
+      {/* Existing Popups List */}
+      {popups.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-black dark:text-white">Active Popups</h3>
+          {popups.map((popup) => (
+            <div key={popup.id} className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded">
+                      {getTriggerLabel(popup.trigger, popup.triggerValue)}
+                    </span>
+                    <span className="text-xs font-medium px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+                      {getContentTypeLabel(popup.contentType)}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-black dark:text-white">{popup.title}</p>
+                  <p className="text-xs text-stone-500 mt-1">{popup.message}</p>
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                  <button
+                    onClick={() => handleEditPopup(popup)}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeletePopup(popup.id)}
+                    className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={returnUserDiscountForm.enabled}
-                onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, enabled: e.target.checked})}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-orange-600"></div>
-            </label>
-          </div>
-
-          {returnUserDiscountForm.enabled && (
-            <>
-              <div>
-                <label className="block text-xs font-medium text-black dark:text-white mb-1">
-                  Popup Title
-                </label>
-                <input
-                  type="text"
-                  value={returnUserDiscountForm.title}
-                  onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, title: e.target.value})}
-                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
-                  placeholder="Welcome back! 🎉"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-black dark:text-white mb-1">
-                  Popup Message
-                </label>
-                <textarea
-                  value={returnUserDiscountForm.message}
-                  onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, message: e.target.value})}
-                  className="form-textarea bg-transparent text-black dark:text-white border border-stone-200 dark:border-stone-700 text-sm"
-                  placeholder="We have a special offer just for you"
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-black dark:text-white mb-1">
-                    Discount Code
-                  </label>
-                  <input
-                    type="text"
-                    value={returnUserDiscountForm.code}
-                    onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, code: e.target.value})}
-                    className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white font-mono"
-                    placeholder="WELCOME15"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-black dark:text-white mb-1">
-                    Discount %
-                  </label>
-                  <input
-                    type="number"
-                    value={returnUserDiscountForm.discountPercent}
-                    onChange={(e) => setReturnUserDiscountForm({...returnUserDiscountForm, discountPercent: parseInt(e.target.value)})}
-                    className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
-                    placeholder="15"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          <div className="pt-2">
-            <button
-              onClick={handleReturnUserDiscountSave}
-              className="btn-primary text-sm py-2 px-4"
-            >
-              Save Return User Discount
-            </button>
-          </div>
+          ))}
         </div>
-      </div>
+      )}
 
-      {/* First Time Discount Box */}
+      {/* Add/Edit Popup Form */}
       <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-6">
-        <h3 className="text-base font-semibold text-black dark:text-white mb-4">First Time Visitor Discount</h3>
+        <h3 className="text-base font-semibold text-black dark:text-white mb-4">
+          {editingPopup ? 'Edit Popup' : 'Add New Popup'}
+        </h3>
+
         <div className="space-y-4">
-          {/* Enable Toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="block text-sm font-medium text-black dark:text-white">
-                Enable First Time Visitor Discount
-              </label>
-              <p className="text-xs text-stone-500 mt-1">
-                Show special discount popup to first-time visitors
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={firstTimeDiscountForm.enabled}
-                onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, enabled: e.target.checked})}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-stone-600 peer-checked:bg-orange-600"></div>
+          {/* Trigger Selection */}
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-2">
+              When to show popup (Trigger)
             </label>
+            <select
+              value={popupForm.trigger}
+              onChange={(e) => setPopupForm({...popupForm, trigger: e.target.value})}
+              className="form-select text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-lg w-full"
+            >
+              <option value="first_visit">First Visit - User visits for the first time</option>
+              <option value="return_visit">Return Visit - User has been here before</option>
+              <option value="exit_intent">Exit Intent - Mouse leaves the page</option>
+              <option value="time_delay">Time Delay - After X seconds on page</option>
+              <option value="scroll_depth">Scroll Depth - After scrolling X%</option>
+            </select>
           </div>
 
-          {firstTimeDiscountForm.enabled && (
-            <>
+          {/* Trigger Value */}
+          {(popupForm.trigger === 'time_delay' || popupForm.trigger === 'scroll_depth') && (
+            <div>
+              <label className="block text-xs font-medium text-black dark:text-white mb-1">
+                {popupForm.trigger === 'time_delay' ? 'Delay (seconds)' : 'Scroll Percentage (%)'}
+              </label>
+              <input
+                type="number"
+                value={popupForm.triggerValue}
+                onChange={(e) => setPopupForm({...popupForm, triggerValue: parseInt(e.target.value)})}
+                className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                placeholder={popupForm.trigger === 'time_delay' ? '3' : '50'}
+                min={popupForm.trigger === 'time_delay' ? '1' : '10'}
+                max={popupForm.trigger === 'time_delay' ? '300' : '100'}
+              />
+            </div>
+          )}
+
+          {/* Content Type */}
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-2">
+              Content Type
+            </label>
+            <select
+              value={popupForm.contentType}
+              onChange={(e) => setPopupForm({...popupForm, contentType: e.target.value})}
+              className="form-select text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-lg w-full"
+            >
+              <option value="discount">Discount - Show discount code</option>
+              <option value="announcement">Announcement - General message</option>
+              <option value="video">Video - YouTube embed</option>
+              <option value="link">Link - Button with redirect</option>
+            </select>
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-medium text-black dark:text-white mb-1">
+              Title
+            </label>
+            <input
+              type="text"
+              value={popupForm.title}
+              onChange={(e) => setPopupForm({...popupForm, title: e.target.value})}
+              className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+              placeholder="Welcome! 👋"
+            />
+          </div>
+
+          {/* Message */}
+          <div>
+            <label className="block text-xs font-medium text-black dark:text-white mb-1">
+              Message
+            </label>
+            <textarea
+              value={popupForm.message}
+              onChange={(e) => setPopupForm({...popupForm, message: e.target.value})}
+              className="form-textarea bg-transparent text-black dark:text-white border border-stone-200 dark:border-stone-700 text-sm"
+              placeholder="Your message here..."
+              rows={3}
+            />
+          </div>
+
+          {/* Discount Fields */}
+          {popupForm.contentType === 'discount' && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-black dark:text-white mb-1">
-                  Popup Title
+                  Discount Code
                 </label>
                 <input
                   type="text"
-                  value={firstTimeDiscountForm.title}
-                  onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, title: e.target.value})}
-                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
-                  placeholder="Welcome! 👋"
+                  value={popupForm.code}
+                  onChange={(e) => setPopupForm({...popupForm, code: e.target.value})}
+                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white font-mono"
+                  placeholder="SAVE20"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-medium text-black dark:text-white mb-1">
-                  Popup Message
+                  Discount %
                 </label>
-                <textarea
-                  value={firstTimeDiscountForm.message}
-                  onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, message: e.target.value})}
-                  className="form-textarea bg-transparent text-black dark:text-white border border-stone-200 dark:border-stone-700 text-sm"
-                  placeholder="Get a special discount on your first purchase"
-                  rows={3}
+                <input
+                  type="number"
+                  value={popupForm.discountPercent}
+                  onChange={(e) => setPopupForm({...popupForm, discountPercent: parseInt(e.target.value)})}
+                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                  placeholder="20"
+                  min="0"
+                  max="100"
                 />
               </div>
+            </div>
+          )}
 
-              <div className="grid grid-cols-2 gap-4">
+          {/* Video Field */}
+          {popupForm.contentType === 'video' && (
+            <div>
+              <label className="block text-xs font-medium text-black dark:text-white mb-1">
+                YouTube Video URL
+              </label>
+              <input
+                type="text"
+                value={popupForm.videoUrl}
+                onChange={(e) => setPopupForm({...popupForm, videoUrl: e.target.value})}
+                className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+            </div>
+          )}
+
+          {/* Link/Button Fields */}
+          {(popupForm.contentType === 'link' || popupForm.contentType === 'announcement') && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-black dark:text-white mb-1">
+                  Button Text
+                </label>
+                <input
+                  type="text"
+                  value={popupForm.buttonText}
+                  onChange={(e) => setPopupForm({...popupForm, buttonText: e.target.value})}
+                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                  placeholder="Learn More"
+                />
+              </div>
+              {popupForm.contentType === 'link' && (
                 <div>
                   <label className="block text-xs font-medium text-black dark:text-white mb-1">
-                    Discount Code
+                    Button Link URL
                   </label>
                   <input
                     type="text"
-                    value={firstTimeDiscountForm.code}
-                    onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, code: e.target.value})}
-                    className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white font-mono"
-                    placeholder="FIRST20"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-black dark:text-white mb-1">
-                    Discount %
-                  </label>
-                  <input
-                    type="number"
-                    value={firstTimeDiscountForm.discountPercent}
-                    onChange={(e) => setFirstTimeDiscountForm({...firstTimeDiscountForm, discountPercent: parseInt(e.target.value)})}
+                    value={popupForm.buttonLink}
+                    onChange={(e) => setPopupForm({...popupForm, buttonLink: e.target.value})}
                     className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
-                    placeholder="20"
-                    min="0"
-                    max="100"
+                    placeholder="https://example.com/page"
                   />
                 </div>
-              </div>
-            </>
+              )}
+            </div>
           )}
 
-          <div className="pt-2">
-            <button
-              onClick={handleFirstTimeDiscountSave}
-              className="btn-primary text-sm py-2 px-4"
-            >
-              Save First Time Discount
-            </button>
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
+            {editingPopup ? (
+              <>
+                <button
+                  onClick={handleUpdatePopup}
+                  className="btn-primary text-sm py-2 px-4"
+                >
+                  Update Popup
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingPopup(null);
+                    setPopupForm({
+                      trigger: 'first_visit',
+                      triggerValue: 3,
+                      contentType: 'discount',
+                      title: 'Welcome! 👋',
+                      message: 'Get a special discount on your first purchase',
+                      code: 'FIRST20',
+                      discountPercent: 20,
+                      buttonText: 'Get Discount',
+                      buttonLink: '',
+                      videoUrl: ''
+                    });
+                  }}
+                  className="btn-secondary text-sm py-2 px-4"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleAddPopup}
+                className="btn-primary text-sm py-2 px-4"
+              >
+                Add Popup
+              </button>
+            )}
           </div>
         </div>
       </div>

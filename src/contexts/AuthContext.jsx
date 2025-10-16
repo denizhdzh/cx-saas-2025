@@ -21,25 +21,31 @@ export const AuthProvider = ({ children }) => {
   const loadUserData = async (authUser) => {
     if (authUser) {
       try {
-        // Call backend function to initialize/verify user document
-        const initializeUser = httpsCallable(functions, 'initializeUser');
-        const result = await initializeUser();
-
-        console.log('🔥 User initialization result:', result.data);
-
-        // Fetch user data from Firestore
+        // Fetch user data from Firestore first (FAST)
         const userDocRef = doc(db, 'users', authUser.uid);
         const userDoc = await getDoc(userDocRef);
 
         if (userDoc.exists()) {
+          // User exists, just load the data
           const userData = userDoc.data();
-          // Merge Firestore data with auth user
           setUser({
             ...authUser,
             photoURL: userData.photoURL || authUser.photoURL,
             displayName: userData.displayName || authUser.displayName
           });
         } else {
+          // User doesn't exist, initialize in background (don't wait)
+          console.log('🆕 New user detected, initializing in background...');
+          const initializeUser = httpsCallable(functions, 'initializeUser');
+          initializeUser().then(result => {
+            console.log('🔥 User initialization complete:', result.data);
+            // Reload user data after initialization
+            loadUserData(authUser);
+          }).catch(error => {
+            console.error('❌ Error initializing user:', error);
+          });
+
+          // Set user immediately (don't block)
           setUser(authUser);
         }
       } catch (error) {

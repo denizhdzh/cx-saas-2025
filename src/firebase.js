@@ -20,7 +20,9 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
-export const analytics = getAnalytics(app);
+
+// Initialize analytics only in production
+export const analytics = import.meta.env.PROD ? getAnalytics(app) : null;
 
 // Google Auth Provider
 const provider = new GoogleAuthProvider();

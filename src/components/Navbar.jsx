@@ -29,23 +29,19 @@ export default function Navbar() {
     }
 
     const unsubscribers = [];
+    const alertCounts = {};
 
     agents.forEach((agent) => {
       const alertsRef = collection(db, 'users', user.uid, 'agents', agent.id, 'alerts');
       const q = query(alertsRef, where('read', '==', false));
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        // Recalculate total unread alerts across all agents
-        let totalUnread = 0;
-        agents.forEach((ag) => {
-          const agentAlertsRef = collection(db, 'users', user.uid, 'agents', ag.id, 'alerts');
-          const agentQuery = query(agentAlertsRef, where('read', '==', false));
+        // Update count for this specific agent
+        alertCounts[agent.id] = snapshot.docs.length;
 
-          onSnapshot(agentQuery, (agentSnapshot) => {
-            totalUnread = agentSnapshot.docs.length;
-            setUnreadAlertsCount(totalUnread);
-          });
-        });
+        // Calculate total from all agents
+        const totalUnread = Object.values(alertCounts).reduce((sum, count) => sum + count, 0);
+        setUnreadAlertsCount(totalUnread);
       });
 
       unsubscribers.push(unsubscribe);

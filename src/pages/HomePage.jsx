@@ -7,6 +7,7 @@ import CTA from '../homepage/components/CTA';
 import Footer from '../homepage/components/Footer';
 import Features from '../homepage/components/Features';
 import FAQ from '../homepage/components/FAQ';
+import Pricing from '../homepage/components/Pricing';
 
 
 export default function HomePage() {
@@ -63,6 +64,7 @@ export default function HomePage() {
           <Hero />
           <Features/>
           <ProblemSolution />
+          <Pricing />
           <FAQ/>
           <CTA />
           <Footer />

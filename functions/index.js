@@ -1373,6 +1373,7 @@ exports.getAgentConfig = onRequest({
           primaryColor: agentData.primaryColor || '#f97316',
           returnUserDiscount: agentData.returnUserDiscount || null,
           firstTimeDiscount: agentData.firstTimeDiscount || null,
+          popups: agentData.popups || [], // New popups array
           whitelabel: isWhitelabel // Growth and Scale plans get whitelabel
         });
         return;

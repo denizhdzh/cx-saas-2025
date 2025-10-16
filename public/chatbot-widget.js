@@ -313,12 +313,111 @@
       this.createWidget();
       this.bindEvents();
 
-      // Show discount popups based on user type
-      if (this.sessionManager.isReturnUser && this.config.returnUserDiscount?.enabled) {
-        setTimeout(() => this.showReturnUserDiscount(), 1500);
-      } else if (!this.sessionManager.isReturnUser && this.config.firstTimeDiscount?.enabled) {
-        setTimeout(() => this.showFirstTimeDiscount(), 1500);
+      // Handle popup based on new configuration
+      this.handlePopupTriggers();
+    },
+
+    handlePopupTriggers: function() {
+      const popups = this.config.popups;
+
+      console.log('🎯 handlePopupTriggers called');
+      console.log('🔍 DEBUG: popups:', popups);
+      console.log('🔍 DEBUG: isReturnUser:', this.sessionManager.isReturnUser);
+
+      // If no popups configured, check old discount configs for backward compatibility
+      if (!popups || popups.length === 0) {
+        console.log('⚠️ No popups found, checking old discount system...');
+        // Backward compatibility with old discount system
+        if (this.sessionManager.isReturnUser && this.config.returnUserDiscount?.enabled) {
+          setTimeout(() => this.showReturnUserDiscount(), 1500);
+        } else if (!this.sessionManager.isReturnUser && this.config.firstTimeDiscount?.enabled) {
+          setTimeout(() => this.showFirstTimeDiscount(), 1500);
+        }
+        return;
       }
+
+      console.log(`✅ Found ${popups.length} popup(s) to process`);
+
+      // Process each popup
+      popups.forEach((popup, index) => {
+        console.log(`🔄 Processing popup #${index + 1}:`, popup);
+        const trigger = popup.trigger;
+        const triggerValue = popup.triggerValue || 3;
+
+        // Check if THIS specific popup was already shown
+        const shownKey = `orchis_popup_shown_${popup.id}_${this.sessionManager.anonymousUserId}`;
+        if (localStorage.getItem(shownKey)) {
+          console.log('🚫 Popup already shown:', popup.id);
+          return;
+        }
+
+        console.log(`🎯 Setting up trigger: ${trigger} for popup: ${popup.title}`);
+
+        switch (trigger) {
+          case 'first_visit':
+            if (!this.sessionManager.isReturnUser) {
+              console.log('✅ First visit trigger matched, showing popup in 1.5s');
+              setTimeout(() => this.showPopup(popup), 1500);
+            } else {
+              console.log('❌ First visit trigger NOT matched (user is returning)');
+            }
+            break;
+
+          case 'return_visit':
+            if (this.sessionManager.isReturnUser) {
+              console.log('✅ Return visit trigger matched, showing popup in 1.5s');
+              setTimeout(() => this.showPopup(popup), 1500);
+            } else {
+              console.log('❌ Return visit trigger NOT matched (user is new)');
+            }
+            break;
+
+          case 'exit_intent':
+            console.log('✅ Setting up exit intent listener');
+            this.setupExitIntentListener(popup);
+            break;
+
+          case 'time_delay':
+            console.log(`✅ Setting up time delay: ${triggerValue}s`);
+            setTimeout(() => this.showPopup(popup), triggerValue * 1000);
+            break;
+
+          case 'scroll_depth':
+            console.log(`✅ Setting up scroll depth: ${triggerValue}%`);
+            this.setupScrollDepthListener(popup, triggerValue);
+            break;
+
+          default:
+            console.warn('⚠️ Unknown trigger type:', trigger);
+        }
+      });
+    },
+
+    setupExitIntentListener: function(popup) {
+      console.log('🚪 Exit intent listener setup for:', popup.title);
+      let triggered = false;
+      document.addEventListener('mouseleave', (e) => {
+        console.log('👆 Mouse leave detected at Y:', e.clientY);
+        if (!triggered && e.clientY < 10) {
+          console.log('✅ Exit intent TRIGGERED! Showing popup');
+          triggered = true;
+          this.showPopup(popup);
+        }
+      });
+    },
+
+    setupScrollDepthListener: function(popup, targetPercent) {
+      let triggered = false;
+      const checkScroll = () => {
+        if (triggered) return;
+        const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+        if (scrollPercent >= targetPercent) {
+          triggered = true;
+          this.showPopup(popup);
+          window.removeEventListener('scroll', checkScroll);
+        }
+      };
+      window.addEventListener('scroll', checkScroll);
     },
 
     fetchAgentConfig: async function() {
@@ -339,9 +438,13 @@
         this.config.primaryColor = agentData.primaryColor || this.config.primaryColor;
         this.config.returnUserDiscount = agentData.returnUserDiscount || null;
         this.config.firstTimeDiscount = agentData.firstTimeDiscount || null;
+        this.config.popup = agentData.popup || null; // Old popup configuration (backward compat)
+        this.config.popups = agentData.popups || []; // New popups array
         this.config.whitelabel = agentData.whitelabel || false; // Growth/Scale plans get whitelabel
 
         console.log('✅ Agent config loaded securely from backend:', this.config.projectName);
+        console.log('🔍 DEBUG: popups array:', this.config.popups);
+        console.log('🔍 DEBUG: popups length:', this.config.popups ? this.config.popups.length : 0);
         if (this.config.whitelabel) {
           console.log('🎨 Whitelabel mode enabled (Growth/Scale plan)');
         }
@@ -939,7 +1042,7 @@
           </div>
           ${!this.config.whitelabel ? `
           <div class="orchis-powered-by">
-              <img src="https://orchis.app/logo.png" alt="Orchis" class="orchis-logo" />
+              <img src="https://orchis.app/logo.webp" alt="Orchis" class="orchis-logo" />
               <span>Powered by <a href="https://orchis.app" target="_blank" class="orchis-link">ORCHIS</a></span>
             </div>
           ` : ''}
@@ -1489,6 +1592,178 @@
       localStorage.setItem(shownKey, 'true');
 
       console.log('🎁 First time discount shown:', discountConfig.code);
+    },
+
+    showPopup: function(popup) {
+      if (!popup) return;
+
+      const header = this.container.querySelector('.orchis-chat-header');
+      if (!header) return;
+
+      // Mark as shown with popup ID
+      const shownKey = `orchis_popup_shown_${popup.id}_${this.sessionManager.anonymousUserId}`;
+      localStorage.setItem(shownKey, 'true');
+
+      const contentType = popup.contentType || 'discount';
+      let popupContent = '';
+
+      // Build popup based on content type
+      switch (contentType) {
+        case 'discount':
+          popupContent = this.buildDiscountPopup(popup);
+          break;
+        case 'announcement':
+          popupContent = this.buildAnnouncementPopup(popup);
+          break;
+        case 'video':
+          popupContent = this.buildVideoPopup(popup);
+          break;
+        case 'link':
+          popupContent = this.buildLinkPopup(popup);
+          break;
+      }
+
+      const offerBanner = document.createElement('div');
+      offerBanner.className = 'orchis-offer-banner';
+      offerBanner.innerHTML = popupContent;
+
+      // Insert after header
+      header.parentNode.insertBefore(offerBanner, header.nextSibling);
+
+      // Add close functionality
+      const closeBtn = offerBanner.querySelector('.orchis-close-offer');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          offerBanner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+          setTimeout(() => offerBanner.remove(), 400);
+        });
+      }
+
+      // Handle specific content type interactions
+      this.handlePopupInteractions(offerBanner, popup, contentType);
+
+      console.log('✨ Popup shown:', contentType, popup.trigger);
+    },
+
+    buildDiscountPopup: function(popup) {
+      const couponCode = popup.code || 'SAVE20';
+      return `
+        <div class="orchis-offer-content">
+          <div class="orchis-offer-divider"></div>
+          <div class="orchis-offer-text">
+            <div class="orchis-offer-title">${popup.title || 'Special Offer!'}</div>
+            <div class="orchis-offer-subtitle">
+              ${popup.message || 'Get a discount with code'}
+              <span class="orchis-coupon-code" data-code="${couponCode}">
+                <strong>${couponCode}</strong>
+                <svg class="orchis-copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </span>
+            </div>
+          </div>
+          <button class="orchis-close-offer">×</button>
+        </div>
+      `;
+    },
+
+    buildAnnouncementPopup: function(popup) {
+      const buttonText = popup.buttonText || 'Got it';
+      return `
+        <div class="orchis-offer-content">
+          <div class="orchis-offer-divider"></div>
+          <div class="orchis-offer-text">
+            <div class="orchis-offer-title">${popup.title || 'Announcement'}</div>
+            <div class="orchis-offer-subtitle">${popup.message || ''}</div>
+            <button class="orchis-popup-btn">${buttonText}</button>
+          </div>
+          <button class="orchis-close-offer">×</button>
+        </div>
+      `;
+    },
+
+buildVideoPopup: function(popup) {
+  let videoUrl = popup.videoUrl || '';
+  let videoId = '';
+
+  if (videoUrl.includes('youtube.com/watch')) {
+    videoId = new URL(videoUrl).searchParams.get('v');
+    videoUrl = `https://www.youtube.com/embed/${videoId}`;
+  } else if (videoUrl.includes('youtu.be/')) {
+    videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
+    videoUrl = `https://www.youtube.com/embed/${videoId}`;
+  }
+
+  return `
+    <a href="${videoUrl}" target="_blank" style="text-decoration:none; color:inherit;">
+      <div class="orchis-offer-content orchis-video-content" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+        
+        <!-- Video Preview -->
+        <img 
+          src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" 
+          alt="Video Preview" 
+          style="width:80px; height:60px; border-radius:8px;"
+        />
+
+        <!-- Title & Message -->
+        <div style="flex:1;">
+          <div class="orchis-offer-title" style="margin:0; font-size:14px; font-weight:bold;">
+            ${popup.title || 'Watch Video'}
+          </div>
+          ${popup.message ? `<div class="orchis-offer-subtitle" style="margin:2px 0 0; font-size:12px; color:#555;">
+            ${popup.message}
+          </div>` : ''}
+        </div>
+
+        <button class="orchis-close-offer" style="margin-left:10px;">×</button>
+      </div>
+    </a>
+  `;
+},
+
+buildLinkPopup: function(popup) {
+  const buttonLink = popup.buttonLink || '#';
+  return `
+    <div class="orchis-offer-content">
+      
+      <div class="orchis-offer-text" style="display:flex; flex-direction:column; gap:4px;">
+        <div class="orchis-offer-title">${popup.title || 'Check this out!'}</div>
+        ${popup.message ? `<div class="orchis-offer-subtitle">${popup.message}</div>` : ''}
+
+        <!-- Link sadece favicon + text -->
+        <a href="${buttonLink}" target="_blank" style="display:flex; align-items:center; gap:4px; text-decoration:none; color:#f97316; font-size:12px;">
+          <img src="https://www.google.com/s2/favicons?domain=${buttonLink}" style="width:16px; height:16px;" alt="Link icon" />
+          ${buttonLink.replace(/^https?:\/\//, '')}
+        </a>
+      </div>
+
+      <button class="orchis-close-offer">×</button>
+    </div>
+  `;
+},
+
+    handlePopupInteractions: function(banner, popup, contentType) {
+      if (contentType === 'discount') {
+        const couponEl = banner.querySelector('.orchis-coupon-code');
+        if (couponEl) {
+          const couponCode = popup.code;
+          couponEl.addEventListener('click', () => {
+            navigator.clipboard.writeText(couponCode).then(() => {
+              couponEl.classList.add('orchis-copied');
+              setTimeout(() => couponEl.classList.remove('orchis-copied'), 1500);
+            });
+          });
+        }
+      } else if (contentType === 'announcement') {
+        const btn = banner.querySelector('.orchis-popup-btn');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            banner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+            setTimeout(() => banner.remove(), 400);
+          });
+        }
+      }
     }
   };
 

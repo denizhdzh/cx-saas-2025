@@ -8,7 +8,7 @@ export default function CTA() {
     <section className="relative">
       {/* Section separator line */}
       <div className="w-full h-px bg-transparent mb-24"></div>
-      
+
       <div className="max-w-6xl mx-auto px-2 py-24 relative">
 
         <div className="mx-6">
@@ -45,7 +45,7 @@ export default function CTA() {
                 No spam, no tricks. Just smart AI that works.
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
               <div className="flex flex-col items-center">
                 <div className="text-lg font-medium text-neutral-900 mb-1">✓</div>
@@ -65,7 +65,7 @@ export default function CTA() {
               </div>
             </div>
           </div>
-          
+
 
         </div>
       </div>
