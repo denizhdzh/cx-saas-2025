@@ -8,6 +8,7 @@ import Footer from '../homepage/components/Footer';
 import Features from '../homepage/components/Features';
 import FAQ from '../homepage/components/FAQ';
 import Pricing from '../homepage/components/Pricing';
+import SessionIntelligence from '../homepage/components/SessionIntelligence';
 
 
 export default function HomePage() {
@@ -63,6 +64,7 @@ export default function HomePage() {
           <Header />
           <Hero />
           <Features/>
+          <SessionIntelligence />
           <ProblemSolution />
           <Pricing />
           <FAQ/>
