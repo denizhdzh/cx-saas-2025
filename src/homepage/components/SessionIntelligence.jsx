@@ -12,7 +12,7 @@ function SessionTimeline() {
       timestamp: "Just now",
       pages: ["Homepage", "Features"],
       status: "active",
-      welcome: "👋 Welcome! How can I help you today?",
+      welcome: "Welcome! How can I help you today?",
       sentiment: null
     },
     {
@@ -49,43 +49,43 @@ function SessionTimeline() {
   const current = sessions[activeSession];
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 rounded-3xl p-6 flex flex-col justify-between">
-      <div className="text-xs font-medium text-white mb-4 text-center">Live Session Tracking</div>
+    <div className="w-full h-full flex flex-col">
+      <div className="text-xs font-semibold text-neutral-400 mb-6 uppercase tracking-wider">Live Session Tracking</div>
 
-      <div className="space-y-3 flex-1 flex flex-col justify-center">
+      <div className="space-y-4 flex-1 flex flex-col justify-center">
         {/* Active Session Card */}
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4 transition-all duration-500">
+        <div className="bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5 transition-all duration-500">
           {/* User Info */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                current.type === 'first_visit' ? 'bg-blue-400 animate-pulse' : 'bg-green-400'
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                current.type === 'first_visit' ? 'bg-blue-500 animate-pulse' : 'bg-green-500'
               }`}></div>
               <div>
-                <div className="text-xs font-semibold text-white">
+                <div className="text-sm font-semibold text-neutral-900">
                   {current.user}
                 </div>
-                <div className="text-xs text-white/50">
+                <div className="text-xs text-neutral-500">
                   {current.timestamp}
                 </div>
               </div>
             </div>
-            <div className={`px-2 py-0.5 rounded text-xs font-medium ${
+            <div className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
               current.type === 'first_visit'
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-green-500/20 text-green-400'
+                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'bg-green-50 text-green-700 border border-green-200'
             }`}>
               {current.type === 'first_visit' ? 'First Visit' : `Visit #${current.conversationCount}`}
             </div>
           </div>
 
           {/* Context-Aware Welcome Message */}
-          <div className="bg-white/5 rounded-xl p-3 mb-3">
-            <div className="text-xs text-white/90 mb-2">
+          <div className="bg-white border border-neutral-200/60 rounded-xl p-4 mb-4 shadow-sm">
+            <div className="text-sm text-neutral-700 mb-2">
               {current.welcome}
             </div>
-            <div className="flex items-center gap-2 text-xs text-white/50">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <div className="flex items-center gap-2 text-xs text-neutral-500">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
               <span>Personalized based on {current.type === 'first_visit' ? 'page context' : 'previous visits'}</span>
@@ -93,16 +93,16 @@ function SessionTimeline() {
           </div>
 
           {/* Page Journey */}
-          <div className="mb-3">
-            <div className="text-xs text-white/60 mb-1.5">Page Journey</div>
-            <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="mb-4">
+            <div className="text-xs font-medium text-neutral-500 mb-2">Page Journey</div>
+            <div className="flex items-center gap-2 flex-wrap">
               {current.pages.map((page, idx) => (
                 <React.Fragment key={idx}>
-                  <div className="px-2 py-0.5 bg-white/10 rounded text-xs text-white/70">
+                  <div className="px-2.5 py-1 bg-white border border-neutral-200 rounded-lg text-xs font-medium text-neutral-700">
                     {page}
                   </div>
                   {idx < current.pages.length - 1 && (
-                    <svg className="w-3 h-3 text-white/30" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-3.5 h-3.5 text-neutral-400" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
                   )}
@@ -113,38 +113,38 @@ function SessionTimeline() {
 
           {/* Sentiment (if available) */}
           {current.sentiment && (
-            <div className="flex items-center justify-between pt-2 border-t border-white/10">
-              <div className="text-xs text-white/60">Sentiment Analysis</div>
-              <div className={`px-2 py-0.5 rounded text-xs font-medium ${
+            <div className="flex items-center justify-between pt-3 border-t border-neutral-200/60">
+              <div className="text-xs font-medium text-neutral-500">Sentiment Analysis</div>
+              <div className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${
                 current.sentiment === 'positive'
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-yellow-500/20 text-yellow-400'
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-yellow-50 text-yellow-700 border-yellow-200'
               }`}>
-                {current.sentiment === 'positive' ? '😊 Positive' : '😐 Neutral'}
+                {current.sentiment === 'positive' ? 'Positive' : 'Neutral'}
               </div>
             </div>
           )}
         </div>
 
         {/* Session Stats */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-center">
-            <div className="text-lg font-bold text-white">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-neutral-50 border border-neutral-200/60 rounded-xl p-4 text-center">
+            <div className="text-xl font-bold text-neutral-900">
               {sessions.filter(s => s.type === 'first_visit').length}
             </div>
-            <div className="text-xs text-white/60">New</div>
+            <div className="text-xs text-neutral-500 mt-1">New</div>
           </div>
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-center">
-            <div className="text-lg font-bold text-white">
+          <div className="bg-neutral-50 border border-neutral-200/60 rounded-xl p-4 text-center">
+            <div className="text-xl font-bold text-neutral-900">
               {sessions.filter(s => s.type === 'return_visit').length}
             </div>
-            <div className="text-xs text-white/60">Returning</div>
+            <div className="text-xs text-neutral-500 mt-1">Returning</div>
           </div>
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-center">
-            <div className="text-lg font-bold text-white">
+          <div className="bg-neutral-50 border border-neutral-200/60 rounded-xl p-4 text-center">
+            <div className="text-xl font-bold text-neutral-900">
               {sessions.reduce((acc, s) => acc + (s.conversationCount || 0), 0)}
             </div>
-            <div className="text-xs text-white/60">Total Chats</div>
+            <div className="text-xs text-neutral-500 mt-1">Total Chats</div>
           </div>
         </div>
       </div>
@@ -159,19 +159,16 @@ function ContextDetection() {
   const pageContexts = [
     {
       page: "/pricing",
-      icon: "💰",
       suggestion: "I see you're checking our pricing! Would you like help choosing the right plan?",
       triggers: ["scroll_depth_75", "time_on_page_30s"]
     },
     {
       page: "/features",
-      icon: "⚡",
       suggestion: "Exploring features? I can explain how each one works for your use case!",
       triggers: ["scroll_depth_50", "time_on_page_20s"]
     },
     {
       page: "/about",
-      icon: "👥",
       suggestion: "Want to know more about our team or mission? Just ask!",
       triggers: ["first_visit", "scroll_depth_25"]
     }
@@ -187,67 +184,67 @@ function ContextDetection() {
   const current = pageContexts[currentPage];
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 rounded-3xl p-6 flex flex-col justify-between">
-      <div className="text-xs font-medium text-white mb-4 text-center">Context-Aware Messaging</div>
+    <div className="w-full h-full flex flex-col">
+      <div className="text-xs font-semibold text-neutral-400 mb-6 uppercase tracking-wider">Context-Aware Messaging</div>
 
-      <div className="space-y-3 flex-1 flex flex-col justify-center">
+      <div className="space-y-4 flex-1 flex flex-col justify-center">
         {/* Current Page Context */}
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="text-2xl">{current.icon}</div>
+        <div className="bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
             <div className="flex-1">
-              <div className="text-xs font-mono text-white/90">
+              <div className="text-sm font-mono font-semibold text-neutral-900">
                 {current.page}
               </div>
-              <div className="text-xs text-white/50">User's current page</div>
+              <div className="text-xs text-neutral-500">User's current page</div>
             </div>
           </div>
 
-          <div className="bg-white/5 rounded-xl p-3 mb-3">
-            <div className="text-xs text-white/90">
+          <div className="bg-white border border-neutral-200/60 rounded-xl p-4 mb-4 shadow-sm">
+            <div className="text-sm text-neutral-700">
               {current.suggestion}
             </div>
           </div>
 
           {/* Active Triggers */}
-          <div className="space-y-1.5">
-            <div className="text-xs text-white/60">Active Triggers</div>
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-neutral-500">Active Triggers</div>
             {current.triggers.map((trigger, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-xs">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></div>
-                <span className="text-white/70">{trigger.replace(/_/g, ' ')}</span>
+              <div key={idx} className="flex items-center gap-2.5 text-xs">
+                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                <span className="text-neutral-700 font-medium">{trigger.replace(/_/g, ' ')}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Smart Triggers Info */}
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-3">
-          <div className="text-xs font-semibold text-white mb-2">Available Triggers</div>
-          <div className="grid grid-cols-2 gap-2 text-xs text-white/70">
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-blue-400"></div>
-              <span>First Visit</span>
+        <div className="bg-neutral-50 border border-neutral-200/60 rounded-2xl p-4">
+          <div className="text-xs font-semibold text-neutral-700 mb-3">Available Triggers</div>
+          <div className="grid grid-cols-2 gap-2.5 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+              <span className="text-neutral-600">First Visit</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-green-400"></div>
-              <span>Return Visit</span>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+              <span className="text-neutral-600">Return Visit</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-purple-400"></div>
-              <span>Exit Intent</span>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+              <span className="text-neutral-600">Exit Intent</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-yellow-400"></div>
-              <span>Time Delay</span>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
+              <span className="text-neutral-600">Time Delay</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-orange-400"></div>
-              <span>Scroll Depth</span>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+              <span className="text-neutral-600">Scroll Depth</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-pink-400"></div>
-              <span>Page-specific</span>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-pink-500"></div>
+              <span className="text-neutral-600">Page-specific</span>
             </div>
           </div>
         </div>
@@ -258,7 +255,7 @@ function ContextDetection() {
 
 export default function SessionIntelligence() {
   return (
-    <section className="relative py-16 lg:py-24 bg-white">
+    <section className="relative py-16 lg:py-24 bg-neutral-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
@@ -273,17 +270,22 @@ export default function SessionIntelligence() {
           </p>
         </div>
 
-        {/* 2 Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        {/* Single Unified Card */}
+        <div className="bg-gradient-to-br from-white to-neutral-50/80 rounded-3xl border border-neutral-200/60 shadow-2xl shadow-neutral-900/5 overflow-hidden">
 
-          {/* Left: Session Timeline */}
-          <div className="flex flex-col min-h-[500px]">
-            <SessionTimeline />
-          </div>
+          {/* 2 Column Grid Inside Card */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
 
-          {/* Right: Context Detection */}
-          <div className="flex flex-col min-h-[500px]">
-            <ContextDetection />
+            {/* Left: Session Timeline */}
+            <div className="p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-neutral-200/50">
+              <SessionTimeline />
+            </div>
+
+            {/* Right: Context Detection */}
+            <div className="p-8 lg:p-12">
+              <ContextDetection />
+            </div>
+
           </div>
 
         </div>
