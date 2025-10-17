@@ -6,18 +6,25 @@ export default function ProblemSolution() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-2 relative">
 
         <div className="mx-4 sm:mx-6">
-          {/* Story progression */}
-          <div className="space-y-20 lg:space-y-32">
+          {/* Comparison Header */}
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-4 leading-tight">
+              Before and after ORCHIS
+            </h2>
+          </div>
+
+          {/* Side by Side Comparison */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             {/* Problem narrative */}
             <div className="text-center">
               <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">THE REALITY</div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-8 lg:mb-12 leading-tight">
+              <h3 className="text-xl sm:text-2xl font-thin text-neutral-900 mb-8 leading-tight">
                 Your support team is drowning<br />
                 in repetitive tickets
-              </h2>
-              
+              </h3>
+
               {/* Timeline of frustration */}
-              <div className="bg-white rounded-2xl border border-neutral-200 p-6 sm:p-8 lg:p-12 max-w-4xl mx-auto">
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6 sm:p-8">
                 <div className="space-y-6 lg:space-y-8">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-left">
                     <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
@@ -29,7 +36,7 @@ export default function ProblemSolution() {
                     </div>
                     <div className="text-xs text-neutral-400 flex-shrink-0">9:15 AM</div>
                   </div>
-                  
+
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-left">
                     <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-orange-600 text-sm font-medium">2</span>
@@ -40,7 +47,7 @@ export default function ProblemSolution() {
                     </div>
                     <div className="text-xs text-neutral-400 flex-shrink-0">2:45 PM</div>
                   </div>
-                  
+
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-left">
                     <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-red-600 text-sm font-medium">3</span>
@@ -58,13 +65,13 @@ export default function ProblemSolution() {
             {/* Solution narrative */}
             <div className="text-center">
               <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">THE SOLUTION</div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-8 lg:mb-12 leading-tight">
+              <h3 className="text-xl sm:text-2xl font-thin text-neutral-900 mb-8 leading-tight">
                 AI agents that know your<br />
                 SaaS inside and out
-              </h2>
-              
+              </h3>
+
               {/* Success timeline */}
-              <div className="bg-white rounded-2xl border border-neutral-200 p-6 sm:p-8 lg:p-12 max-w-4xl mx-auto">
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6 sm:p-8">
                 <div className="space-y-6 lg:space-y-8">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-left">
                     <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
@@ -76,7 +83,7 @@ export default function ProblemSolution() {
                     </div>
                     <div className="text-xs text-neutral-400 flex-shrink-0">9:15 AM</div>
                   </div>
-                  
+
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-left">
                     <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-green-600 text-sm font-medium">2</span>
@@ -87,7 +94,7 @@ export default function ProblemSolution() {
                     </div>
                     <div className="text-xs text-neutral-400 flex-shrink-0">9:16 AM</div>
                   </div>
-                  
+
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-left">
                     <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-green-600 text-sm font-medium">3</span>
@@ -100,7 +107,7 @@ export default function ProblemSolution() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="mt-6 lg:mt-8 text-sm text-neutral-500">
                 Same question. Instant solution. Happy customer.
               </div>

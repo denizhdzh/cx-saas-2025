@@ -76,7 +76,7 @@ export default function Pricing() {
             {plans.map((plan, index) => (
               <div
                 key={index}
-                className={`relative bg-white rounded-2xl border p-6 transition-all ${
+                className={`relative bg-white rounded-2xl border p-6 transition-all flex flex-col ${
                   plan.highlighted
                     ? 'border-orange-600 shadow-lg'
                     : 'border-neutral-200 hover:border-neutral-300'
@@ -114,7 +114,7 @@ export default function Pricing() {
                 </div>
 
                 {/* Features */}
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-3 mb-6 flex-grow">
                   {plan.features.map((feature, fIndex) => (
                     <li key={fIndex} className="flex items-start gap-2 text-left">
                       <svg

@@ -142,7 +142,15 @@ exports.trainAgent = onCall({
     
     await agentRef.set(agentData, { merge: true });
     console.log('✅ Agent created/updated in Firestore');
-    
+
+    // Create agentIndex for fast lookup (agentId -> userId mapping)
+    await db.collection('agentIndex').doc(agentId).set({
+      userId: userId,
+      agentId: agentId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log('✅ AgentIndex created for fast lookup');
+
     // Process each document
     const allChunks = [];
     
@@ -492,36 +500,33 @@ exports.chatWithAgentExternal = onRequest({
     let agentDoc = null;
     let agent = null;
 
-    // Search for agent across all users (inefficient but works for now)
-    console.log('🔍 Searching for agentId:', agentId);
+    // NEW: Use agentIndex collection for fast lookup
+    console.log('🔍 Looking up agent:', agentId);
 
-    // Debug: Check what collections exist
-    try {
-      const collections = await db.listCollections();
-      console.log('🔍 Available collections:', collections.map(c => c.id));
-    } catch (error) {
-      console.log('🔍 Could not list collections:', error.message);
+    const agentIndexRef = await db.collection('agentIndex').doc(agentId).get();
+
+    if (!agentIndexRef.exists) {
+      console.log('❌ Agent not found in index:', agentId);
+      response.status(404).json({ error: 'Agent not found' });
+      return;
     }
 
-    const usersSnapshot = await db.collection('users').get();
-    console.log('🔍 Found', usersSnapshot.docs.length, 'users');
+    const agentIndex = agentIndexRef.data();
+    const userId = agentIndex.userId;
 
-    for (const userDoc of usersSnapshot.docs) {
-      console.log('🔍 Checking user:', userDoc.id);
-      const agentRef = await db.collection('users').doc(userDoc.id).collection('agents').doc(agentId).get();
-      if (agentRef.exists) {
-        console.log('✅ Found agent in user:', userDoc.id);
-        agentDoc = agentRef;
-        agent = agentRef.data();
-        break;
-      }
-    }
+    console.log('✅ Found agent userId from index:', userId);
 
-    if (!agentDoc || !agent) {
+    // Get agent data
+    const agentRef = await db.collection('users').doc(userId).collection('agents').doc(agentId).get();
+
+    if (!agentRef.exists) {
       console.log('❌ Agent not found:', agentId);
       response.status(404).json({ error: 'Agent not found' });
       return;
     }
+
+    agentDoc = agentRef;
+    agent = agentRef.data();
 
     console.log('✅ Using agent:', agent.id || agentId);
 
@@ -1350,37 +1355,45 @@ exports.getAgentConfig = onRequest({
       return;
     }
 
-    // Search for agent across all users
-    const usersSnapshot = await db.collection('users').get();
+    // Use agentIndex for fast lookup
+    const agentIndexRef = await db.collection('agentIndex').doc(agentId).get();
 
-    for (const userDoc of usersSnapshot.docs) {
-      const agentRef = await db.collection('users').doc(userDoc.id)
-        .collection('agents').doc(agentId).get();
-
-      if (agentRef.exists) {
-        const agentData = agentRef.data();
-
-        // Get user's subscription plan for whitelabel support
-        const userDocData = userDoc.data();
-        const subscriptionPlan = userDocData?.subscriptionPlan || 'free';
-        const isWhitelabel = subscriptionPlan === 'growth' || subscriptionPlan === 'scale';
-
-        // Return only safe, public fields
-        response.status(200).json({
-          projectName: agentData.projectName || agentData.name || 'Assistant',
-          logoUrl: agentData.logoUrl || null,
-          userIcon: agentData.userIcon || 'alien',
-          primaryColor: agentData.primaryColor || '#f97316',
-          returnUserDiscount: agentData.returnUserDiscount || null,
-          firstTimeDiscount: agentData.firstTimeDiscount || null,
-          popups: agentData.popups || [], // New popups array
-          whitelabel: isWhitelabel // Growth and Scale plans get whitelabel
-        });
-        return;
-      }
+    if (!agentIndexRef.exists) {
+      response.status(404).json({ error: 'Agent not found' });
+      return;
     }
 
-    response.status(404).json({ error: 'Agent not found' });
+    const agentIndex = agentIndexRef.data();
+    const userId = agentIndex.userId;
+
+    // Get agent data
+    const agentRef = await db.collection('users').doc(userId)
+      .collection('agents').doc(agentId).get();
+
+    if (!agentRef.exists) {
+      response.status(404).json({ error: 'Agent not found' });
+      return;
+    }
+
+    const agentData = agentRef.data();
+
+    // Get user's subscription plan for whitelabel support
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userDocData = userDoc.data();
+    const subscriptionPlan = userDocData?.subscriptionPlan || 'free';
+    const isWhitelabel = subscriptionPlan === 'growth' || subscriptionPlan === 'scale';
+
+    // Return only safe, public fields
+    response.status(200).json({
+      projectName: agentData.projectName || agentData.name || 'Assistant',
+      logoUrl: agentData.logoUrl || null,
+      userIcon: agentData.userIcon || 'alien',
+      primaryColor: agentData.primaryColor || '#f97316',
+      returnUserDiscount: agentData.returnUserDiscount || null,
+      firstTimeDiscount: agentData.firstTimeDiscount || null,
+      popups: agentData.popups || [], // New popups array
+      whitelabel: isWhitelabel // Growth and Scale plans get whitelabel
+    });
 
   } catch (error) {
     console.error('Get agent config error:', error);
@@ -1480,21 +1493,26 @@ exports.analyzeMessage = onRequest({
       return;
     }
 
-    // Get agent data for context
-    let agent = null;
-    const usersSnapshot = await db.collection('users').get();
-    for (const userDoc of usersSnapshot.docs) {
-      const agentRef = await db.collection('users').doc(userDoc.id).collection('agents').doc(agentId).get();
-      if (agentRef.exists) {
-        agent = agentRef.data();
-        break;
-      }
-    }
+    // Get agent data for context using agentIndex
+    const agentIndexRef = await db.collection('agentIndex').doc(agentId).get();
 
-    if (!agent) {
+    if (!agentIndexRef.exists) {
       response.status(404).json({ error: 'Agent not found' });
       return;
     }
+
+    const agentIndex = agentIndexRef.data();
+    const userId = agentIndex.userId;
+
+    const agentRef = await db.collection('users').doc(userId)
+      .collection('agents').doc(agentId).get();
+
+    if (!agentRef.exists) {
+      response.status(404).json({ error: 'Agent not found' });
+      return;
+    }
+
+    const agent = agentRef.data();
 
     // Create analysis-focused prompt
     const analysisPrompt = `You are an AI customer service analyst. Your job is to analyze conversations and categorize them for business intelligence.

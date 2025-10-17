@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #e3e3e3 0%, #999999 100%);
             min-height: 300vh; /* Tall page for scroll testing */
             padding: 40px 20px;
         }
@@ -288,8 +288,8 @@
     (function(){
       if(!window.OrchisChatbot){
         const script = document.createElement('script');
-        // For local dev server testing (npm run dev)
-        script.src = 'http://localhost:5173/chatbot-widget.js';
+        // Use local file (same directory as this HTML)
+        script.src = './chatbot-widget.js';
         // OR use production: script.src = 'https://orchis.app/chatbot-widget.js';
         script.onload = function() {
           if(window.OrchisChatbot) {

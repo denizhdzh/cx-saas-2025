@@ -306,15 +306,19 @@
 
   OrchisChatWidget.prototype = {
     init: async function() {
-      // Fetch agent config from database
-      await this.fetchAgentConfig();
-
+      // Show chat UI immediately for faster loading
       this.injectStyles();
       this.createWidget();
       this.bindEvents();
 
-      // Handle popup based on new configuration
-      this.handlePopupTriggers();
+      // Load config in background
+      this.fetchAgentConfig().then(() => {
+        // Update UI with loaded config
+        this.updateWidgetWithConfig();
+
+        // Trigger popups
+        this.handlePopupTriggers();
+      });
     },
 
     handlePopupTriggers: function() {
@@ -451,6 +455,36 @@
       } catch (error) {
         console.warn('Failed to fetch agent config, using defaults:', error);
       }
+    },
+
+    updateWidgetWithConfig: function() {
+      // Logo'yu güncelle
+      const avatarContainer = this.container.querySelector('.orchis-agent-avatar');
+      if (avatarContainer && this.config.logoUrl) {
+        avatarContainer.innerHTML = `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />`;
+      }
+
+      // Proje adını güncelle
+      const agentName = this.container.querySelector('.orchis-agent-name');
+      if (agentName) {
+        agentName.textContent = this.config.projectName;
+      }
+
+      // Placeholder'ı güncelle
+      const input = this.container.querySelector('.orchis-input');
+      if (input) {
+        input.placeholder = `Ask anything about ${this.config.projectName}...`;
+      }
+
+      // Whitelabel durumunu güncelle
+      if (this.config.whitelabel) {
+        const poweredBy = this.container.querySelector('.orchis-powered-by');
+        if (poweredBy) {
+          poweredBy.remove();
+        }
+      }
+
+      console.log('🎨 Widget UI updated with config');
     },
 
     injectStyles: function() {
@@ -1011,11 +1045,11 @@
             <div class="orchis-agent-avatar">
               ${this.config.logoUrl ?
                 `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />` :
-                '<div class="orchis-default-avatar">✨</div>'
+                '<div class="orchis-default-avatar"></div>'
               }
             </div>
             <div class="orchis-agent-details">
-              <div class="orchis-agent-name">${this.config.projectName}</div>
+              <div class="orchis-agent-name"></div>
               <div class="orchis-status">Online now</div>
             </div>
             <div class="orchis-status-dot"></div>
@@ -1031,7 +1065,7 @@
                 <input
                   type="text"
                   class="orchis-input"
-                  placeholder="Ask anything about ${this.config.projectName}..."
+                  placeholder="Ask me anything..."
                 />
                 <button class="orchis-send-button">
                   send
@@ -1294,7 +1328,7 @@
 
         return `
           <div class="orchis-message orchis-${message.role}-message">
-            <div class="orchis-message-label">${message.role === 'user' ? 'You' : this.config.projectName + ''}</div>
+            <div class="orchis-message-label">${message.role === 'user' ? 'You' : this.config.projectName || ''}</div>
             <div class="orchis-message-content">${message.content}${this.isTyping && this.messages[this.messages.length - 1].id === message.id ? '<span style="animation: blink 1s infinite;">|</span>' : ''}</div>
             ${suggestionsHTML}
           </div>

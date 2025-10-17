@@ -24,10 +24,28 @@
     <meta name="twitter:description" content="Turn your docs into an AI agent. Embed in minutes. Answer every question, 24/7." />
     <meta name="twitter:image" content="https://orchis.app/og-image.jpg" />
 
+<script defer src="https://cloud.umami.is/script.js" data-website-id="bb49e1c1-3217-41f9-85cd-fbcb614353a9"></script>
+
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-
+<!-- Orchis Chatbot -->
+<script>
+(function(){
+  if(!window.OrchisChatbot){
+    const script = document.createElement('script');
+    script.src = 'https://orchis.app/chatbot-widget.js';
+    script.onload = function() {
+      if(window.OrchisChatbot) {
+        window.OrchisChatbot.init({
+          agentId: 'YUtxUdsTvLauRmozIgKT'
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }
+})();
+</script>
   </body>
 </html>
