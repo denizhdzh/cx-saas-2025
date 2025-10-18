@@ -56,55 +56,54 @@ export default function Pricing() {
   ];
 
   return (
-    <section className="relative py-16 lg:py-24">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-2 relative">
-        <div className="mx-4 sm:mx-6">
+    <section id="pricing" className="relative py-16 lg:py-24 bg-neutral-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          {/* Header */}
-          <div className="text-center mb-12">
-            <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">PRICING</div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-thin text-neutral-900 mb-4 leading-tight">
-              Simple, transparent pricing
-            </h2>
-            <p className="text-sm text-neutral-600 max-w-2xl mx-auto">
-              Start for free. Upgrade when you're ready.
-            </p>
-          </div>
+        {/* Section Header */}
+        <div className="text-center mb-12 lg:mb-16">
+          <div className="text-sm text-orange-500 font-semibold mb-2">Pricing</div>
+          <h2 className="text-4xl sm:text-5xl font-bold text-neutral-900 mb-4">
+            Simple, transparent pricing
+          </h2>
+          <p className="text-lg text-neutral-600 max-w-3xl mx-auto">
+            Start for free. Upgrade when you're ready. All plans include unlimited training data.
+          </p>
+        </div>
 
-          {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Single Unified Card */}
+        <div className="bg-gradient-to-br from-white to-neutral-50/80 rounded-3xl border border-neutral-200/60 shadow-2xl shadow-neutral-900/5">
+
+          {/* 3 Column Grid Inside Card */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
+
             {plans.map((plan, index) => (
               <div
                 key={index}
-                className={`relative bg-white rounded-2xl border p-6 transition-all flex flex-col ${
-                  plan.highlighted
-                    ? 'border-orange-600 shadow-lg'
-                    : 'border-neutral-200 hover:border-neutral-300'
+                className={`relative p-8 lg:p-12 flex flex-col ${
+                  index < plans.length - 1 ? 'border-b lg:border-b-0 lg:border-r border-neutral-200/50' : ''
                 }`}
               >
-                {/* Most Popular Badge */}
+                {/* Badge - Fixed at top */}
                 {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-orange-600 text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wider">
-                      MOST POPULAR
-                    </span>
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-lg">
+                    Popular
                   </div>
                 )}
 
-                {/* Plan Name */}
+                {/* Top section with plan info */}
                 <div className="mb-4">
-                  <h3 className="text-base font-medium text-neutral-900 mb-1">
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-1">
                     {plan.name}
                   </h3>
-                  <p className="text-xs text-neutral-600">
+                  <p className="text-xs text-neutral-500">
                     {plan.description}
                   </p>
                 </div>
 
-                {/* Price */}
-                <div className="mb-6">
+                {/* Price Card */}
+                <div className="bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5 mb-4">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-medium text-neutral-900">
+                    <span className="text-3xl font-bold text-neutral-900">
                       {plan.price}
                     </span>
                     <span className="text-xs text-neutral-500">
@@ -113,31 +112,33 @@ export default function Pricing() {
                   </div>
                 </div>
 
-                {/* Features */}
-                <ul className="space-y-3 mb-6 flex-grow">
-                  {plan.features.map((feature, fIndex) => (
-                    <li key={fIndex} className="flex items-start gap-2 text-left">
-                      <svg
-                        className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-xs text-neutral-700">
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                {/* Features Card */}
+                <div className="bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5 mb-4 flex-grow">
+                  <div className="text-xs font-medium text-neutral-500 mb-3">What's included</div>
+                  <ul className="space-y-2.5">
+                    {plan.features.map((feature, fIndex) => (
+                      <li key={fIndex} className="flex items-start gap-2 text-left">
+                        <svg
+                          className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-green-500"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-xs text-neutral-700">
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
                 {/* CTA Button */}
                 <button
                   onClick={() => navigate('/signin')}
-                  className={`w-full py-2.5 px-5 rounded-lg font-medium text-xs transition-all ${
+                  className={`w-full py-2.5 px-4 rounded-xl font-medium text-xs transition-all ${
                     plan.highlighted
-                      ? 'bg-orange-600 text-white hover:bg-orange-700'
+                      ? 'bg-orange-500 text-white hover:bg-orange-600'
                       : 'bg-neutral-900 text-white hover:bg-neutral-800'
                   }`}
                 >
@@ -145,16 +146,18 @@ export default function Pricing() {
                 </button>
               </div>
             ))}
-          </div>
 
-          {/* Bottom Info */}
-          <div className="text-center space-y-3">
-            <p className="text-xs text-neutral-500">
-              Free plan available with 100 message credits • All plans include unlimited training data
-            </p>
           </div>
 
         </div>
+
+        {/* Bottom Info */}
+        <div className="text-center mt-8">
+          <p className="text-xs text-neutral-500">
+            Free plan available with 100 message credits
+          </p>
+        </div>
+
       </div>
     </section>
   );

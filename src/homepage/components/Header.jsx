@@ -31,14 +31,70 @@ export default function Header() {
           
           {/* Navigation - hidden on mobile */}
           <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
-            <Link 
+            <a
+              href="/#features"
+              onClick={(e) => {
+                e.preventDefault();
+                if (window.location.pathname !== '/') {
+                  window.location.href = '/#features';
+                } else {
+                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              Features
+            </a>
+            <a
+              href="/#session-intelligence"
+              onClick={(e) => {
+                e.preventDefault();
+                if (window.location.pathname !== '/') {
+                  window.location.href = '/#session-intelligence';
+                } else {
+                  document.getElementById('session-intelligence')?.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              Intelligence
+            </a>
+            <a
+              href="/#before-after"
+              onClick={(e) => {
+                e.preventDefault();
+                if (window.location.pathname !== '/') {
+                  window.location.href = '/#before-after';
+                } else {
+                  document.getElementById('before-after')?.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              Impact
+            </a>
+            <a
+              href="/#pricing"
+              onClick={(e) => {
+                e.preventDefault();
+                if (window.location.pathname !== '/') {
+                  window.location.href = '/#pricing';
+                } else {
+                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              Pricing
+            </a>
+            <Link
               to="/roadmap"
               className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
             >
               Roadmap
             </Link>
-            <Link 
-              to="/blog" 
+            <Link
+              to="/blog"
               className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
             >
               Blog

@@ -57,7 +57,7 @@ export default function HomePage() {
           })}
         </script>
       </Helmet>
-      <div className="min-h-screen bg-white relative">
+      <div className="min-h-screen bg-neutral-50 relative">
 
         {/* Content */}
         <div className="relative z-10">

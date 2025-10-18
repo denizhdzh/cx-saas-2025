@@ -3,46 +3,51 @@ import React, { useState, useEffect } from "react";
 // SessionTimeline Component
 function SessionTimeline() {
   const [activeSession, setActiveSession] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const sessions = [
     {
       id: 1,
       type: "first_visit",
-      user: "Anonymous User #4821",
+      user: "Visitor from San Francisco",
       timestamp: "Just now",
-      pages: ["Homepage", "Features"],
+      pages: ["Homepage", "Features", "Pricing"],
       status: "active",
-      welcome: "Welcome! How can I help you today?",
+      welcome: "I see you're exploring our platform. Looking to automate your customer support?",
       sentiment: null
     },
     {
       id: 2,
       type: "return_visit",
-      user: "Returning User #3291",
-      timestamp: "2 min ago",
-      pages: ["Pricing", "Checkout"],
+      user: "E-commerce Manager",
+      timestamp: "8 min ago",
+      pages: ["Pricing", "Integrations", "API Docs"],
       status: "completed",
-      welcome: "Welcome back! Ready to continue?",
+      welcome: "Welcome back! Last time you checked our Shopify integration. Want to see a demo?",
       sentiment: "positive",
       conversationCount: 3
     },
     {
       id: 3,
       type: "return_visit",
-      user: "Returning User #2847",
-      timestamp: "5 min ago",
-      pages: ["Dashboard", "Settings"],
+      user: "Product Manager",
+      timestamp: "14 min ago",
+      pages: ["Dashboard", "Analytics", "Settings"],
       status: "completed",
-      welcome: "Good to see you again! Need help with something?",
-      sentiment: "neutral",
-      conversationCount: 7
+      welcome: "Welcome back! You checked our analytics last time. Ready to dive deeper into the data?",
+      sentiment: "engaged",
+      conversationCount: 8
     }
   ];
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveSession((prev) => (prev + 1) % sessions.length);
-    }, 3500);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setActiveSession((prev) => (prev + 1) % sessions.length);
+        setIsTransitioning(false);
+      }, 300);
+    }, 4500);
     return () => clearInterval(interval);
   }, []);
 
@@ -54,11 +59,13 @@ function SessionTimeline() {
 
       <div className="space-y-4 flex-1 flex flex-col justify-center">
         {/* Active Session Card */}
-        <div className="bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5 transition-all duration-500">
+        <div className={`bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5 transition-all duration-700 ease-in-out ${
+          isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
+        }`}>
           {/* User Info */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-colors duration-500 ${
                 current.type === 'first_visit' ? 'bg-blue-500 animate-pulse' : 'bg-green-500'
               }`}></div>
               <div>
@@ -70,7 +77,7 @@ function SessionTimeline() {
                 </div>
               </div>
             </div>
-            <div className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+            <div className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-500 ${
               current.type === 'first_visit'
                 ? 'bg-blue-50 text-blue-700 border border-blue-200'
                 : 'bg-green-50 text-green-700 border border-green-200'
@@ -114,25 +121,27 @@ function SessionTimeline() {
           {/* Sentiment (if available) */}
           {current.sentiment && (
             <div className="flex items-center justify-between pt-3 border-t border-neutral-200/60">
-              <div className="text-xs font-medium text-neutral-500">Sentiment Analysis</div>
-              <div className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${
+              <div className="text-xs font-medium text-neutral-500">Engagement</div>
+              <div className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all duration-500 ${
                 current.sentiment === 'positive'
                   ? 'bg-green-50 text-green-700 border-green-200'
+                  : current.sentiment === 'engaged'
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
                   : 'bg-yellow-50 text-yellow-700 border-yellow-200'
               }`}>
-                {current.sentiment === 'positive' ? 'Positive' : 'Neutral'}
+                {current.sentiment === 'positive' ? 'Interested' : current.sentiment === 'engaged' ? 'Highly Active' : 'Exploring'}
               </div>
             </div>
           )}
         </div>
 
-        {/* Session Stats */}
+        {/* Session Stats - Dynamically calculated from actual sessions */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-neutral-50 border border-neutral-200/60 rounded-xl p-4 text-center">
             <div className="text-xl font-bold text-neutral-900">
               {sessions.filter(s => s.type === 'first_visit').length}
             </div>
-            <div className="text-xs text-neutral-500 mt-1">New</div>
+            <div className="text-xs text-neutral-500 mt-1">New Visitors</div>
           </div>
           <div className="bg-neutral-50 border border-neutral-200/60 rounded-xl p-4 text-center">
             <div className="text-xl font-bold text-neutral-900">
@@ -142,9 +151,9 @@ function SessionTimeline() {
           </div>
           <div className="bg-neutral-50 border border-neutral-200/60 rounded-xl p-4 text-center">
             <div className="text-xl font-bold text-neutral-900">
-              {sessions.reduce((acc, s) => acc + (s.conversationCount || 0), 0)}
+              {sessions.reduce((acc, s) => acc + (s.conversationCount || 1), 0)}
             </div>
-            <div className="text-xs text-neutral-500 mt-1">Total Chats</div>
+            <div className="text-xs text-neutral-500 mt-1">Conversations</div>
           </div>
         </div>
       </div>
@@ -155,29 +164,34 @@ function SessionTimeline() {
 // ContextDetection Component
 function ContextDetection() {
   const [currentPage, setCurrentPage] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const pageContexts = [
     {
       page: "/pricing",
-      suggestion: "I see you're checking our pricing! Would you like help choosing the right plan?",
-      triggers: ["scroll_depth_75", "time_on_page_30s"]
+      suggestion: "Checking our pricing? I can help you find the perfect plan for your team size and needs.",
+      triggers: ["30s on page", "scrolled to comparison table"]
     },
     {
-      page: "/features",
-      suggestion: "Exploring features? I can explain how each one works for your use case!",
-      triggers: ["scroll_depth_50", "time_on_page_20s"]
+      page: "/features/integrations",
+      suggestion: "Looking at integrations? Let me show you how we connect with your existing tools.",
+      triggers: ["viewed 3 integrations", "exit intent detected"]
     },
     {
-      page: "/about",
-      suggestion: "Want to know more about our team or mission? Just ask!",
-      triggers: ["first_visit", "scroll_depth_25"]
+      page: "/docs/api",
+      suggestion: "Need help with the API? I can guide you through authentication and your first request.",
+      triggers: ["scrolled to code examples", "45s on page"]
     }
   ];
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentPage((prev) => (prev + 1) % pageContexts.length);
-    }, 3000);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentPage((prev) => (prev + 1) % pageContexts.length);
+        setIsTransitioning(false);
+      }, 300);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -189,7 +203,9 @@ function ContextDetection() {
 
       <div className="space-y-4 flex-1 flex flex-col justify-center">
         {/* Current Page Context */}
-        <div className="bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5">
+        <div className={`bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5 transition-all duration-700 ease-in-out ${
+          isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
+        }`}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
             <div className="flex-1">
@@ -255,7 +271,7 @@ function ContextDetection() {
 
 export default function SessionIntelligence() {
   return (
-    <section className="relative py-16 lg:py-24 bg-neutral-50">
+    <section id="session-intelligence" className="relative py-16 lg:py-24 bg-transparent">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}

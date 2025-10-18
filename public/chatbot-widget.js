@@ -503,8 +503,8 @@
         .orchis-position-top-left { top: 10px; left: 10px; }
         
         .orchis-chat-widget {
-          background: linear-gradient(135deg, rgba(22, 22, 22, 0.95) 0%, rgba(44, 44, 44, 0.92) 100%);
-          backdrop-filter: blur(10px) saturate(180%);
+          background: linear-gradient(135deg, rgba(22, 22, 22, 0.50) 0%, rgba(44, 44, 44, 0.92) 100%);
+          backdrop-filter: blur(7px) saturate(180%);
           -webkit-backdrop-filter: blur(10px) saturate(180%);
           border: 0.5px solid rgba(255, 255, 255, 0.12);
           border-radius: 25px;
