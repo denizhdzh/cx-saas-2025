@@ -13,6 +13,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { AgentProvider } from './contexts/AgentContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 
 function App() {
   return (
@@ -28,6 +30,8 @@ function App() {
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/roadmap" element={<RoadmapPage />} />
               <Route path="/blog" element={<BlogIndex />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>

@@ -305,19 +305,21 @@
   }
 
   OrchisChatWidget.prototype = {
-    init: function() {
-      // ⚡ OPTIMIZED: Render widget immediately, fetch config in background
+    init: async function() {
+      // Show chat UI immediately for faster loading
       this.injectStyles();
       this.createWidget();
       this.bindEvents();
 
-      // Dock is always visible, no special init needed
+      // Start expanded
+      this.isMinimized = false;
 
-      // Fetch config asynchronously without blocking render
+      // Load config in background
       this.fetchAgentConfig().then(() => {
-        // Update widget with fetched config
+        // Update UI with loaded config
         this.updateWidgetWithConfig();
-        // Handle popups after config is loaded
+
+        // Trigger popups
         this.handlePopupTriggers();
       });
     },
@@ -427,26 +429,6 @@
 
     fetchAgentConfig: async function() {
       try {
-        // ⚡ Check cache first (5 minute TTL)
-        const cacheKey = `orchis_config_${this.config.agentId}`;
-        const cached = localStorage.getItem(cacheKey);
-
-        if (cached) {
-          try {
-            const { data, timestamp } = JSON.parse(cached);
-            const age = Date.now() - timestamp;
-            const TTL = 5 * 60 * 1000; // 5 minutes
-
-            if (age < TTL) {
-              console.log('⚡ Using cached config (age:', Math.round(age / 1000), 's)');
-              this.applyAgentConfig(data);
-              return;
-            }
-          } catch (e) {
-            // Invalid cache, fetch fresh
-          }
-        }
-
         // Fetch from secure backend endpoint - NO Firebase credentials exposed!
         const response = await fetch(`https://us-central1-candelaai.cloudfunctions.net/getAgentConfig?agentId=${this.config.agentId}`);
 
@@ -456,34 +438,62 @@
 
         const agentData = await response.json();
 
-        // Cache the response
-        localStorage.setItem(cacheKey, JSON.stringify({
-          data: agentData,
-          timestamp: Date.now()
-        }));
+        // Update config with backend values
+        this.config.projectName = agentData.projectName || this.config.projectName;
+        this.config.logoUrl = agentData.logoUrl || this.config.logoUrl;
+        this.config.userIcon = agentData.userIcon || 'alien';
+        this.config.primaryColor = agentData.primaryColor || this.config.primaryColor;
+        this.config.returnUserDiscount = agentData.returnUserDiscount || null;
+        this.config.firstTimeDiscount = agentData.firstTimeDiscount || null;
+        this.config.popup = agentData.popup || null; // Old popup configuration (backward compat)
+        this.config.popups = agentData.popups || []; // New popups array
+        this.config.whitelabel = agentData.whitelabel || false; // Growth/Scale plans get whitelabel
 
-        this.applyAgentConfig(agentData);
+        console.log('✅ Agent config loaded securely from backend:', this.config.projectName);
+        console.log('🔍 DEBUG: popups array:', this.config.popups);
+        console.log('🔍 DEBUG: popups length:', this.config.popups ? this.config.popups.length : 0);
+        if (this.config.whitelabel) {
+          console.log('🎨 Whitelabel mode enabled (Growth/Scale plan)');
+        }
       } catch (error) {
         console.warn('Failed to fetch agent config, using defaults:', error);
       }
     },
 
-    applyAgentConfig: function(agentData) {
-      // Update config with backend values
-      this.config.projectName = agentData.projectName || this.config.projectName;
-      this.config.logoUrl = agentData.logoUrl || this.config.logoUrl;
-      this.config.userIcon = agentData.userIcon || 'alien';
-      this.config.primaryColor = agentData.primaryColor || this.config.primaryColor;
-      this.config.returnUserDiscount = agentData.returnUserDiscount || null;
-      this.config.firstTimeDiscount = agentData.firstTimeDiscount || null;
-      this.config.popup = agentData.popup || null; // Old popup configuration (backward compat)
-      this.config.popups = agentData.popups || []; // New popups array
-      this.config.whitelabel = agentData.whitelabel || false; // Growth/Scale plans get whitelabel
-
-      console.log('✅ Agent config loaded:', this.config.projectName);
-      if (this.config.whitelabel) {
-        console.log('🎨 Whitelabel mode enabled (Growth/Scale plan)');
+    updateWidgetWithConfig: function() {
+      // Logo'yu güncelle (header)
+      const avatarContainer = this.container.querySelector('.orchis-agent-avatar');
+      if (avatarContainer && this.config.logoUrl) {
+        avatarContainer.innerHTML = `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />`;
       }
+
+      // Logo'yu güncelle (minimized)
+      const minimizedLogo = this.container.querySelector('.orchis-minimized-logo');
+      if (minimizedLogo && this.config.logoUrl) {
+        minimizedLogo.innerHTML = `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />`;
+      }
+
+      // Proje adını güncelle
+      const agentName = this.container.querySelector('.orchis-agent-name');
+      if (agentName) {
+        agentName.textContent = this.config.projectName;
+      }
+
+      // Placeholder'ı güncelle
+      const input = this.container.querySelector('.orchis-input');
+      if (input) {
+        input.placeholder = `Ask anything about ${this.config.projectName}...`;
+      }
+
+      // Whitelabel durumunu güncelle
+      if (this.config.whitelabel) {
+        const poweredBy = this.container.querySelector('.orchis-powered-by');
+        if (poweredBy) {
+          poweredBy.remove();
+        }
+      }
+
+      console.log('🎨 Widget UI updated with config');
     },
 
     injectStyles: function() {
@@ -496,14 +506,14 @@
           font-family: system-ui, -apple-system, sans-serif;
         }
         
-        .orchis-position-bottom-right { bottom: 20px; right: 20px; }
-        .orchis-position-bottom-left { bottom: 20px; left: 20px; }
-        .orchis-position-top-right { top: 20px; right: 20px; }
-        .orchis-position-top-left { top: 20px; left: 20px; }
+        .orchis-position-bottom-right { bottom: 10px; right: 10px; }
+        .orchis-position-bottom-left { bottom: 10px; left: 10px; }
+        .orchis-position-top-right { top: 10px; right: 10px; }
+        .orchis-position-top-left { top: 10px; left: 10px; }
         
         .orchis-chat-widget {
-          background: linear-gradient(135deg, rgba(22, 22, 22, 0.95) 0%, rgba(44, 44, 44, 0.92) 100%);
-          backdrop-filter: blur(10px) saturate(180%);
+          background: linear-gradient(135deg, rgba(22, 22, 22, 0.50) 0%, rgba(44, 44, 44, 0.92) 100%);
+          backdrop-filter: blur(7px) saturate(180%);
           -webkit-backdrop-filter: blur(10px) saturate(180%);
           border: 0.5px solid rgba(255, 255, 255, 0.12);
           border-radius: 25px;
@@ -514,206 +524,27 @@
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 1px 2px rgba(255, 255, 255, 0.05) inset;
           display: flex;
           flex-direction: column;
+          transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+          animation: orchis-slideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
           position: relative;
+          max-height: 600px;
         }
 
-        .orchis-chat-widget.closed {
-          display: none;
+        .orchis-chat-widget.orchis-minimized {
+          max-height: 80px;
+          min-width: 16rem;
+          max-width: 18rem;
         }
-
-        /* Apple Dock */
-        .orchis-dock {
-          background: rgba(255, 255, 255, 0.08);
-          backdrop-filter: blur(40px) saturate(180%);
-          -webkit-backdrop-filter: blur(40px) saturate(180%);
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          border-radius: 20px;
-          padding: 8px 12px;
-          display: flex;
-          align-items: flex-end;
-          gap: 8px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
-                      0 0 0 0.5px rgba(255, 255, 255, 0.1) inset;
-        }
-
-        .orchis-dock-item {
-          position: relative;
-          cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          transform-origin: bottom;
-        }
-
-        .orchis-dock-item:hover {
-          transform: translateY(-8px) scale(1.1);
-        }
-
-        .orchis-dock-item-inner {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          overflow: hidden;
-          background: rgba(255, 255, 255, 0.1);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-        }
-
-        .orchis-dock-item-inner img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .orchis-dock-item-inner video {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        /* Video item (2x1 ratio) */
-        .orchis-dock-item.video .orchis-dock-item-inner {
-          width: 96px;
-          height: 48px;
-        }
-
-        /* Offer badge */
-        .orchis-dock-item.offer .orchis-dock-item-inner {
-          background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-          color: white;
-          font-weight: 600;
-          font-size: 14px;
-        }
-
-        /* Popup on hover */
-        .orchis-dock-popup {
-          position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%) translateY(-12px) scale(0.9);
-          margin-bottom: 8px;
-          background: rgba(22, 22, 22, 0.95);
-          backdrop-filter: blur(40px) saturate(180%);
-          -webkit-backdrop-filter: blur(40px) saturate(180%);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 16px;
-          padding: 16px;
-          min-width: 280px;
-          max-width: 350px;
-          opacity: 0;
-          pointer-events: none;
-          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-        }
-
-        .orchis-dock-item:hover .orchis-dock-popup {
-          opacity: 1;
-          pointer-events: auto;
-          transform: translateX(-50%) translateY(-12px) scale(1);
-        }
-
-        .orchis-dock-popup-arrow {
-          position: absolute;
-          bottom: -6px;
-          left: 50%;
-          transform: translateX(-50%) rotate(45deg);
-          width: 12px;
-          height: 12px;
-          background: rgba(22, 22, 22, 0.95);
-          border-right: 1px solid rgba(255, 255, 255, 0.12);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        /* Chat popup specific */
-        .orchis-dock-item.chat .orchis-dock-popup {
-          min-width: 350px;
-          max-width: 350px;
-          padding: 0;
-          overflow: hidden;
-        }
-
-        .orchis-dock-chat-container {
-          display: flex;
-          flex-direction: column;
-          max-height: 500px;
-        }
-
-        .orchis-dock-chat-header {
-          padding: 12px 16px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .orchis-dock-chat-avatar {
-          width: 32px;
-          height: 32px;
-          border-radius: 10px;
-          overflow: hidden;
-          flex-shrink: 0;
-        }
-
-        .orchis-dock-chat-avatar img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .orchis-dock-chat-info {
-          flex: 1;
-        }
-
-        .orchis-dock-chat-name {
-          color: rgba(255, 255, 255, 0.9);
-          font-size: 14px;
-          font-weight: 600;
-        }
-
-        .orchis-dock-chat-status {
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 12px;
-        }
-
-        .orchis-dock-chat-messages {
-          flex: 1;
-          overflow-y: auto;
-          padding: 16px;
-          min-height: 200px;
-          max-height: 300px;
-        }
-
-        .orchis-dock-chat-input {
-          padding: 12px 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-          display: flex;
-          gap: 8px;
-        }
-
-        .orchis-dock-chat-input input {
-          flex: 1;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 12px;
-          padding: 8px 12px;
-          color: white;
-          font-size: 14px;
-          outline: none;
-        }
-
-        .orchis-dock-chat-input input::placeholder {
-          color: rgba(255, 255, 255, 0.4);
-        }
-
-        .orchis-dock-chat-input button {
-          background: ${this.config?.primaryColor || '#f97316'};
-          border: none;
-          border-radius: 12px;
-          padding: 8px 16px;
-          color: white;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
+        
+        @keyframes orchis-slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
         
         .orchis-chat-header {
@@ -722,6 +553,17 @@
           gap: 8px;
           padding: 12px;
           background: rgba(255, 255, 255, 0);
+          opacity: 1;
+          max-height: 60px;
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+          overflow: hidden;
+        }
+
+        .orchis-minimized .orchis-chat-header {
+          opacity: 0;
+          max-height: 0;
+          padding-top: 0;
+          padding-bottom: 0;
         }
 
         .orchis-agent-avatar {
@@ -772,52 +614,22 @@
           border-radius: 50%;
           flex-shrink: 0;
         }
-
-        .orchis-header-actions {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          margin-left: auto;
-        }
-
-        .orchis-refresh-btn,
+        
         .orchis-minimize-btn {
           background: none;
           border: none;
-          color: rgba(255, 255, 255, 0.5);
-          cursor: pointer;
-          padding: 6px;
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-        }
-
-        .orchis-refresh-btn:hover,
-        .orchis-minimize-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-          color: rgba(255, 255, 255, 0.9);
-        }
-
-        .orchis-refresh-btn svg,
-        .orchis-minimize-btn svg {
-          display: block;
-        }
-
-        .orchis-close-btn {
-          background: none;
-          border: none;
           color: #a8a29e;
-          font-size: 18px;
+          font-size: 20px;
           cursor: pointer;
-          padding: 4px;
+          padding: 4px 8px;
           border-radius: 4px;
-          transition: color 0.2s;
+          transition: all 0.2s;
+          line-height: 1;
         }
 
-        .orchis-close-btn:hover {
+        .orchis-minimize-btn:hover {
           color: white;
+          background: rgba(255, 255, 255, 0.1);
         }
         
         .orchis-messages {
@@ -825,10 +637,19 @@
           overflow-y: auto;
           padding: 12px;
           display: none;
+          opacity: 1;
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
 
         .orchis-messages:not(:empty) {
           display: block;
+        }
+
+        .orchis-minimized .orchis-messages {
+          opacity: 0;
+          max-height: 0;
+          padding: 0;
+          display: none !important;
         }
         
         .orchis-message {
@@ -888,18 +709,50 @@
         }
 
         .orchis-input-section {
-          padding: 3px;
+          padding: 2px;
           background: rgba(255, 255, 255, 0);
           border-radius: 0px;
-          
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .orchis-minimized-logo {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          background: rgba(120, 120, 128, 0.16);
+          flex-shrink: 0;
+          margin-left: 3px;
+          opacity: 0;
+          transform: scale(0.8);
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .orchis-minimized .orchis-minimized-logo {
+          display: flex;
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        .orchis-minimized-logo img {
+          width: 32px;
+          height: 32px;
+          object-fit: cover;
+          border-radius: 50%;
         }
 
         .orchis-input-container {
           background: rgba(255, 255, 255, 0);
           border: none;
           border-radius: 20px;
-          padding: 6px;
+          padding: 2px;
           transition: all 0.2s ease;
+          flex: 1;
         }
 
         .orchis-input-container:focus-within {
@@ -923,7 +776,7 @@
 
         .orchis-input {
           flex: 1;
-          padding: 8px 12px;
+          padding: 8px;
           font-size: 14px;
           background: rgba(255, 255, 255, 0);
           color: rgba(255, 255, 255, 0.85);
@@ -969,6 +822,17 @@
           padding: 2px 2px 8px 2px;
           font-size: 10px;
           color: rgba(255, 255, 255, 0.8);
+          opacity: 1;
+          max-height: 30px;
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+          overflow: hidden;
+        }
+
+        .orchis-minimized .orchis-powered-by {
+          opacity: 0;
+          max-height: 0;
+          padding-top: 0;
+          padding-bottom: 0;
         }
 
         .orchis-logo {
@@ -1015,6 +879,36 @@
             transform: scale(1);
           }
         }
+        
+        .orchis-toggle-button {
+          width: 56px;
+          height: 56px;
+          background: ${this.config?.primaryColor || '#f97316'};
+          color: white;
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+        }
+        
+        .orchis-toggle-button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .orchis-toggle-icon {
+          transition: transform 0.3s ease;
+        }
+        
+        .orchis-toggle-button.active .orchis-toggle-icon {
+          transform: rotate(180deg);
+        }
+        
         .orchis-offer-banner {
           padding: 12px 16px;
           animation: orchis-offer-slide-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1180,30 +1074,30 @@
           transform: rotate(90deg);
         }
 
-        /* Desktop max-height */
-        .orchis-chat-widget {
-          max-height: 600px;
+        .orchis-offer-banner {
+          opacity: 1;
+          max-height: 100px;
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+          overflow: hidden;
         }
 
-        @media (max-width: 768px) {
+        .orchis-minimized .orchis-offer-banner {
+          opacity: 0;
+          max-height: 0;
+          padding: 0;
+        }
+
+        @media (max-width: 480px) {
           .orchis-widget-container {
             left: 50% !important;
             right: auto !important;
             transform: translateX(-50%);
-            bottom: 10px !important;
           }
 
           .orchis-chat-widget {
             width: calc(100vw - 32px);
-            min-width: calc(100vw - 32px);
-            max-width: calc(100vw - 32px);
             height: auto;
-            max-height: 70vh;
-          }
-
-          /* Hide closed card on mobile */
-          .orchis-closed-card {
-            display: none !important;
+            max-height: 500px;
           }
 
           .orchis-discount-popup {
@@ -1214,19 +1108,6 @@
 
           .orchis-discount-content {
             min-width: auto;
-          }
-
-          /* Hide status dot on mobile to save space */
-          .orchis-status-dot {
-            display: none;
-          }
-
-          .orchis-agent-name {
-            font-size: 13px;
-          }
-
-          .orchis-status {
-            font-size: 11px;
           }
         }
       `;
@@ -1241,101 +1122,27 @@
       const container = document.createElement('div');
       container.className = `orchis-widget-container orchis-position-${this.config.position}`;
       container.innerHTML = this.getWidgetHTML();
-
+      
       document.body.appendChild(container);
       this.container = container;
     },
 
-    updateWidgetWithConfig: function() {
-      // Update dock chat avatar
-      const dockAvatar = this.container.querySelector('.orchis-dock-chat-avatar img');
-      if (dockAvatar && this.config.logoUrl) {
-        dockAvatar.src = this.config.logoUrl;
-      }
-
-      // Update dock chat name
-      const dockName = this.container.querySelector('.orchis-dock-chat-name');
-      if (dockName) {
-        dockName.textContent = this.config.projectName || 'AI Assistant';
-      }
-
-      // Update dock item icon
-      const dockItemInner = this.container.querySelector('.orchis-dock-item.chat .orchis-dock-item-inner');
-      if (dockItemInner && this.config.logoUrl) {
-        dockItemInner.innerHTML = `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />`;
-      }
-
-      // Update placeholder
-      const input = this.container.querySelector('.orchis-input');
-      if (input) {
-        input.placeholder = `Ask anything...`;
-      }
-
-      console.log('🔄 Widget updated with config');
-    },
-
     getWidgetHTML: function() {
       return `
-        <div class="orchis-dock">
-          <!-- Chat Item -->
-          <div class="orchis-dock-item chat" data-item="chat">
-            <div class="orchis-dock-item-inner">
-              ${this.config.logoUrl ?
-                `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />` :
-                '<div style="font-size: 24px;">💬</div>'
-              }
-            </div>
-            <div class="orchis-dock-popup">
-              <div class="orchis-dock-popup-arrow"></div>
-              <div class="orchis-dock-chat-container">
-                <div class="orchis-dock-chat-header">
-                  <div class="orchis-dock-chat-avatar">
-                    ${this.config.logoUrl ?
-                      `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />` :
-                      '<div style="width:100%;height:100%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">💬</div>'
-                    }
-                  </div>
-                  <div class="orchis-dock-chat-info">
-                    <div class="orchis-dock-chat-name">${this.config.projectName || 'AI Assistant'}</div>
-                    <div class="orchis-dock-chat-status">Online now</div>
-                  </div>
-                </div>
-                <div class="orchis-dock-chat-messages orchis-messages"></div>
-                <div class="orchis-dock-chat-input">
-                  <input type="text" class="orchis-input" placeholder="Ask anything..." />
-                  <button class="orchis-send-button">Send</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Dynamic items will be added here (video, offer, link) -->
-        </div>
-        <div class="orchis-chat-widget closed">
+        <div class="orchis-chat-widget">
           <div class="orchis-chat-header">
             <div class="orchis-agent-avatar">
               ${this.config.logoUrl ?
                 `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />` :
-                '<div class="orchis-default-avatar">💬</div>'
+                '<div class="orchis-default-avatar"></div>'
               }
             </div>
             <div class="orchis-agent-details">
-              <div class="orchis-agent-name">${this.config.projectName}</div>
+              <div class="orchis-agent-name"></div>
               <div class="orchis-status">Online now</div>
             </div>
             <div class="orchis-status-dot"></div>
-            <div class="orchis-header-actions">
-              <button class="orchis-refresh-btn" title="New conversation">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                </svg>
-              </button>
-              <button class="orchis-minimize-btn" title="Minimize">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M4 14h6m0 0v6m0-6L3 21M20 10h-6m0 0V4m0 6l7-7"/>
-                </svg>
-              </button>
-            </div>
+            <button class="orchis-minimize-btn" title="Minimize">−</button>
           </div>
 
           <!-- Offer banner will be inserted here for return users -->
@@ -1343,12 +1150,18 @@
           <div class="orchis-messages"></div>
 
           <div class="orchis-input-section">
+            <div class="orchis-minimized-logo">
+              ${this.config.logoUrl ?
+                `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />` :
+                '<div class="orchis-default-avatar"></div>'
+              }
+            </div>
             <div class="orchis-input-container">
               <div class="orchis-input-row">
                 <input
                   type="text"
                   class="orchis-input"
-                  placeholder="Ask anything about ${this.config.projectName}..."
+                  placeholder="Ask me anything..."
                 />
                 <button class="orchis-send-button">
                   send
@@ -1371,8 +1184,6 @@
       const sendBtn = this.container.querySelector('.orchis-send-button');
       const input = this.container.querySelector('.orchis-input');
       const minimizeBtn = this.container.querySelector('.orchis-minimize-btn');
-      const refreshBtn = this.container.querySelector('.orchis-refresh-btn');
-      const closedCard = this.container.querySelector('.orchis-closed-card');
 
       sendBtn.addEventListener('click', () => this.sendMessage());
 
@@ -1383,59 +1194,36 @@
         }
       });
 
-      // Closed card click opens chat
-      if (closedCard) {
-        closedCard.addEventListener('click', () => this.openChat());
-      }
+      // Expand when input is focused
+      input.addEventListener('focus', () => {
+        this.expand();
+      });
 
-      // Minimize button closes chat
-      if (minimizeBtn) {
-        minimizeBtn.addEventListener('click', () => this.closeChat());
-      }
-
-      // Refresh conversation
-      if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => this.refreshConversation());
-      }
+      // Minimize button
+      minimizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMinimize();
+      });
     },
 
-    openChat: function() {
-      const chatWidget = this.container.querySelector('.orchis-chat-widget');
-      const closedCard = this.container.querySelector('.orchis-closed-card');
-
-      if (chatWidget) {
-        chatWidget.classList.remove('closed');
-      }
-      if (closedCard) {
-        closedCard.classList.remove('visible');
-      }
+    expand: function() {
+      const widget = this.container.querySelector('.orchis-chat-widget');
+      widget.classList.remove('orchis-minimized');
+      this.isMinimized = false;
     },
 
-    closeChat: function() {
-      const chatWidget = this.container.querySelector('.orchis-chat-widget');
-      const closedCard = this.container.querySelector('.orchis-closed-card');
-
-      if (chatWidget) {
-        chatWidget.classList.add('closed');
-      }
-      if (closedCard) {
-        closedCard.classList.add('visible');
-      }
+    minimize: function() {
+      const widget = this.container.querySelector('.orchis-chat-widget');
+      widget.classList.add('orchis-minimized');
+      this.isMinimized = true;
     },
 
-    refreshConversation: function() {
-      if (!confirm('Start a new conversation? This will clear your current chat.')) {
-        return;
+    toggleMinimize: function() {
+      if (this.isMinimized) {
+        this.expand();
+      } else {
+        this.minimize();
       }
-
-      // Clear messages
-      this.messages = [];
-      this.updateMessages();
-
-      // Create new session
-      this.sessionManager = new ChatSessionManager(this.config.agentId);
-
-      console.log('🔄 Conversation refreshed');
     },
 
     addWelcomeMessage: function() {
@@ -1508,8 +1296,11 @@
     async sendMessage() {
       const input = this.container.querySelector('.orchis-input');
       const message = input.value.trim();
-      
+
       if (!message || this.isLoading || this.isTyping) return;
+
+      // Expand when sending message
+      this.expand();
 
       // Start chat session if first message
       if (this.messages.length === 0) {
@@ -1519,7 +1310,7 @@
       // Add user message to both local and session manager
       this.addMessage('user', message);
       this.sessionManager.addMessage(message, true);
-      
+
       input.value = '';
       this.setLoading(true);
 
@@ -1668,7 +1459,7 @@
 
         return `
           <div class="orchis-message orchis-${message.role}-message">
-            <div class="orchis-message-label">${message.role === 'user' ? 'You' : this.config.projectName + ''}</div>
+            <div class="orchis-message-label">${message.role === 'user' ? 'You' : this.config.projectName || ''}</div>
             <div class="orchis-message-content">${message.content}${this.isTyping && this.messages[this.messages.length - 1].id === message.id ? '<span style="animation: blink 1s infinite;">|</span>' : ''}</div>
             ${suggestionsHTML}
           </div>
@@ -1722,7 +1513,7 @@
     getLoadingHTML: function() {
       return `
         <div class="orchis-loading">
-          <div class="orchis-message-label">${this.config.projectName}</div>
+          <div class="orchis-message-label">${this.config.projectName} AI</div>
           <div class="orchis-typing-dots">
             <div class="orchis-dot"></div>
             <div class="orchis-dot"></div>

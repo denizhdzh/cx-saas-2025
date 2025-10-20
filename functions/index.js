@@ -1931,7 +1931,22 @@ exports.analyzeOldSessions = onSchedule('every 30 minutes', async (event) => {
 */
 
 // Fill Knowledge Gap - Enhance user answer and add to knowledge base
-exports.fillKnowledgeGap = onRequest({ cors: true }, async (req, res) => {
+exports.fillKnowledgeGap = onRequest({
+  timeoutSeconds: 60,
+  memory: '512MiB',
+  cors: true
+}, async (req, res) => {
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -1942,6 +1957,14 @@ exports.fillKnowledgeGap = onRequest({ cors: true }, async (req, res) => {
     if (!userId || !agentId || !gapId || !question || !userAnswer) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    // Get the knowledge gap to get category
+    const gapRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('knowledgeGaps').doc(gapId);
+
+    const gapDoc = await gapRef.get();
+    const gapData = gapDoc.exists ? gapDoc.data() : {};
 
     const openai = getOpenAI();
 
@@ -1974,13 +1997,12 @@ Return ONLY the enhanced answer, without any preamble or explanation.`;
 
     const enhancedAnswer = enhancementResponse.choices[0].message.content.trim();
 
-    // Step 2: Generate embedding for the Q&A pair
+    // Step 2: Generate embedding for the Q&A pair (using same model as trainAgent)
     const contentForEmbedding = `Question: ${question}\n\nAnswer: ${enhancedAnswer}`;
 
     const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: contentForEmbedding,
-      dimensions: 512
+      model: 'text-embedding-ada-002',
+      input: contentForEmbedding
     });
 
     const embedding = embeddingResponse.data[0].embedding;
@@ -1988,18 +2010,25 @@ Return ONLY the enhanced answer, without any preamble or explanation.`;
     // Step 3: Add to knowledge base as a new chunk
     const chunkRef = db.collection('users').doc(userId)
       .collection('agents').doc(agentId)
-      .collection('knowledgeChunks').doc();
+      .collection('chunks').doc();
 
     await chunkRef.set({
-      text: contentForEmbedding,
+      id: chunkRef.id,
+      content: contentForEmbedding, // Use 'content' to match existing chunks structure
       embedding: embedding,
       source: 'knowledge_gap',
       sourceId: gapId,
-      question: question,
-      answer: enhancedAnswer,
+      index: 0,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      chunkIndex: 0,
       metadata: {
+        fileType: 'knowledge_gap',
+        fileName: `Knowledge Gap: ${gapData.category || 'General'}`,
+        chunkIndex: 0,
+        totalChunks: 1,
+        originalSize: contentForEmbedding.length,
+        embeddingModel: 'text-embedding-ada-002',
+        question: question,
+        answer: enhancedAnswer,
         originalAnswer: userAnswer,
         enhanced: true,
         addedBy: 'user'
@@ -2007,10 +2036,6 @@ Return ONLY the enhanced answer, without any preamble or explanation.`;
     });
 
     // Step 4: Mark the knowledge gap as filled
-    const gapRef = db.collection('users').doc(userId)
-      .collection('agents').doc(agentId)
-      .collection('knowledgeGaps').doc(gapId);
-
     await gapRef.update({
       filled: true,
       filledAt: admin.firestore.FieldValue.serverTimestamp(),

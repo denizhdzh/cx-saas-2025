@@ -159,7 +159,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
   const handleSubmitAnswer = async (gap, answer) => {
     try {
       // Call Cloud Function to process and add the answer
-      const response = await fetch('https://us-central1-cx-saas-8510f.cloudfunctions.net/fillKnowledgeGap', {
+      const response = await fetch('https://us-central1-candelaai.cloudfunctions.net/fillKnowledgeGap', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

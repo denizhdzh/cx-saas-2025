@@ -55,23 +55,30 @@ export default function Footer() {
               <p className="text-xs text-neutral-600 mb-3">
                 Questions about ORCHIS?
               </p>
-              <a href="mailto:hello@orchis.ai" className="text-xs text-neutral-900 hover:underline">
-                hello@orchis.ai
+              <a href="mailto:deniz@orchis.ai" className="text-xs text-neutral-900 hover:underline">
+                deniz@orchis.ai
               </a>
             </div>
             
-            {/* Legal */}
+{/* Legal */}
             <div>
-              <h3 className="text-sm font-medium text-neutral-900 mb-4">Coming Soon</h3>
+              <h3 className="text-sm font-medium text-neutral-900 mb-4">Legal</h3>
               <ul className="space-y-3">
                 <li>
-                  <span className="text-xs text-neutral-600">Documentation</span>
+                  <a 
+                    href="/privacy" 
+                    className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors"
+                  >
+                    Privacy Policy
+                  </a>
                 </li>
                 <li>
-                  <span className="text-xs text-neutral-600">Privacy Policy</span>
-                </li>
-                <li>
-                  <span className="text-xs text-neutral-600">Terms of Service</span>
+                  <a 
+                    href="/terms" 
+                    className="text-xs text-neutral-600 hover:text-neutral-900 transition-colors"
+                  >
+                    Terms of Service
+                  </a>
                 </li>
               </ul>
             </div>

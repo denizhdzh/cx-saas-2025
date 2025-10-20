@@ -1,5 +1,5 @@
 {
-  "name": "toolslash",
+  "name": "orchis",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -20,7 +20,7 @@
     "chart.js": "^4.5.0",
     "firebase": "^11.8.1",
     "firebase-admin": "^12.1.1",
-    "firebase-functions": "^5.0.1",
+    "firebase-functions": "^6.4.0",
     "pdfjs-dist": "^5.4.149",
     "phosphor-react": "^1.4.1",
     "react": "^19.1.0",

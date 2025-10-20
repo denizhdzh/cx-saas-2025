@@ -233,10 +233,83 @@ export default function BlogManager() {
               />
             </div>
 
-            <ImagePicker
-              selectedImage={formData.featuredImage}
-              onImageSelect={(image) => setFormData(prev => ({ ...prev, featuredImage: image }))}
-            />
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Featured Image
+              </label>
+
+              {/* Unsplash URL Input */}
+              <div className="mb-3">
+                <label className="block text-xs text-neutral-600 mb-1">
+                  Unsplash URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/..."
+                  value={formData.featuredImage?.startsWith('http') ? formData.featuredImage : ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, featuredImage: e.target.value }))}
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+              </div>
+
+              {/* Local File Upload */}
+              <div className="mb-3">
+                <label className="block text-xs text-neutral-600 mb-1">
+                  Upload from Computer
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setFormData(prev => ({ ...prev, featuredImage: reader.result }));
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200 file:cursor-pointer"
+                />
+              </div>
+
+              {/* Image Preview */}
+              {formData.featuredImage && (
+                <div className="mb-3">
+                  <label className="block text-xs text-neutral-600 mb-1">
+                    Preview
+                  </label>
+                  <div className="relative w-full h-48 border border-neutral-200 rounded-lg overflow-hidden bg-neutral-50">
+                    <img
+                      src={formData.featuredImage}
+                      alt="Featured preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999"%3EInvalid Image%3C/text%3E%3C/svg%3E';
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, featuredImage: null }))}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Original ImagePicker Component (Optional) */}
+              <div className="pt-3 border-t border-neutral-200">
+                <ImagePicker
+                  selectedImage={formData.featuredImage}
+                  onImageSelect={(image) => setFormData(prev => ({ ...prev, featuredImage: image }))}
+                />
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">

@@ -311,6 +311,9 @@
       this.createWidget();
       this.bindEvents();
 
+      // Start expanded
+      this.isMinimized = false;
+
       // Load config in background
       this.fetchAgentConfig().then(() => {
         // Update UI with loaded config
@@ -458,10 +461,16 @@
     },
 
     updateWidgetWithConfig: function() {
-      // Logo'yu güncelle
+      // Logo'yu güncelle (header)
       const avatarContainer = this.container.querySelector('.orchis-agent-avatar');
       if (avatarContainer && this.config.logoUrl) {
         avatarContainer.innerHTML = `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />`;
+      }
+
+      // Logo'yu güncelle (minimized)
+      const minimizedLogo = this.container.querySelector('.orchis-minimized-logo');
+      if (minimizedLogo && this.config.logoUrl) {
+        minimizedLogo.innerHTML = `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />`;
       }
 
       // Proje adını güncelle
@@ -515,9 +524,16 @@
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 1px 2px rgba(255, 255, 255, 0.05) inset;
           display: flex;
           flex-direction: column;
-          transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
           animation: orchis-slideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
           position: relative;
+          max-height: 600px;
+        }
+
+        .orchis-chat-widget.orchis-minimized {
+          max-height: 80px;
+          min-width: 16rem;
+          max-width: 18rem;
         }
         
         @keyframes orchis-slideIn {
@@ -537,6 +553,17 @@
           gap: 8px;
           padding: 12px;
           background: rgba(255, 255, 255, 0);
+          opacity: 1;
+          max-height: 60px;
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+          overflow: hidden;
+        }
+
+        .orchis-minimized .orchis-chat-header {
+          opacity: 0;
+          max-height: 0;
+          padding-top: 0;
+          padding-bottom: 0;
         }
 
         .orchis-agent-avatar {
@@ -588,19 +615,21 @@
           flex-shrink: 0;
         }
         
-        .orchis-close-btn {
+        .orchis-minimize-btn {
           background: none;
           border: none;
           color: #a8a29e;
-          font-size: 18px;
+          font-size: 20px;
           cursor: pointer;
-          padding: 4px;
+          padding: 4px 8px;
           border-radius: 4px;
-          transition: color 0.2s;
+          transition: all 0.2s;
+          line-height: 1;
         }
-        
-        .orchis-close-btn:hover {
+
+        .orchis-minimize-btn:hover {
           color: white;
+          background: rgba(255, 255, 255, 0.1);
         }
         
         .orchis-messages {
@@ -608,10 +637,19 @@
           overflow-y: auto;
           padding: 12px;
           display: none;
+          opacity: 1;
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
 
         .orchis-messages:not(:empty) {
           display: block;
+        }
+
+        .orchis-minimized .orchis-messages {
+          opacity: 0;
+          max-height: 0;
+          padding: 0;
+          display: none !important;
         }
         
         .orchis-message {
@@ -671,18 +709,50 @@
         }
 
         .orchis-input-section {
-          padding: 3px;
+          padding: 2px;
           background: rgba(255, 255, 255, 0);
           border-radius: 0px;
-          
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .orchis-minimized-logo {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          background: rgba(120, 120, 128, 0.16);
+          flex-shrink: 0;
+          margin-left: 3px;
+          opacity: 0;
+          transform: scale(0.8);
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .orchis-minimized .orchis-minimized-logo {
+          display: flex;
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        .orchis-minimized-logo img {
+          width: 32px;
+          height: 32px;
+          object-fit: cover;
+          border-radius: 50%;
         }
 
         .orchis-input-container {
           background: rgba(255, 255, 255, 0);
           border: none;
           border-radius: 20px;
-          padding: 6px;
+          padding: 2px;
           transition: all 0.2s ease;
+          flex: 1;
         }
 
         .orchis-input-container:focus-within {
@@ -706,7 +776,7 @@
 
         .orchis-input {
           flex: 1;
-          padding: 8px 12px;
+          padding: 8px;
           font-size: 14px;
           background: rgba(255, 255, 255, 0);
           color: rgba(255, 255, 255, 0.85);
@@ -752,6 +822,17 @@
           padding: 2px 2px 8px 2px;
           font-size: 10px;
           color: rgba(255, 255, 255, 0.8);
+          opacity: 1;
+          max-height: 30px;
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+          overflow: hidden;
+        }
+
+        .orchis-minimized .orchis-powered-by {
+          opacity: 0;
+          max-height: 0;
+          padding-top: 0;
+          padding-bottom: 0;
         }
 
         .orchis-logo {
@@ -993,9 +1074,17 @@
           transform: rotate(90deg);
         }
 
-        /* Desktop max-height */
-        .orchis-chat-widget {
-          max-height: 600px;
+        .orchis-offer-banner {
+          opacity: 1;
+          max-height: 100px;
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+          overflow: hidden;
+        }
+
+        .orchis-minimized .orchis-offer-banner {
+          opacity: 0;
+          max-height: 0;
+          padding: 0;
         }
 
         @media (max-width: 480px) {
@@ -1053,6 +1142,7 @@
               <div class="orchis-status">Online now</div>
             </div>
             <div class="orchis-status-dot"></div>
+            <button class="orchis-minimize-btn" title="Minimize">−</button>
           </div>
 
           <!-- Offer banner will be inserted here for return users -->
@@ -1060,6 +1150,12 @@
           <div class="orchis-messages"></div>
 
           <div class="orchis-input-section">
+            <div class="orchis-minimized-logo">
+              ${this.config.logoUrl ?
+                `<img src="${this.config.logoUrl}" alt="${this.config.projectName}" />` :
+                '<div class="orchis-default-avatar"></div>'
+              }
+            </div>
             <div class="orchis-input-container">
               <div class="orchis-input-row">
                 <input
@@ -1087,15 +1183,47 @@
     bindEvents: function() {
       const sendBtn = this.container.querySelector('.orchis-send-button');
       const input = this.container.querySelector('.orchis-input');
-      
+      const minimizeBtn = this.container.querySelector('.orchis-minimize-btn');
+
       sendBtn.addEventListener('click', () => this.sendMessage());
-      
+
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           this.sendMessage();
         }
       });
+
+      // Expand when input is focused
+      input.addEventListener('focus', () => {
+        this.expand();
+      });
+
+      // Minimize button
+      minimizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMinimize();
+      });
+    },
+
+    expand: function() {
+      const widget = this.container.querySelector('.orchis-chat-widget');
+      widget.classList.remove('orchis-minimized');
+      this.isMinimized = false;
+    },
+
+    minimize: function() {
+      const widget = this.container.querySelector('.orchis-chat-widget');
+      widget.classList.add('orchis-minimized');
+      this.isMinimized = true;
+    },
+
+    toggleMinimize: function() {
+      if (this.isMinimized) {
+        this.expand();
+      } else {
+        this.minimize();
+      }
     },
 
     addWelcomeMessage: function() {
@@ -1168,8 +1296,11 @@
     async sendMessage() {
       const input = this.container.querySelector('.orchis-input');
       const message = input.value.trim();
-      
+
       if (!message || this.isLoading || this.isTyping) return;
+
+      // Expand when sending message
+      this.expand();
 
       // Start chat session if first message
       if (this.messages.length === 0) {
@@ -1179,7 +1310,7 @@
       // Add user message to both local and session manager
       this.addMessage('user', message);
       this.sessionManager.addMessage(message, true);
-      
+
       input.value = '';
       this.setLoading(true);
 
