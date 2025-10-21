@@ -351,10 +351,30 @@
         const trigger = popup.trigger;
         const triggerValue = popup.triggerValue || 3;
 
-        // Check if THIS specific popup was already shown
+        // Check if THIS specific popup was already shown AND not expired
         const shownKey = `orchis_popup_shown_${popup.id}_${this.sessionManager.anonymousUserId}`;
-        if (localStorage.getItem(shownKey)) {
-          console.log('🚫 Popup already shown:', popup.id);
+        const expiryKey = `orchis_popup_expiry_${popup.id}_${this.sessionManager.anonymousUserId}`;
+        const savedExpiry = localStorage.getItem(expiryKey);
+
+        // If manually closed (no expiry), don't show again
+        if (localStorage.getItem(shownKey) && !savedExpiry) {
+          console.log('🚫 Popup manually closed:', popup.id);
+          return;
+        }
+
+        // If expired, clean up and allow re-showing
+        if (savedExpiry && Date.now() > parseInt(savedExpiry)) {
+          console.log('⏰ Popup expired, cleaning up:', popup.id);
+          localStorage.removeItem(shownKey);
+          localStorage.removeItem(expiryKey);
+          // Continue to show popup
+        }
+
+        // If still active (shown + not expired), skip
+        if (localStorage.getItem(shownKey) && savedExpiry && Date.now() <= parseInt(savedExpiry)) {
+          console.log('✅ Popup still active, re-showing:', popup.id);
+          // Re-show the popup with remaining time
+          setTimeout(() => this.showPopup(popup), 1500);
           return;
         }
 
@@ -532,8 +552,8 @@
 
         .orchis-chat-widget.orchis-minimized {
           max-height: 80px;
-          min-width: 16rem;
-          max-width: 18rem;
+          min-width: 22rem;
+          max-width: 22rem;
         }
         
         @keyframes orchis-slideIn {
@@ -777,7 +797,7 @@
         .orchis-input {
           flex: 1;
           padding: 8px;
-          font-size: 16px;
+          font-size: 15px;
           background: rgba(255, 255, 255, 0);
           color: rgba(255, 255, 255, 0.85);
           border: none;
@@ -1095,27 +1115,9 @@
           padding: 0;
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 768px) {
           .orchis-widget-container {
-            left: 50% !important;
-            right: auto !important;
-            transform: translateX(-50%);
-          }
-
-          .orchis-chat-widget {
-            width: calc(100vw - 32px);
-            height: auto;
-            max-height: 500px;
-          }
-
-          .orchis-discount-popup {
-            width: calc(100vw - 40px);
-            left: 20px;
-            transform: none;
-          }
-
-          .orchis-discount-content {
-            min-width: auto;
+            display: none !important;
           }
         }
       `;
@@ -1521,7 +1523,7 @@
     getLoadingHTML: function() {
       return `
         <div class="orchis-loading">
-          <div class="orchis-message-label">${this.config.projectName} AI</div>
+          <div class="orchis-message-label">${this.config.projectName}</div>
           <div class="orchis-typing-dots">
             <div class="orchis-dot"></div>
             <div class="orchis-dot"></div>
@@ -1773,9 +1775,21 @@
       const header = this.container.querySelector('.orchis-chat-header');
       if (!header) return;
 
-      // Mark as shown with popup ID
+      // Setup expiry tracking (1 hour)
       const shownKey = `orchis_popup_shown_${popup.id}_${this.sessionManager.anonymousUserId}`;
-      localStorage.setItem(shownKey, 'true');
+      const expiryKey = `orchis_popup_expiry_${popup.id}_${this.sessionManager.anonymousUserId}`;
+
+      // Get or create expiry time
+      let expiryTime;
+      const savedExpiry = localStorage.getItem(expiryKey);
+      if (savedExpiry) {
+        expiryTime = parseInt(savedExpiry);
+        console.log('🔄 Continuing popup timer from localStorage');
+      } else {
+        expiryTime = Date.now() + (60 * 60 * 1000); // 1 hour
+        localStorage.setItem(expiryKey, expiryTime.toString());
+        localStorage.setItem(shownKey, 'true');
+      }
 
       const contentType = popup.contentType || 'discount';
       let popupContent = '';
@@ -1803,19 +1817,32 @@
       // Insert after header
       header.parentNode.insertBefore(offerBanner, header.nextSibling);
 
-      // Add close functionality
+      // Add close functionality - MANUAL CLOSE (removes expiry)
       const closeBtn = offerBanner.querySelector('.orchis-close-offer');
       if (closeBtn) {
         closeBtn.addEventListener('click', () => {
           offerBanner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
-          setTimeout(() => offerBanner.remove(), 400);
+          setTimeout(() => {
+            offerBanner.remove();
+            // Remove expiry - this marks it as manually closed
+            localStorage.removeItem(expiryKey);
+            console.log('🚫 Popup manually closed, won\'t show again');
+          }, 400);
         });
+      }
+
+      // Start countdown timer for discount popups
+      if (contentType === 'discount') {
+        const timerEl = offerBanner.querySelector('.orchis-timer');
+        if (timerEl) {
+          this.startPopupTimer(timerEl, expiryTime, offerBanner, shownKey, expiryKey);
+        }
       }
 
       // Handle specific content type interactions
       this.handlePopupInteractions(offerBanner, popup, contentType);
 
-      console.log('✨ Popup shown:', contentType, popup.trigger);
+      console.log('✨ Popup shown:', contentType, popup.trigger, 'expires in', Math.round((expiryTime - Date.now()) / 1000 / 60), 'minutes');
     },
 
     buildDiscountPopup: function(popup) {
@@ -1824,7 +1851,10 @@
         <div class="orchis-offer-content">
           <div class="orchis-offer-divider"></div>
           <div class="orchis-offer-text">
-            <div class="orchis-offer-title">${popup.title || 'Special Offer!'}</div>
+            <div class="orchis-offer-title">
+              ${popup.title || 'Special Offer!'}
+              <span class="orchis-timer">60:00</span>
+            </div>
             <div class="orchis-offer-subtitle">
               ${popup.message || 'Get a discount with code'}
               <span class="orchis-coupon-code" data-code="${couponCode}">
@@ -1915,6 +1945,38 @@ buildLinkPopup: function(popup) {
     </div>
   `;
 },
+
+    startPopupTimer: function(timerEl, expiryTime, banner, shownKey, expiryKey) {
+      const updateTimer = () => {
+        const remaining = expiryTime - Date.now();
+
+        if (remaining <= 0) {
+          // Timer expired, auto-remove popup
+          banner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+          setTimeout(() => {
+            banner.remove();
+            // Clean up localStorage when expired
+            localStorage.removeItem(shownKey);
+            localStorage.removeItem(expiryKey);
+            console.log('⏰ Popup timer expired, cleaned up');
+          }, 400);
+          return;
+        }
+
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        // Pulse animation when < 5 minutes
+        if (remaining < 5 * 60 * 1000) {
+          timerEl.classList.add('orchis-timer-urgent');
+        }
+
+        requestAnimationFrame(updateTimer);
+      };
+
+      updateTimer();
+    },
 
     handlePopupInteractions: function(banner, popup, contentType) {
       if (contentType === 'discount') {

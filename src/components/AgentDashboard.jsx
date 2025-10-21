@@ -274,10 +274,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-6">
+    <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
       {/* Controls Row */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2 md:gap-4 flex-wrap w-full md:w-auto">
           {/* Widget Preview */}
           <div className="relative" ref={agentDropdownRef}>
             <button
@@ -398,10 +398,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         </div>
 
         {/* Tab System */}
-        <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-1 w-full md:w-auto">
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            className={`flex-1 md:flex-initial px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
               activeTab === 'analytics'
                 ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
@@ -411,7 +411,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           </button>
           <button
             onClick={() => setActiveTab('messages')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            className={`flex-1 md:flex-initial px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
               activeTab === 'messages'
                 ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
@@ -426,48 +426,48 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       {activeTab === 'analytics' && (
         <>
       {/* Analytics Dashboard */}
-      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-4 md:p-6">
         {/* Top Metrics Row */}
-        <div className="flex items-center gap-8 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:flex lg:items-center gap-4 md:gap-6 lg:gap-8 mb-6 md:mb-8">
           <div>
             <div className="text-xs font-medium text-stone-500 mb-1">Total Conversations</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
               {analyticsData?.summary?.totalConversations || '0'}
             </div>
           </div>
 
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
+          <div className="hidden lg:block w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
 
           <div>
             <div className="text-xs font-medium text-stone-500 mb-1">Analyzed</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
               {analyticsData?.summary?.analyzedConversations || '0'}
             </div>
           </div>
 
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
+          <div className="hidden lg:block w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
 
           <div>
             <div className="text-xs font-medium text-stone-500 mb-1">Non-Analyzed</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
               {analyticsData?.summary?.nonAnalyzedConversations || '0'}
             </div>
           </div>
 
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
+          <div className="hidden lg:block w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
 
           <div>
             <div className="text-xs font-medium text-stone-500 mb-1">Success Rate</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
               {analyticsData?.summary?.resolutionRate || '0'}%
             </div>
           </div>
 
-          <div className="w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
+          <div className="hidden lg:block w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
 
           <div>
             <div className="text-xs font-medium text-stone-500 mb-1">Knowledge Gaps</div>
-            <div className="text-4xl font-bold text-stone-900 dark:text-stone-100">
+            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
               {knowledgeGaps?.length || '0'}
             </div>
           </div>
