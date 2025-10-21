@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
-export default function KnowledgeGapModal({ gap, isOpen, onClose, onSubmit }) {
+export default function KnowledgeGapModal({ gap, isOpen, onClose, onSubmit, onSkip }) {
   const [answer, setAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,7 +29,7 @@ export default function KnowledgeGapModal({ gap, isOpen, onClose, onSubmit }) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-stone-200 dark:border-stone-800">
           <div className="flex items-center gap-2">
-            <SparklesIcon className="w-5 h-5 text-orange-600" />
+            <SparklesIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
               Fill Knowledge Gap
             </h2>
@@ -51,7 +51,7 @@ export default function KnowledgeGapModal({ gap, isOpen, onClose, onSubmit }) {
             </label>
             <div className="p-4 bg-stone-50 dark:bg-stone-900/50 rounded-lg border border-stone-200 dark:border-stone-800">
               {gap.category && (
-                <span className="inline-block text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 mb-2">
+                <span className="inline-block text-xs px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-400 border border-violet-200 dark:border-violet-800 mb-2">
                   {gap.category}
                 </span>
               )}
@@ -84,7 +84,7 @@ export default function KnowledgeGapModal({ gap, isOpen, onClose, onSubmit }) {
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="Provide a clear and comprehensive answer to this question..."
               rows={8}
-              className="w-full px-4 py-3 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-stone-50 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-stone-900 dark:text-stone-50 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
               required
             />
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
@@ -93,8 +93,8 @@ export default function KnowledgeGapModal({ gap, isOpen, onClose, onSubmit }) {
           </div>
 
           {/* Info */}
-          <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-            <p className="text-xs text-orange-800 dark:text-orange-400">
+          <div className="p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
+            <p className="text-xs text-violet-800 dark:text-violet-400">
               <strong>What happens next:</strong>
               <br />
               1. AI will enhance and format your answer professionally
@@ -107,32 +107,46 @@ export default function KnowledgeGapModal({ gap, isOpen, onClose, onSubmit }) {
         </form>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={!answer.trim() || isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:bg-stone-300 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <SparklesIcon className="w-4 h-4" />
-                Add to Knowledge Base
-              </>
-            )}
-          </button>
+        <div className="flex items-center justify-between gap-3 p-6 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50">
+          {onSkip && (
+            <button
+              type="button"
+              onClick={() => {
+                onSkip(gap);
+                onClose();
+              }}
+              className="px-4 py-2 text-sm font-medium text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg transition-colors"
+            >
+              Skip this gap
+            </button>
+          )}
+          <div className="flex items-center gap-3 ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              onClick={handleSubmit}
+              disabled={!answer.trim() || isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:bg-stone-300 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <SparklesIcon className="w-4 h-4" />
+                  Add to Knowledge Base
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

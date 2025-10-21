@@ -112,7 +112,7 @@ export default function AdminDashboard() {
             ) : (
               <>
                 {/* Main Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="bg-white p-6 rounded-xl border border-neutral-200">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm font-medium text-neutral-500">Total Users</h3>
@@ -133,15 +133,146 @@ export default function AdminDashboard() {
 
                   <div className="bg-white p-6 rounded-xl border border-neutral-200">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-neutral-500">Avg Agents/User</h3>
-                      <span className="text-2xl">📊</span>
+                      <h3 className="text-sm font-medium text-neutral-500">Conversations</h3>
+                      <span className="text-2xl">💬</span>
                     </div>
-                    <div className="text-3xl font-thin text-neutral-900">
-                      {stats?.totalUsers > 0
-                        ? (stats.totalAgents / stats.totalUsers).toFixed(1)
-                        : '0'}
+                    <div className="text-3xl font-thin text-neutral-900">{stats?.totalConversations || 0}</div>
+                    <p className="text-sm text-neutral-500 mt-1">Total chats</p>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl border border-neutral-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-neutral-500">Messages</h3>
+                      <span className="text-2xl">💭</span>
                     </div>
-                    <p className="text-sm text-neutral-500 mt-1">Average per user</p>
+                    <div className="text-3xl font-thin text-neutral-900">{stats?.totalMessages || 0}</div>
+                    <p className="text-sm text-neutral-500 mt-1">AI responses</p>
+                  </div>
+                </div>
+
+                {/* Analytics Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-green-700">Avg Confidence</h3>
+                      <span className="text-2xl">🎯</span>
+                    </div>
+                    <div className="text-3xl font-thin text-green-900">{stats?.avgConfidence || 0}%</div>
+                    <p className="text-sm text-green-600 mt-1">AI confidence score</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-red-700">Urgent Issues</h3>
+                      <span className="text-2xl">🚨</span>
+                    </div>
+                    <div className="text-3xl font-thin text-red-900">{stats?.urgentMessages || 0}</div>
+                    <p className="text-sm text-red-600 mt-1">Urgency ≥ 7/10</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-blue-700">Ticket Suggestions</h3>
+                      <span className="text-2xl">🎫</span>
+                    </div>
+                    <div className="text-3xl font-thin text-blue-900">{stats?.ticketSuggestions || 0}</div>
+                    <p className="text-sm text-blue-600 mt-1">AI suggested tickets</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium text-orange-700">Off-Topic</h3>
+                      <span className="text-2xl">⚠️</span>
+                    </div>
+                    <div className="text-3xl font-thin text-orange-900">{stats?.irrelevantQuestions || 0}</div>
+                    <p className="text-sm text-orange-600 mt-1">Irrelevant questions</p>
+                  </div>
+                </div>
+
+                {/* Sentiment Breakdown */}
+                <div className="bg-white p-6 rounded-xl border border-neutral-200">
+                  <h3 className="text-lg font-medium text-neutral-900 mb-6">Sentiment Analysis</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div className="text-3xl mb-2">😊</div>
+                      <div className="text-2xl font-thin text-green-900">{stats?.sentimentBreakdown?.positive || 0}</div>
+                      <div className="text-sm text-green-600 mt-1">Positive</div>
+                    </div>
+                    <div className="text-center p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="text-3xl mb-2">😐</div>
+                      <div className="text-2xl font-thin text-neutral-900">{stats?.sentimentBreakdown?.neutral || 0}</div>
+                      <div className="text-sm text-neutral-600 mt-1">Neutral</div>
+                    </div>
+                    <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                      <div className="text-3xl mb-2">😞</div>
+                      <div className="text-2xl font-thin text-red-900">{stats?.sentimentBreakdown?.negative || 0}</div>
+                      <div className="text-sm text-red-600 mt-1">Negative</div>
+                    </div>
+                  </div>
+                  {/* Sentiment bar */}
+                  <div className="mt-4 h-3 flex rounded-full overflow-hidden">
+                    {(() => {
+                      const total = (stats?.sentimentBreakdown?.positive || 0) +
+                                   (stats?.sentimentBreakdown?.neutral || 0) +
+                                   (stats?.sentimentBreakdown?.negative || 0);
+                      if (total === 0) return <div className="w-full bg-neutral-200"></div>;
+
+                      const positivePercent = ((stats?.sentimentBreakdown?.positive || 0) / total) * 100;
+                      const neutralPercent = ((stats?.sentimentBreakdown?.neutral || 0) / total) * 100;
+                      const negativePercent = ((stats?.sentimentBreakdown?.negative || 0) / total) * 100;
+
+                      return (
+                        <>
+                          {positivePercent > 0 && <div className="bg-green-400" style={{ width: `${positivePercent}%` }}></div>}
+                          {neutralPercent > 0 && <div className="bg-neutral-300" style={{ width: `${neutralPercent}%` }}></div>}
+                          {negativePercent > 0 && <div className="bg-red-400" style={{ width: `${negativePercent}%` }}></div>}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Category Breakdown */}
+                <div className="bg-white p-6 rounded-xl border border-neutral-200">
+                  <h3 className="text-lg font-medium text-neutral-900 mb-6">Message Categories</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {Object.entries({
+                      Support: { icon: '🛠️', color: 'blue' },
+                      Sales: { icon: '💰', color: 'green' },
+                      Question: { icon: '❓', color: 'purple' },
+                      Complaint: { icon: '😤', color: 'red' },
+                      General: { icon: '💬', color: 'neutral' }
+                    }).map(([category, { icon, color }]) => (
+                      <div key={category} className={`text-center p-4 bg-${color}-50 rounded-lg border border-${color}-200`}>
+                        <div className="text-2xl mb-2">{icon}</div>
+                        <div className={`text-2xl font-thin text-${color}-900`}>
+                          {stats?.categoryBreakdown?.[category] || 0}
+                        </div>
+                        <div className={`text-sm text-${color}-600 mt-1`}>{category}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Intent Breakdown */}
+                <div className="bg-white p-6 rounded-xl border border-neutral-200">
+                  <h3 className="text-lg font-medium text-neutral-900 mb-6">User Intent</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {Object.entries({
+                      question: { icon: '🤔', label: 'Question' },
+                      complaint: { icon: '😠', label: 'Complaint' },
+                      browsing: { icon: '👀', label: 'Browsing' },
+                      purchase: { icon: '🛒', label: 'Purchase' },
+                      greeting: { icon: '👋', label: 'Greeting' }
+                    }).map(([intent, { icon, label }]) => (
+                      <div key={intent} className="text-center p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="text-2xl mb-2">{icon}</div>
+                        <div className="text-2xl font-thin text-neutral-900">
+                          {stats?.intentBreakdown?.[intent] || 0}
+                        </div>
+                        <div className="text-sm text-neutral-600 mt-1">{label}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

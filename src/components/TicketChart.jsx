@@ -1,5 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bar, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+
+const COLORS = {
+  analyzed: {
+    light: '#f43f5e',     // rose-500 (full opacity)
+    dark: '#fb7185',      // rose-400 (full opacity)
+    lightBg: '#f43f5e80', // rose-500 with 50% opacity for bars
+    darkBg: '#fb718580'   // rose-400 with 50% opacity for bars
+  },
+  nonAnalyzed: {
+    light: '#8b5cf6',     // violet-500 (full opacity)
+    dark: '#a78bfa',      // violet-400 (full opacity)
+    lightBg: '#8b5cf680', // violet-500 with 50% opacity for bars
+    darkBg: '#a78bfa80'   // violet-400 with 50% opacity for bars
+  }
+};
 
 export default function TicketChart({
   chartData,
@@ -7,6 +22,24 @@ export default function TicketChart({
   showResolved = true,
   timeRange = 'daily'
 }) {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const checkDark = () => setIsDark(document.documentElement.classList.contains('dark') || mediaQuery.matches);
+
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    // Listen for system theme changes
+    mediaQuery.addEventListener('change', checkDark);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', checkDark);
+    };
+  }, []);
   // Transform chartData object to array format for Recharts
   const data = Object.keys(chartData).sort().map(date => ({
     date,
@@ -83,9 +116,28 @@ export default function TicketChart({
             />
 
             <Tooltip
-              formatter={(value, name) => {
+              contentStyle={{
+                backgroundColor: isDark ? '#1c1917' : '#f5f5f4',
+                border: `1px solid ${isDark ? '#44403c' : '#e7e5e4'}`,
+                borderRadius: '8px',
+                color: isDark ? '#fafaf9' : '#1c1917',
+                fontSize: '12px',
+                padding: '8px 12px'
+              }}
+              itemStyle={{
+                color: isDark ? '#fafaf9' : '#1c1917',
+                fontWeight: '500'
+              }}
+              formatter={(value, name, props) => {
                 const label = name === 'analyzed' ? 'Analyzed' : 'Non-Analyzed';
-                return [Number(value).toLocaleString(), label];
+                // Use full opacity colors for the dot indicator
+                const color = name === 'analyzed'
+                  ? (isDark ? COLORS.analyzed.dark : COLORS.analyzed.light)
+                  : (isDark ? COLORS.nonAnalyzed.dark : COLORS.nonAnalyzed.light);
+                return [
+                  <span style={{ color, fontWeight: '600' }}>{Number(value).toLocaleString()}</span>,
+                  label
+                ];
               }}
               labelFormatter={(value) => {
                 if (timeRange === 'hourly') {
@@ -107,18 +159,12 @@ export default function TicketChart({
                   });
                 }
               }}
-              contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '12px'
-              }}
             />
 
             <Bar
               dataKey="analyzed"
               name="Analyzed"
-              fill="#ea580c"
+              fill={isDark ? COLORS.analyzed.darkBg : COLORS.analyzed.lightBg}
               stackId="a"
               radius={[0, 0, 0, 0]}
             />
@@ -126,7 +172,7 @@ export default function TicketChart({
             <Bar
               dataKey="nonAnalyzed"
               name="Non-Analyzed"
-              fill="#6366f1"
+              fill={isDark ? COLORS.nonAnalyzed.darkBg : COLORS.nonAnalyzed.lightBg}
               stackId="a"
               radius={[4, 4, 0, 0]}
             />
@@ -192,7 +238,29 @@ export default function TicketChart({
           />
 
           <Tooltip
-            formatter={(value, name) => [Number(value).toLocaleString(), name === 'Analyzed' ? 'Analyzed' : 'Non-Analyzed']}
+            contentStyle={{
+              backgroundColor: isDark ? '#1c1917' : '#f5f5f4',
+              border: `1px solid ${isDark ? '#44403c' : '#e7e5e4'}`,
+              borderRadius: '8px',
+              color: isDark ? '#fafaf9' : '#1c1917',
+              fontSize: '12px',
+              padding: '8px 12px'
+            }}
+            itemStyle={{
+              color: isDark ? '#fafaf9' : '#1c1917',
+              fontWeight: '500'
+            }}
+            formatter={(value, name, props) => {
+              const label = name === 'Analyzed' ? 'Analyzed' : 'Non-Analyzed';
+              // Use full opacity colors for the dot indicator
+              const color = name === 'Analyzed'
+                ? (isDark ? COLORS.analyzed.dark : COLORS.analyzed.light)
+                : (isDark ? COLORS.nonAnalyzed.dark : COLORS.nonAnalyzed.light);
+              return [
+                <span style={{ color, fontWeight: '600' }}>{Number(value).toLocaleString()}</span>,
+                label
+              ];
+            }}
             labelFormatter={(value) => {
               if (timeRange === 'hourly') {
                 return value;
@@ -213,18 +281,12 @@ export default function TicketChart({
                 });
               }
             }}
-            contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              fontSize: '12px'
-            }}
           />
 
           <Bar
             dataKey="analyzed"
             name="Analyzed"
-            fill="#ea580c"
+            fill={isDark ? COLORS.analyzed.darkBg : COLORS.analyzed.lightBg}
             stackId="a"
             radius={[0, 0, 0, 0]}
           />
@@ -232,7 +294,7 @@ export default function TicketChart({
           <Bar
             dataKey="nonAnalyzed"
             name="Non-Analyzed"
-            fill="#f59e0b"
+            fill={isDark ? COLORS.nonAnalyzed.darkBg : COLORS.nonAnalyzed.lightBg}
             stackId="a"
             radius={[4, 4, 0, 0]}
           />

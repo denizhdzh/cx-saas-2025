@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 
+const COLORS = {
+  light: '#8b5cf64a', // violet-500 with opacity
+  dark: '#a78bfa4a'   // violet-400 with opacity
+};
+
 export default function CategoryDonutChart({ data = [] }) {
   const [isDark, setIsDark] = useState(false);
 
@@ -12,7 +17,13 @@ export default function CategoryDonutChart({ data = [] }) {
     const observer = new MutationObserver(checkDark);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-    return () => observer.disconnect();
+    // Listen for system theme changes
+    mediaQuery.addEventListener('change', checkDark);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', checkDark);
+    };
   }, []);
 
   const total = data?.reduce((sum, item) => sum + (item.value || item.count || 0), 0) || 0;
@@ -21,7 +32,7 @@ export default function CategoryDonutChart({ data = [] }) {
     category: (item.name || item.category || 'Unknown').replace(/_/g, ' '),
     count: item.value || item.count || 0,
     percentage: total > 0 ? (((item.value || item.count || 0) / total) * 100).toFixed(1) : 0,
-    fill: 'rgba(249, 116, 22, 1)' // orange-500 with 10% opacity
+    fill: isDark ? COLORS.dark : COLORS.light
   })) || [];
 
   const CustomTooltip = ({ active, payload }) => {
@@ -38,7 +49,7 @@ export default function CategoryDonutChart({ data = [] }) {
           <p className="text-sm font-semibold capitalize" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
             {data.category}
           </p>
-          <p className="text-xs mt-1" style={{ color: '#f97316' }}>
+          <p className="text-xs mt-1" style={{ color: isDark ? COLORS.dark : COLORS.light }}>
             {data.count} conversations ({data.percentage}%)
           </p>
         </div>
@@ -65,10 +76,10 @@ export default function CategoryDonutChart({ data = [] }) {
           transition: fill 0.2s ease;
         }
         .category-bar:hover {
-          fill: rgba(209, 111, 40, 1) !important;
+          fill: ${isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'} !important;
         }
       `}</style>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" key={isDark ? 'dark' : 'light'}>
         <BarChart
           data={chartData}
           layout="vertical"

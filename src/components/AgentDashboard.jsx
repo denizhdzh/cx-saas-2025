@@ -14,11 +14,13 @@ import DeviceChart from './DeviceChart';
 import DetailedMetricsCard from './DetailedMetricsCard';
 import ReturnUserChart from './ReturnUserChart';
 import KnowledgeGapModal from './KnowledgeGapModal';
+import IntentChart from './IntentChart';
+import ConfidenceChart from './ConfidenceChart';
 import { useAgent } from '../contexts/AgentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getConversationAnalytics, getKnowledgeGaps } from '../utils/newAnalyticsFunctions';
 import { db } from '../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function AgentDashboard({ agent, onShowEmbed }) {
@@ -183,6 +185,24 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     } catch (error) {
       console.error('Error filling knowledge gap:', error);
       throw error;
+    }
+  };
+
+  const handleSkipGap = async (gap) => {
+    try {
+      // Mark gap as skipped in Firestore
+      const gapRef = doc(db, 'users', user.uid, 'agents', agent.id, 'knowledgeGaps', gap.id);
+      await updateDoc(gapRef, {
+        skipped: true,
+        skippedAt: new Date()
+      });
+
+      // Remove from local state immediately
+      setKnowledgeGaps(prev => prev.filter(g => g.id !== gap.id));
+    } catch (error) {
+      console.error('Error skipping knowledge gap:', error);
+      // Even if backend fails, remove from UI
+      setKnowledgeGaps(prev => prev.filter(g => g.id !== gap.id));
     }
   };
 
@@ -479,25 +499,50 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
 
       {/* Bottom Analytics Row - 2x2 Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* Intent Categories Donut Chart */}
+        {/* User Sentiment Analysis */}
         <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Conversation Categories</h3>
-            <div className="text-sm text-stone-500">AI Analysis</div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Sentiment</h3>
+            <div className="text-sm text-stone-500">Customer Mood</div>
           </div>
           <div className="h-64">
-            <CategoryDonutChart data={analyticsData?.categoryData || []} />
+            <SentimentChart data={analyticsData?.sentimentData || []} />
           </div>
         </div>
 
-        {/* Sentiment Analysis */}
+        {/* User Intent */}
         <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Sentiment Analysis</h3>
-            <div className="text-sm text-stone-500">User Mood</div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Intent</h3>
+            <div className="text-sm text-stone-500">Why They Contacted</div>
           </div>
-          <div className="h-80">
-            <SentimentChart data={analyticsData?.sentimentData || []} />
+          <div className="h-64">
+            <IntentChart data={analyticsData?.intentData || []} />
+          </div>
+        </div>
+
+        {/* AI Confidence */}
+        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">AI Confidence</h3>
+            <div className="text-sm text-stone-500">Answer Quality</div>
+          </div>
+          <div className="h-64">
+            <ConfidenceChart
+              data={analyticsData?.confidenceData || []}
+              avgConfidence={analyticsData?.summary?.avgConfidence || 0}
+            />
+          </div>
+        </div>
+
+        {/* Intent Categories Donut Chart */}
+        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Categories</h3>
+            <div className="text-sm text-stone-500">Message Types</div>
+          </div>
+          <div className="h-64">
+            <CategoryDonutChart data={analyticsData?.categoryData || []} />
           </div>
         </div>
 
@@ -515,8 +560,8 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         {/* Topic Distribution */}
         <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Conversation Topics</h3>
-            <div className="text-sm text-stone-500">Subject Matter</div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Topics</h3>
+            <div className="text-sm text-stone-500">What They Ask About</div>
           </div>
           <div className="h-64">
             <TopicChart data={analyticsData?.topicData || []} />
@@ -595,7 +640,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                    <span className="text-xs px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
                       {gap.category || 'General'}
                     </span>
                   </div>
@@ -607,12 +652,12 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                   </div>
                 </div>
                 <div className="ml-4 flex items-center gap-3">
-                  <span className="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 font-semibold">
+                  <span className="text-xs px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-400 font-semibold">
                     Asked {gap.count}x
                   </span>
                   <button
                     onClick={() => handleFillGap(gap)}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors"
                   >
                     Fill Gap
                   </button>
@@ -850,6 +895,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           setSelectedGap(null);
         }}
         onSubmit={handleSubmitAnswer}
+        onSkip={handleSkipGap}
       />
     </div>
   );

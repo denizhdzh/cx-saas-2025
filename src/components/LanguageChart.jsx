@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 
+const COLORS = {
+  light: '#8b5cf64a', // violet-500 with opacity
+  dark: '#a78bfa4a'   // violet-400 with opacity
+};
+
 export default function LanguageChart({ data = {} }) {
   const [isDark, setIsDark] = useState(false);
 
@@ -12,7 +17,13 @@ export default function LanguageChart({ data = {} }) {
     const observer = new MutationObserver(checkDark);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-    return () => observer.disconnect();
+    // Listen for system theme changes
+    mediaQuery.addEventListener('change', checkDark);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', checkDark);
+    };
   }, []);
 
   const chartDataArray = Object.entries(data).map(([lang, count]) => ({
@@ -26,7 +37,7 @@ export default function LanguageChart({ data = {} }) {
     category: item.category,
     count: item.count,
     percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : 0,
-    fill: 'rgba(249, 115, 22, 1)' // orange-500 with 10% opacity
+    fill: isDark ? COLORS.dark : COLORS.light
   }));
 
   const CustomTooltip = ({ active, payload }) => {
@@ -43,7 +54,7 @@ export default function LanguageChart({ data = {} }) {
           <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
             {data.category}
           </p>
-          <p className="text-xs mt-1" style={{ color: '#f97316' }}>
+          <p className="text-xs mt-1" style={{ color: isDark ? COLORS.dark : COLORS.light }}>
             {data.count} sessions ({data.percentage}%)
           </p>
         </div>
@@ -70,10 +81,10 @@ export default function LanguageChart({ data = {} }) {
           transition: fill 0.2s ease;
         }
         .category-bar:hover {
-          fill: rgba(249, 115, 22, 0.2) !important;
+          fill: ${isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'} !important;
         }
       `}</style>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" key={isDark ? 'dark' : 'light'}>
         <BarChart
           data={chartData}
           layout="vertical"

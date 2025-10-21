@@ -747,9 +747,12 @@ async function processChatMessage(agentId, message, sessionId, conversationHisto
     // Build context from relevant chunks
     const context = topChunks.map(chunk => chunk.content).join('\n\n');
     
-    // Extract context from session data if available
+    // Extract enriched context from session data if available
     const currentPage = sessionData?.userInfo?.location?.pathname || 'unknown';
     const pageContent = sessionData?.pageContent;
+    const userLocation = sessionData?.userInfo?.location;
+    const previousConversations = conversationHistory.length;
+    const isReturningUser = sessionData?.returningUser || false;
 
     let pageContext = '';
     if (pageContent) {
@@ -761,63 +764,80 @@ async function processChatMessage(agentId, message, sessionId, conversationHisto
       pageContext = `\n\nCONTEXT: User is currently on the "${currentPage}" page.`;
     }
 
+    // Add user session context
+    let userContext = '';
+    if (isReturningUser) {
+      userContext += `\n\nUSER INFO: Returning user (${previousConversations > 0 ? `${previousConversations} previous messages` : 'first visit today'})`;
+    }
+    if (userLocation?.city && userLocation?.country) {
+      userContext += `\nLocation: ${userLocation.city}, ${userLocation.country}`;
+    }
+
+    pageContext += userContext;
+
     // Build conversation messages with history
     const platformInfo = agentData.websiteUrl ? `\n\nPLATFORM INFO:\n- Company/Platform: ${agentName}\n- Website: ${agentData.websiteUrl}\n- You are the official customer service agent for this platform` : '';
 
     const messages = [
       {
         role: "system",
-        content: `You are ${agentName}, a helpful and friendly AI customer service assistant with access to a knowledge base.${platformInfo}
+        content: `You are ${agentName}, a helpful AI customer service assistant.${platformInfo}
 
-RESPONSE GUIDELINES:
-1. Be warm, engaging and conversational - show genuine interest in helping
-2. Use the user's name if provided and reference conversation history naturally
-3. Ask follow-up questions when appropriate to better understand their needs
-4. Show empathy and enthusiasm - make users feel heard and valued
-5. For greetings: respond warmly and ask how you can help today
-6. Keep responses natural (2-4 sentences) but add personality
-7. If you don't know something about ${agentName}, be honest and say "I don't have that information in my knowledge base yet" - never pretend or make up information
-8. Use page context to answer questions about current page content, URL, or what they're viewing
-9. You are the ${agentName} assistant - always answer from the perspective of representing ${agentName}
+GUIDELINES:
+1. Be warm and conversational (2-4 sentences)
+2. ONLY answer questions related to ${agentName} - politely reject off-topic questions (recipes, general knowledge, etc.)
+3. If you don't know something, say "I don't have that information yet" - never make things up
+4. Use page context when relevant
 
 KNOWLEDGE BASE:
 ${context}${pageContext}
 
-IMPORTANT: You must respond with a JSON object in this exact format:
+RESPOND WITH VALID JSON ONLY:
 {
-  "reply": "your natural conversational response here",
-  "shouldAnalyze": "false" | "pending" | "true",
-  "analysisReason": "brief explanation",
-  "knowledgeGapDetected": true | false,
-  "unansweredQuestion": "the specific question/topic you couldn't answer (null if answered)",
-  "requestEmail": true | false
+  "reply": "your response",
+  "isRelevant": true/false,
+  "relevanceScore": 0-100,
+  "userSentiment": "positive|neutral|negative",
+  "userSentimentScore": 0-10,
+  "aiConfidence": 0-100,
+  "category": "Support|Sales|Question|Complaint|General",
+  "intent": "question|complaint|browsing|purchase|greeting",
+  "urgency": 0-10,
+  "shouldAnalyze": "false"|"pending"|"true",
+  "analysisReason": "brief reason",
+  "knowledgeGapDetected": true/false,
+  "unansweredQuestion": "specific topic or null",
+  "shouldCreateTicket": true/false,
+  "ticketReason": "reason or null",
+  "requestEmail": true/false
 }
 
-Analysis Guidelines:
-- "false": Trivial conversation (greetings like "hello"/"hi", simple thanks, small talk) - don't save
-- "pending": User has a problem/complaint but needs more details - ask follow-up questions to get complete context
-- "true": Conversation has enough context to analyze (detailed complaint, support issue, complete inquiry) - save for analytics
+RELEVANCE:
+- isRelevant=false if question is unrelated (recipes, math, trivia)
+- If irrelevant, reply: "I can only help with ${agentName} questions"
 
-Knowledge Gap Detection:
-- Set knowledgeGapDetected=true if user asked something specific that's NOT in your knowledge base
-- Set unansweredQuestion to the specific question (e.g., "shipping times to Canada", "refund policy", "API rate limits")
-- Only detect real questions, not greetings or chitchat
-- Be specific with the question (not just "product info" but "product pricing for enterprise plan")
+USER SENTIMENT (analyze the USER'S message tone):
+- positive (8-10): happy, satisfied, grateful, friendly
+- neutral (4-7): factual questions, browsing, casual
+- negative (0-3): frustrated, angry, disappointed, upset
 
-Email Request:
-- Set requestEmail=true if the user has a problem, complaint, or technical issue that might need follow-up
-- In your reply, politely ask for their email to help resolve their issue (e.g., "Could you share your email so we can follow up on this?")
-- Don't ask for email on greetings, simple questions that were answered, or casual conversation
-- If user already provided their email in the conversation, set requestEmail=false
+AI CONFIDENCE (how confident YOU are in your answer):
+- 80-100: Very confident, clear answer from knowledge base
+- 50-79: Moderately confident, partial info
+- 0-49: Low confidence, guessing or no info
+
+KNOWLEDGE GAP (be selective):
+- Only flag if user asked 2+ times OR shows frustration (negative sentiment)
+- Must be specific question, not greetings
+
+TICKET CREATION:
+- shouldCreateTicket=true ONLY if: unresolved after 2+ messages OR urgency>7 OR user frustrated
+- Don't create for simple questions or greetings
 
 Examples:
-- User: "hello" → shouldAnalyze: "false", knowledgeGapDetected: false, requestEmail: false
-- User: "what's your refund policy?" (not in KB) → knowledgeGapDetected: true, unansweredQuestion: "refund policy", requestEmail: false
-- User: "I can't log in" → shouldAnalyze: "pending", requestEmail: true (ask for email in reply)
-- User: "My order is broken" → shouldAnalyze: "pending", requestEmail: true
-- User: "thanks bye" → shouldAnalyze: "false", knowledgeGapDetected: false, requestEmail: false
-
-Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if we need to save this conversation for business insights.`
+- "hello" → isRelevant:true, intent:"greeting", userSentiment:"neutral", aiConfidence:95, shouldAnalyze:"false"
+- "pudding recipe?" → isRelevant:false, relevanceScore:0, reply:"I can only help with ${agentName} questions"
+- "still broken!" (3rd msg) → userSentiment:"negative", urgency:9, shouldCreateTicket:true, aiConfidence:30`
       }
     ];
 
@@ -854,26 +874,54 @@ Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if w
       // Fallback to plain text response
       parsedResponse = {
         reply: rawResponse,
+        isRelevant: true,
+        relevanceScore: 50,
+        userSentiment: "neutral",
+        userSentimentScore: 5,
+        aiConfidence: 50,
+        category: "General",
+        intent: "question",
+        urgency: 1,
         shouldAnalyze: "false",
-        analysisReason: "JSON parsing failed"
+        analysisReason: "JSON parsing failed",
+        knowledgeGapDetected: false,
+        unansweredQuestion: null,
+        shouldCreateTicket: false,
+        ticketReason: null,
+        requestEmail: false
       };
     }
 
+    // Extract all fields from the enriched JSON response
     const aiResponse = parsedResponse.reply;
+    const isRelevant = parsedResponse.isRelevant !== undefined ? parsedResponse.isRelevant : true;
+    const relevanceScore = parsedResponse.relevanceScore || 50;
+    const userSentiment = parsedResponse.userSentiment || "neutral";
+    const userSentimentScore = parsedResponse.userSentimentScore || 5;
+    const aiConfidence = parsedResponse.aiConfidence || 50;
+    const category = parsedResponse.category || "General";
+    const intent = parsedResponse.intent || "question";
+    const urgency = parsedResponse.urgency || 1;
     const shouldAnalyze = parsedResponse.shouldAnalyze || "false";
     const analysisReason = parsedResponse.analysisReason || "No reason provided";
     const knowledgeGapDetected = parsedResponse.knowledgeGapDetected || false;
     const unansweredQuestion = parsedResponse.unansweredQuestion || null;
+    const shouldCreateTicket = parsedResponse.shouldCreateTicket || false;
+    const ticketReason = parsedResponse.ticketReason || null;
     const requestEmail = parsedResponse.requestEmail || false;
 
-    console.log(`📊 Analysis decision: ${shouldAnalyze} - ${analysisReason}`);
+    console.log(`📊 Analysis: ${category} | ${intent} | User: ${userSentiment}(${userSentimentScore}/10) | Urgency: ${urgency}/10 | AI Confidence: ${aiConfidence}%`);
+    console.log(`🎯 Relevance: ${isRelevant ? 'Yes' : 'No'} (${relevanceScore}%) | Analyze: ${shouldAnalyze}`);
+
     if (knowledgeGapDetected) {
       console.log(`❓ Knowledge gap detected: "${unansweredQuestion}"`);
+    }
+    if (shouldCreateTicket) {
+      console.log(`🎫 Ticket should be created: ${ticketReason}`);
     }
     if (requestEmail) {
       console.log(`📧 Email requested from user`);
     }
-
     // Ensure anonymousUserId is defined
     const finalAnonymousUserId = anonymousUserId || `anon_${Date.now()}`;
 
@@ -906,14 +954,27 @@ Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if w
 
     await sessionRef.set(sessionUpdateData, { merge: true });
 
-    // Update conversation metadata with analysis status
+    // Update conversation metadata with analysis status and aggregated analytics
     await conversationRef.set({
       conversationId: conversationId,
       startedAt: sessionData?.currentConversation?.startedAt || admin.firestore.FieldValue.serverTimestamp(),
       lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
       shouldAnalyze: shouldAnalyze,
       analysisReason: analysisReason,
-      analyzed: shouldAnalyze === "true" ? false : null // Only set analyzed flag if we need to analyze
+      analyzed: shouldAnalyze === "true" ? false : null, // Only set analyzed flag if we need to analyze
+      // Latest analytics (from most recent message)
+      latestAnalytics: {
+        userSentiment: userSentiment,
+        userSentimentScore: userSentimentScore,
+        aiConfidence: aiConfidence,
+        category: category,
+        intent: intent,
+        urgency: urgency,
+        isRelevant: isRelevant
+      },
+      // Track if ticket creation was suggested
+      ticketSuggested: shouldCreateTicket,
+      ticketReason: ticketReason
     }, { merge: true });
 
     // Save user message in conversation
@@ -924,7 +985,7 @@ Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if w
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // Save assistant response in conversation
+    // Save assistant response in conversation with enriched analytics
     const assistantMessageRef = conversationRef.collection('messages').doc();
     await assistantMessageRef.set({
       role: 'assistant',
@@ -934,7 +995,20 @@ Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if w
         content: chunk.content.substring(0, 100) + '...',
         similarity: chunk.similarity,
         source: chunk.source
-      }))
+      })),
+      // Analytics data (available immediately for dashboard)
+      analytics: {
+        isRelevant: isRelevant,
+        relevanceScore: relevanceScore,
+        userSentiment: userSentiment,
+        userSentimentScore: userSentimentScore,
+        aiConfidence: aiConfidence,
+        category: category,
+        intent: intent,
+        urgency: urgency,
+        shouldCreateTicket: shouldCreateTicket,
+        ticketReason: ticketReason
+      }
     });
 
     console.log(`✅ Messages saved to session ${sessionId}`);
@@ -950,12 +1024,21 @@ Remember: Your reply should be warm and helpful, while shouldAnalyze tracks if w
       }
     }
 
-    // If knowledge gap detected, process it asynchronously (don't await - let it run in background)
-    if (knowledgeGapDetected && unansweredQuestion) {
+    // If knowledge gap detected AND it's a real issue, process it asynchronously
+    // Only trigger if: it's not a simple greeting AND (user is frustrated OR urgency is high)
+    const shouldProcessGap = knowledgeGapDetected &&
+                             unansweredQuestion &&
+                             intent !== 'greeting' &&
+                             (userSentiment === 'negative' || urgency >= 7);
+
+    if (shouldProcessGap) {
+      console.log(`📚 Processing knowledge gap (frustrated user or high urgency): "${unansweredQuestion}"`);
       processKnowledgeGap(userId, agentId, unansweredQuestion, message).catch(error => {
         console.error('❌ Knowledge gap processing failed:', error);
         // Don't throw - this shouldn't break chat flow
       });
+    } else if (knowledgeGapDetected && unansweredQuestion) {
+      console.log(`⏭️ Skipping knowledge gap (low priority): "${unansweredQuestion}"`);
     }
 
     // Update message usage AFTER successful chat
@@ -1986,7 +2069,7 @@ Please enhance this answer to:
 Return ONLY the enhanced answer, without any preamble or explanation.`;
 
     const enhancementResponse = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-nano',
       messages: [
         { role: 'system', content: 'You are a professional knowledge base editor.' },
         { role: 'user', content: enhancementPrompt }
@@ -2151,7 +2234,7 @@ exports.initializeUser = onCall({ cors: true }, async (request) => {
   }
 });
 
-// Get admin stats
+// Get admin stats with enriched analytics
 exports.getAdminStats = onCall({ cors: true }, async (request) => {
   try {
     console.log('📊 Fetching admin stats...');
@@ -2169,6 +2252,18 @@ exports.getAdminStats = onCall({ cors: true }, async (request) => {
     };
 
     let totalAgents = 0;
+    let totalConversations = 0;
+    let totalMessages = 0;
+
+    // Analytics aggregates
+    const sentimentBreakdown = { positive: 0, neutral: 0, negative: 0 };
+    const categoryBreakdown = { Support: 0, Sales: 0, Question: 0, Complaint: 0, General: 0 };
+    const intentBreakdown = { question: 0, complaint: 0, browsing: 0, purchase: 0, greeting: 0 };
+    let urgentMessages = 0; // urgency >= 7
+    let ticketSuggestions = 0;
+    let irrelevantQuestions = 0;
+    let totalConfidence = 0;
+    let confidenceCount = 0;
 
     // Process each user
     for (const userDoc of usersSnapshot.docs) {
@@ -2180,17 +2275,89 @@ exports.getAdminStats = onCall({ cors: true }, async (request) => {
         planDistribution[plan]++;
       }
 
-      // Count agents for this user
+      // Get agents for this user
       const agentsSnapshot = await userDoc.ref.collection('agents').get();
       totalAgents += agentsSnapshot.size;
+
+      // For each agent, get sessions and analyze messages
+      for (const agentDoc of agentsSnapshot.docs) {
+        const sessionsSnapshot = await agentDoc.ref.collection('sessions').get();
+
+        for (const sessionDoc of sessionsSnapshot.docs) {
+          const conversationsSnapshot = await sessionDoc.ref.collection('conversations').get();
+          totalConversations += conversationsSnapshot.size;
+
+          for (const conversationDoc of conversationsSnapshot.docs) {
+            const messagesSnapshot = await conversationDoc.ref.collection('messages')
+              .where('role', '==', 'assistant')
+              .get();
+
+            for (const messageDoc of messagesSnapshot.docs) {
+              const messageData = messageDoc.data();
+              totalMessages++;
+
+              // Extract analytics if available
+              const analytics = messageData.analytics;
+              if (analytics) {
+                // User Sentiment
+                if (analytics.userSentiment) {
+                  sentimentBreakdown[analytics.userSentiment] = (sentimentBreakdown[analytics.userSentiment] || 0) + 1;
+                }
+
+                // Category
+                if (analytics.category) {
+                  categoryBreakdown[analytics.category] = (categoryBreakdown[analytics.category] || 0) + 1;
+                }
+
+                // Intent
+                if (analytics.intent) {
+                  intentBreakdown[analytics.intent] = (intentBreakdown[analytics.intent] || 0) + 1;
+                }
+
+                // Urgency
+                if (analytics.urgency >= 7) {
+                  urgentMessages++;
+                }
+
+                // Ticket suggestions
+                if (analytics.shouldCreateTicket) {
+                  ticketSuggestions++;
+                }
+
+                // Relevance
+                if (analytics.isRelevant === false) {
+                  irrelevantQuestions++;
+                }
+
+                // AI Confidence
+                if (analytics.aiConfidence) {
+                  totalConfidence += analytics.aiConfidence;
+                  confidenceCount++;
+                }
+              }
+            }
+          }
+        }
+      }
     }
+
+    const avgConfidence = confidenceCount > 0 ? Math.round(totalConfidence / confidenceCount) : 0;
 
     console.log('✅ Admin stats fetched successfully');
 
     return {
       totalUsers,
       planDistribution,
-      totalAgents
+      totalAgents,
+      totalConversations,
+      totalMessages,
+      sentimentBreakdown,
+      categoryBreakdown,
+      intentBreakdown,
+      urgentMessages,
+      ticketSuggestions,
+      irrelevantQuestions,
+      avgConfidence
     };
 
   } catch (error) {

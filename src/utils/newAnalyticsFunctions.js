@@ -91,9 +91,10 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
 
     const allConversations = [];
     const allSessions = [];
+    const allMessages = [];
 
-    // For each session, get all conversations and session data
-    for (const sessionDoc of sessionsSnapshot.docs) {
+    // Process all sessions in parallel for maximum speed
+    await Promise.all(sessionsSnapshot.docs.map(async (sessionDoc) => {
       const sessionData = sessionDoc.data();
       allSessions.push({
         id: sessionDoc.id,
@@ -105,11 +106,12 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
       );
       const conversationsSnapshot = await getDocs(conversationsRef);
 
-      conversationsSnapshot.docs.forEach(convDoc => {
+      // Process each conversation and fetch messages in parallel
+      await Promise.all(conversationsSnapshot.docs.map(async (convDoc) => {
         const convData = convDoc.data();
+        const lastMessageTime = convData.lastMessageTime?.toDate?.();
 
         // Only include conversations within time range
-        const lastMessageTime = convData.lastMessageTime?.toDate?.();
         if (lastMessageTime && lastMessageTime >= startDate) {
           allConversations.push({
             id: convDoc.id,
@@ -117,17 +119,32 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
             userInfo: sessionData.userInfo || {},
             ...convData
           });
+
+          // Fetch messages for this conversation
+          const messagesRef = collection(convDoc.ref, 'messages');
+          const messagesSnapshot = await getDocs(messagesRef);
+
+          messagesSnapshot.docs.forEach(msgDoc => {
+            const msgData = msgDoc.data();
+            const msgTime = msgData.timestamp?.toDate?.();
+            if (msgTime && msgTime >= startDate) {
+              allMessages.push({
+                id: msgDoc.id,
+                ...msgData
+              });
+            }
+          });
         }
-      });
-    }
+      }));
+    }));
 
     // Filter only analyzed conversations
     const analyzedConversations = allConversations.filter(conv =>
       conv.analyzed && conv.analysis
     );
 
-    // Build analytics from conversations (pass both all and analyzed, plus sessions)
-    const analytics = buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions);
+    // Build analytics from conversations (pass both all and analyzed, plus sessions and messages)
+    const analytics = buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions, allMessages);
 
     return analytics;
 
@@ -140,7 +157,7 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
 /**
  * Build analytics data structure from analyzed conversations
  */
-function buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions = []) {
+function buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions = [], allMessages = []) {
   // Initialize chart data structure
   const chartData = {};
   const now = new Date();
@@ -267,23 +284,29 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
     }
   });
 
-  // Calculate category distribution (only from analyzed conversations)
-  const categoryCount = {};
-  analyzedConversations.forEach(conv => {
-    const category = conv.analysis?.mainCategory || 'General';
-    categoryCount[category] = (categoryCount[category] || 0) + 1;
+  // Calculate category distribution (from ALL conversations with latestAnalytics)
+  const categoryCount = { Support: 0, Sales: 0, Question: 0, Complaint: 0, General: 0 };
+  allConversations.forEach(conv => {
+    const category = conv.latestAnalytics?.category || conv.analysis?.mainCategory || 'General';
+    if (categoryCount.hasOwnProperty(category)) {
+      categoryCount[category] += 1;
+    } else {
+      categoryCount[category] = 1;
+    }
   });
 
-  const categoryData = Object.entries(categoryCount).map(([name, value]) => ({
-    name,
-    value,
-    percentage: Math.round((value / analyzedConversations.length) * 100)
-  }));
+  const categoryData = Object.entries(categoryCount)
+    .filter(([_, value]) => value > 0) // Only show categories with data
+    .map(([name, value]) => ({
+      name,
+      value,
+      percentage: allConversations.length > 0 ? Math.round((value / allConversations.length) * 100) : 0
+    }));
 
-  // Calculate sentiment distribution
+  // Calculate sentiment distribution (from ALL messages with analytics.sentimentScore)
   const sentimentBuckets = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
-  analyzedConversations.forEach(conv => {
-    const score = conv.analysis?.sentimentScore;
+  allMessages.forEach(msg => {
+    const score = msg.analytics?.sentimentScore;
     if (score && score >= 1 && score <= 10) {
       sentimentBuckets[score] += 1;
     }
@@ -294,25 +317,40 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
     count
   }));
 
-  // Calculate urgency distribution
+  // Calculate urgency distribution (from ALL conversations with latestAnalytics)
   const urgencyCount = { low: 0, medium: 0, high: 0 };
-  analyzedConversations.forEach(conv => {
-    const urgency = conv.analysis?.urgency || 'low';
-    urgencyCount[urgency] = (urgencyCount[urgency] || 0) + 1;
+  allConversations.forEach(conv => {
+    const urgencyScore = conv.latestAnalytics?.urgency || conv.analysis?.urgency;
+
+    // Convert numeric urgency (0-10) to low/medium/high
+    let urgency = 'low';
+    if (typeof urgencyScore === 'number') {
+      if (urgencyScore >= 7) urgency = 'high';
+      else if (urgencyScore >= 4) urgency = 'medium';
+      else urgency = 'low';
+    } else if (typeof urgencyScore === 'string') {
+      urgency = urgencyScore.toLowerCase();
+    }
+
+    if (urgencyCount.hasOwnProperty(urgency)) {
+      urgencyCount[urgency] += 1;
+    }
   });
 
   const urgencyData = Object.entries(urgencyCount).map(([name, value]) => ({
     name: name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Unknown',
     value,
-    percentage: analyzedConversations.length > 0 ? Math.round((value / analyzedConversations.length) * 100) : 0
+    percentage: allConversations.length > 0 ? Math.round((value / allConversations.length) * 100) : 0
   }));
 
-  // Calculate topic distribution
+  // Calculate topic distribution (from messages analytics.topics)
   const topicCount = {};
-  analyzedConversations.forEach(conv => {
-    const topics = conv.analysis?.keyTopics || [];
+  allMessages.forEach(msg => {
+    const topics = msg.analytics?.topics || msg.analytics?.keyTopics || [];
     topics.forEach(topic => {
-      topicCount[topic] = (topicCount[topic] || 0) + 1;
+      if (topic && typeof topic === 'string') {
+        topicCount[topic] = (topicCount[topic] || 0) + 1;
+      }
     });
   });
 
@@ -324,6 +362,51 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
       value
     }));
 
+  // Calculate intent distribution (from messages analytics.intent)
+  const intentCount = { question: 0, complaint: 0, browsing: 0, purchase: 0, greeting: 0 };
+  allMessages.forEach(msg => {
+    const intent = msg.analytics?.intent || msg.intent;
+    if (intent && intentCount.hasOwnProperty(intent)) {
+      intentCount[intent] += 1;
+    }
+  });
+
+  const intentData = Object.entries(intentCount).map(([name, count]) => ({
+    intent: name,
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    count,
+    value: count
+  }));
+
+  // Calculate AI confidence distribution (from messages analytics.aiConfidence)
+  const confidenceRanges = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
+  let totalConfidence = 0;
+  let confidenceCount = 0;
+
+  allMessages.forEach(msg => {
+    const confidence = msg.analytics?.aiConfidence || msg.analytics?.confidence;
+    if (confidence !== undefined && confidence !== null) {
+      totalConfidence += confidence;
+      confidenceCount++;
+
+      // Categorize into ranges
+      if (confidence >= 0 && confidence <= 20) confidenceRanges['0-20']++;
+      else if (confidence >= 21 && confidence <= 40) confidenceRanges['21-40']++;
+      else if (confidence >= 41 && confidence <= 60) confidenceRanges['41-60']++;
+      else if (confidence >= 61 && confidence <= 80) confidenceRanges['61-80']++;
+      else if (confidence >= 81 && confidence <= 100) confidenceRanges['81-100']++;
+    }
+  });
+
+  const avgConfidence = confidenceCount > 0 ? Math.round(totalConfidence / confidenceCount) : 0;
+
+  const confidenceData = Object.entries(confidenceRanges).map(([range, count]) => ({
+    range,
+    confidence: parseInt(range.split('-')[0]), // For sorting
+    count,
+    value: count
+  }));
+
   // Calculate summary stats
   const totalConversations = allConversations.length;
   const analyzedCount = analyzedConversations.length;
@@ -331,9 +414,9 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
   const unresolvedConversations = analyzedCount - resolvedConversations;
   const resolutionRate = analyzedCount > 0 ? Math.round((resolvedConversations / analyzedCount) * 100) : 0;
 
-  // Calculate average sentiment
-  const sentimentScores = analyzedConversations
-    .map(c => c.analysis?.sentimentScore)
+  // Calculate average sentiment (from ALL conversations with latestAnalytics)
+  const sentimentScores = allConversations
+    .map(c => c.latestAnalytics?.userSentimentScore || c.analysis?.sentimentScore)
     .filter(score => score && score >= 1 && score <= 10);
   const avgSentiment = sentimentScores.length > 0
     ? (sentimentScores.reduce((sum, score) => sum + score, 0) / sentimentScores.length).toFixed(1)
@@ -363,7 +446,7 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
   const browserCount = {};
   const deviceCount = {};
   const languageCount = {};
-  const locationData = [];
+  const locationCount = {}; // Aggregate by country code
   let returnUserCount = 0;
   let newUserCount = 0;
 
@@ -387,25 +470,28 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
 
     // Location data (for map)
     // Priority: IP-based location (city+country) > timezone-based country
-    if (userInfo.location?.country && userInfo.location?.city) {
+    let countryCode = null;
+    let countryName = null;
+
+    if (userInfo.location?.countryCode) {
       // IP-based location available
-      locationData.push({
-        city: userInfo.location.city,
-        country: userInfo.location.country,
-        countryCode: userInfo.location.countryCode,
-        count: 1
-      });
+      countryCode = userInfo.location.countryCode;
+      countryName = userInfo.location.country || countryCode;
     } else if (userInfo.location?.timezone) {
       // Fallback: Estimate country from timezone
-      const countryCode = timezoneToCountry(userInfo.location.timezone);
-      if (countryCode) {
-        locationData.push({
-          city: 'Unknown',
-          country: countryCode,
+      countryCode = timezoneToCountry(userInfo.location.timezone);
+      countryName = countryCode;
+    }
+
+    if (countryCode) {
+      if (!locationCount[countryCode]) {
+        locationCount[countryCode] = {
           countryCode: countryCode,
-          count: 1
-        });
+          country: countryName,
+          count: 0
+        };
       }
+      locationCount[countryCode].count += 1;
     }
 
     // Return user tracking
@@ -415,6 +501,9 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
       newUserCount++;
     }
   });
+
+  // Convert locationCount object to array
+  const locationData = Object.values(locationCount);
 
   // Format return user data for donut chart
   const returnUserData = [
@@ -457,6 +546,8 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
     sentimentData,
     urgencyData,
     topicData,
+    intentData,
+    confidenceData,
     browserData: browserCount,
     deviceData: deviceCount,
     languageData: languageCount,
@@ -470,7 +561,8 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
       resolvedConversations,
       unresolvedConversations,
       resolutionRate,
-      avgSentiment: parseFloat(avgSentiment)
+      avgSentiment: parseFloat(avgSentiment),
+      avgConfidence
     },
     recentSessions,
     totalConversations: allConversations.length
@@ -497,8 +589,8 @@ export const getKnowledgeGaps = async (agentId, userId) => {
         firstAsked: doc.data().firstAsked?.toDate?.(),
         lastAsked: doc.data().lastAsked?.toDate?.()
       }))
-      // Filter out filled gaps (where filled === true)
-      .filter(gap => gap.filled !== true);
+      // Filter out filled or skipped gaps
+      .filter(gap => gap.filled !== true && gap.skipped !== true);
 
     // Sort by count (most asked first)
     gaps.sort((a, b) => (b.count || 0) - (a.count || 0));
@@ -521,11 +613,23 @@ function createEmptyAnalytics() {
     sentimentData: [],
     urgencyData: [],
     topicData: [],
+    intentData: [],
+    confidenceData: [],
+    browserData: {},
+    deviceData: {},
+    languageData: {},
+    locationData: [],
+    returnUserData: [],
+    detailedMetrics: {},
     summary: {
-      openTickets: 0,
-      resolvedToday: 0,
+      totalConversations: 0,
+      analyzedConversations: 0,
+      nonAnalyzedConversations: 0,
+      resolvedConversations: 0,
+      unresolvedConversations: 0,
       resolutionRate: 0,
-      avgResponseTime: '0m'
+      avgSentiment: 5.0,
+      avgConfidence: 0
     },
     recentSessions: [],
     totalConversations: 0

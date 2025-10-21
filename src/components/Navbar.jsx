@@ -103,19 +103,28 @@ export default function Navbar() {
     navigate('/dashboard/billing');
   };
 
+  const handleLogoClick = (e) => {
+    e.preventDefault();
+    navigate('/dashboard');
+  };
+
   return (
     <nav className="w-full bg-stone-50 dark:bg-stone-900 sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo and Brand */}
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <a
+            href="/dashboard"
+            onClick={handleLogoClick}
+            className="flex items-center gap-2 cursor-pointer"
+          >
             <img
               src="/logo.webp"
               alt="Orchis Logo"
               className="w-5 h-5"
             />
             <span className="font-bold text-stone-900 dark:text-stone-50 text-md">ORCHIS</span>
-          </Link>
+          </a>
 
           {/* Right Section: Alerts + User Profile */}
           <div className="flex items-center gap-3">

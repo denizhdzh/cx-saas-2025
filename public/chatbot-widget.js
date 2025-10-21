@@ -777,12 +777,20 @@
         .orchis-input {
           flex: 1;
           padding: 8px;
-          font-size: 14px;
+          font-size: 16px;
           background: rgba(255, 255, 255, 0);
           color: rgba(255, 255, 255, 0.85);
           border: none;
           border-radius: 8px;
           outline: none;
+        }
+
+        /* Mobile zoom fix - 16px prevents auto-zoom on iOS/Android */
+        @media (max-width: 768px) {
+          .orchis-input {
+            font-size: 16px;
+            transform-origin: left center;
+          }
         }
 
         .orchis-input::placeholder {

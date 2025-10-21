@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
+const COLORS = {
+  light: '#8b5cf6', // violet-500
+  dark: '#a78bfa'   // violet-400
+};
+
 export default function ReturnUserChart({ data = [] }) {
   const [isDark, setIsDark] = useState(false);
 
@@ -12,17 +17,24 @@ export default function ReturnUserChart({ data = [] }) {
     const observer = new MutationObserver(checkDark);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-    return () => observer.disconnect();
+    // Listen for system theme changes
+    mediaQuery.addEventListener('change', checkDark);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', checkDark);
+    };
   }, []);
 
   const total = data.reduce((sum, item) => sum + (item.value || 0), 0);
 
-  // Create gradient colors based on orange
+  // Create gradient colors based on violet
   const chartData = data.map((item, index) => {
-    const opacity = 1 + (index * 0.3); // Gradual opacity increase
+    const opacity = 0.4 + (index * 0.3); // Gradual opacity increase
+    const rgb = isDark ? '167, 139, 250' : '139, 92, 246'; // violet colors
     return {
       ...item,
-      fill: `rgba(249, 115, 22, ${opacity})`
+      fill: `rgba(${rgb}, ${opacity})`
     };
   });
 
@@ -41,7 +53,7 @@ export default function ReturnUserChart({ data = [] }) {
           <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
             {data.name}
           </p>
-          <p className="text-xs mt-1" style={{ color: '#f97316' }}>
+          <p className="text-xs mt-1" style={{ color: isDark ? COLORS.dark : COLORS.light }}>
             {data.value} users ({percentage}%)
           </p>
         </div>
@@ -63,15 +75,16 @@ export default function ReturnUserChart({ data = [] }) {
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center">
-      <ResponsiveContainer width="100%" height="85%">
+      <ResponsiveContainer width="100%" height="85%" key={isDark ? 'dark' : 'light'}>
         <PieChart>
           <Pie
             data={chartData}
             cx="50%"
             cy="50%"
             innerRadius={60}
+            cornerRadius="50%"
+            paddingAngle={5}
             outerRadius={90}
-            paddingAngle={2}
             dataKey="value"
           >
             {chartData.map((entry, index) => (

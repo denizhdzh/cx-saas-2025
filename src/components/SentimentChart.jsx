@@ -2,16 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList } from 'recharts';
 
 const SENTIMENT_MAPPING = {
-  1: { label: 'Very Angry', icon: '😡', color: 'rgba(249, 115, 22, 1)' },
-  2: { label: 'Angry', icon: '😠', color: 'rgba(249, 115, 22, 1)' },
-  3: { label: 'Frustrated', icon: '😤', color: 'rgba(249, 116, 22, 1)' },
-  4: { label: 'Disappointed', icon: '😞', color: 'rgba(249, 115, 22, 1)' },
-  5: { label: 'Neutral', icon: '😐', color: 'rgba(249, 115, 22, 1)' },
-  6: { label: 'Satisfied', icon: '🙂', color: 'rgba(249, 115, 22, 1)' },
-  7: { label: 'Happy', icon: '😊', color: 'rgba(249, 115, 22, 1)' },
-  8: { label: 'Very Happy', icon: '😄', color: 'rgba(249, 115, 22, 1)' },
-  9: { label: 'Excited', icon: '😁', color: 'rgba(249, 115, 22, 1)' },
-  10: { label: 'Delighted', icon: '🤩', color: 'rgba(249, 115, 22, 1)' }
+  1: { label: 'Very Angry', icon: '😡' },
+  2: { label: 'Angry', icon: '😠' },
+  3: { label: 'Frustrated', icon: '😤' },
+  4: { label: 'Disappointed', icon: '😞' },
+  5: { label: 'Neutral', icon: '😐' },
+  6: { label: 'Satisfied', icon: '🙂' },
+  7: { label: 'Happy', icon: '😊' },
+  8: { label: 'Very Happy', icon: '😄' },
+  9: { label: 'Excited', icon: '😁' },
+  10: { label: 'Delighted', icon: '🤩' }
+};
+
+const COLORS = {
+  light: '#8b5cf64a', // violet-500 with opacity
+  dark: '#a78bfa4a'   // violet-400 with opacity
 };
 
 export default function SentimentChart({ data = [] }) {
@@ -25,10 +30,16 @@ export default function SentimentChart({ data = [] }) {
     const observer = new MutationObserver(checkDark);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-    return () => observer.disconnect();
+    // Listen for system theme changes
+    mediaQuery.addEventListener('change', checkDark);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', checkDark);
+    };
   }, []);
 
-  // Process sentiment data - expecting data with sentiment scores 1-10
+  // Process sentiment data from messages
   // Initialize with zeros for all sentiment levels
   const processedData = {
     1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0
@@ -37,12 +48,12 @@ export default function SentimentChart({ data = [] }) {
   // Only process if we have actual data
   if (data && data.length > 0) {
     data.forEach(item => {
-      // Data format: {sentiment: 1-10, count: number}
-      const sentimentScore = item.sentiment || item.sentimentScore || item.score;
-      const count = item.count || 0;
+      // Extract sentiment score and count from aggregated data
+      const score = item.score || item.sentiment || item.sentimentScore;
+      const count = item.count || item.value || 0;
 
-      if (typeof sentimentScore === 'number' && sentimentScore >= 1 && sentimentScore <= 10) {
-        processedData[sentimentScore] = (processedData[sentimentScore] || 0) + count;
+      if (typeof score === 'number' && score >= 1 && score <= 10) {
+        processedData[score] = (processedData[score] || 0) + count;
       }
     });
   }
@@ -55,7 +66,7 @@ export default function SentimentChart({ data = [] }) {
       label: SENTIMENT_MAPPING[score].label,
       count: processedData[score] || 0,
       icon: SENTIMENT_MAPPING[score].icon,
-      color: SENTIMENT_MAPPING[score].color
+      color: isDark ? COLORS.dark : COLORS.light
     };
   });
 
@@ -76,8 +87,8 @@ export default function SentimentChart({ data = [] }) {
               <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
                 Score {item.score}/10
               </p>
-              <p className="text-xs" style={{ color: '#f97316' }}>
-                {item.count} {item.count === 1 ? 'conversation' : 'conversations'}
+              <p className="text-xs" style={{ color: isDark ? COLORS.dark : COLORS.light }}>
+                {item.count} {item.count === 1 ? 'message' : 'messages'}
               </p>
             </div>
           </div>
@@ -94,10 +105,10 @@ export default function SentimentChart({ data = [] }) {
           transition: fill 0.2s ease;
         }
         .sentiment-bar:hover {
-          fill: rgba(249, 115, 22, 0.2) !important;
+          fill: ${isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'} !important;
         }
       `}</style>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" key={isDark ? 'dark' : 'light'}>
         <BarChart
           data={chartData}
           layout="vertical"
@@ -106,7 +117,7 @@ export default function SentimentChart({ data = [] }) {
           <XAxis type="number" hide />
           <YAxis type="category" dataKey="score" hide />
           <Tooltip content={<CustomTooltip />} cursor={false} />
-          <Bar dataKey="count" radius={10} barSize={40}>
+          <Bar dataKey="count" radius={10} barSize={40} key={isDark ? 'dark' : 'light'}>
             {chartData.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}

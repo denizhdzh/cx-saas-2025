@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 
-const COLORS = {
-  light: '#8b5cf64a', // violet-500 with opacity
-  dark: '#a78bfa4a'   // violet-400 with opacity
+const INTENT_CONFIG = {
+  question: { label: 'Question', icon: '🤔' },
+  complaint: { label: 'Complaint', icon: '😠' },
+  browsing: { label: 'Browsing', icon: '👀' },
+  purchase: { label: 'Purchase', icon: '🛒' },
+  greeting: { label: 'Greeting', icon: '👋' }
 };
 
-export default function UrgencyChart({ data = [] }) {
+const COLORS = {
+  light: '#8a5cf64a', // violet-500
+  dark: '#a78bfa4a'   // violet-400
+};
+
+export default function IntentChart({ data = [] }) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -26,34 +34,37 @@ export default function UrgencyChart({ data = [] }) {
     };
   }, []);
 
-  // Initialize with default urgency levels
-  const defaultUrgencies = { Low: 0, Medium: 0, High: 0 };
+  // Process intent data
+  const processedData = {
+    question: 0,
+    complaint: 0,
+    browsing: 0,
+    purchase: 0,
+    greeting: 0
+  };
 
-  // Process data if available
   if (data && data.length > 0) {
     data.forEach(item => {
-      const name = item.name || 'Low';
-      defaultUrgencies[name] = item.value || 0;
+      const intent = item.intent || item.name;
+      const count = item.count || item.value || 0;
+
+      if (processedData.hasOwnProperty(intent)) {
+        processedData[intent] += count;
+      }
     });
   }
 
-  const chartDataArray = Object.entries(defaultUrgencies).map(([category, count]) => ({
-    category,
-    count
-  }));
-
-  const total = chartDataArray.reduce((sum, item) => sum + item.count, 0);
-
-  const chartData = chartDataArray.map((item) => ({
-    category: item.category,
-    count: item.count,
-    percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : 0,
-    fill: isDark ? COLORS.dark : COLORS.light
+  const chartData = Object.entries(INTENT_CONFIG).map(([key, config]) => ({
+    intent: key,
+    label: config.label,
+    icon: config.icon,
+    count: processedData[key] || 0,
+    color: isDark ? COLORS.dark : COLORS.light
   }));
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const item = payload[0].payload;
       return (
         <div
           className="backdrop-blur-sm rounded-lg shadow-xl p-3"
@@ -62,52 +73,66 @@ export default function UrgencyChart({ data = [] }) {
             border: `1px solid ${isDark ? '#44403c' : '#e7e5e4'}`
           }}
         >
-          <p className="text-sm font-semibold capitalize" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
-            {data.category}
-          </p>
-          <p className="text-xs mt-1" style={{ color: isDark ? COLORS.dark : COLORS.light }}>
-            {data.count} conversations ({data.percentage}%)
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{item.icon}</span>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
+                {item.label}
+              </p>
+              <p className="text-xs" style={{ color: item.color }}>
+                {item.count} {item.count === 1 ? 'message' : 'messages'}
+              </p>
+            </div>
+          </div>
         </div>
       );
     }
     return null;
   };
 
+  if (chartData.every(item => item.count === 0)) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-stone-400 dark:text-stone-500 text-sm">No intent data yet</div>
+          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Intent tracking will appear here</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full relative">
       <style>{`
-        .category-bar {
-          transition: fill 0.2s ease;
+        .intent-bar {
+          transition: opacity 0.2s ease;
         }
-        .category-bar:hover {
-          fill: ${isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'} !important;
+        .intent-bar:hover {
+          opacity: 0.7;
         }
       `}</style>
-      <ResponsiveContainer width="100%" height="100%" key={isDark ? 'dark' : 'light'}>
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={chartData}
           layout="vertical"
           margin={{ left: 0, right: 60, top: 5, bottom: 5 }}
         >
           <XAxis type="number" hide />
-          <YAxis type="category" dataKey="category" hide />
+          <YAxis type="category" dataKey="label" hide />
           <Tooltip content={<CustomTooltip />} cursor={false} />
           <Bar dataKey="count" radius={10} barSize={40}>
             {chartData.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={entry.fill}
-                className="category-bar"
-                style={{ transition: 'fill 0.2s ease' }}
+                fill={entry.color}
+                className="intent-bar"
               />
             ))}
             <LabelList
-              dataKey="category"
+              dataKey="label"
               position="insideLeft"
               offset={8}
-              className="category-label"
-              style={{ fill: isDark ? '#ffffff' : '#1c1917', fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}
+              style={{ fill: isDark ? '#ffffff' : '#1c1917', fontSize: 12, fontWeight: 600 }}
             />
           </Bar>
         </BarChart>
