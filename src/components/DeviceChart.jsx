@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const COLORS = {
-  light: '#8b5cf6', // violet-500
-  dark: '#a78bfa'   // violet-400
+  light: '#f97316', // violet-500
+  dark: '#f97316'   // violet-400
 };
 
 export default function DeviceChart({ data = {} }) {
@@ -38,7 +38,7 @@ export default function DeviceChart({ data = {} }) {
   // Create gradient colors based on violet
   const chartData = chartDataArray.map((item, index) => {
     const opacity = 0.4 + (index * 0.2); // Gradual opacity increase
-    const rgb = isDark ? '167, 139, 250' : '139, 92, 246'; // violet colors
+    const rgb = isDark ? '249, 115, 22' : '249, 115, 22'; // violet colors
 
     return {
       ...item,

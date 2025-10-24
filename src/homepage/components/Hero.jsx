@@ -1,23 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 
 export default function Hero() {
   const navigate = useNavigate();
-  const [currentFeature, setCurrentFeature] = useState(0);
-
-  const features = [
-    'unanswered questions',
-    'slow response times',
-    'generic support',
-    'lost opportunities'
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentFeature((prev) => (prev + 1) % features.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <section className="relative py-20 lg:py-20 overflow-hidden">
@@ -51,12 +35,8 @@ export default function Hero() {
             </div>
 
             {/* Headline - Conversion focused */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-neutral-900 mb-5 tracking-tight leading-[1.15] opacity-0 animate-[fadeInUp_0.6s_ease-out_0.2s_forwards]">
-              Stop losing money to
-              <br />
-              <span className="text-orange-500 inline-block transition-all duration-500 ease-in-out">
-                {features[currentFeature]}
-              </span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-medium text-neutral-900 mb-5 tracking-tight leading-[1.15] opacity-0 animate-[fadeInUp_0.6s_ease-out_0.2s_forwards]">
+              Not Just a Chatbot. A Dynamic, Intelligent Layer for Your Product.              
             </h1>
 
             {/* Subheadline - Benefit driven */}
@@ -106,7 +86,7 @@ export default function Hero() {
                 <img src="/unit3media.webp" alt="Unit3Media" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
               </div>
               <p className="text-sm text-neutral-600">
-                <span className="font-semibold text-neutral-900">127 teams</span> converted visitors this week
+                <span className="font-semibold text-neutral-900">300+ makers</span> converted visitors this week
               </p>
             </div>
 
@@ -116,7 +96,7 @@ export default function Hero() {
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-0 border-t border-neutral-200/50 bg-white/15 rounded-3xl backdrop-blur-md opacity-0 animate-[fadeInUp_0.6s_ease-out_0.7s_forwards]">
             <div className="p-5 text-center border-r border-neutral-200/50">
-              <div className="text-2xl sm:text-3xl font-bold text-neutral-900">3x</div>
+              <div className="text-2xl sm:text-3xl font-bold text-neutral-900">8x</div>
               <div className="text-xs sm:text-sm text-neutral-500 mt-1">Higher Conversion</div>
             </div>
             <div className="p-5 text-center border-r border-neutral-200/50">

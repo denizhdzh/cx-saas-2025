@@ -10,8 +10,8 @@ const INTENT_CONFIG = {
 };
 
 const COLORS = {
-  light: '#8a5cf64a', // violet-500
-  dark: '#a78bfa4a'   // violet-400
+  light: '#f973164a', // violet-500
+  dark: '#f973164a'   // violet-400
 };
 
 export default function IntentChart({ data = [] }) {

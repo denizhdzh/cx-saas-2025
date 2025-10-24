@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orchis Popup Test Page</title>
+    <title>CloudSync - Sync Your Data Everywhere</title>
     <style>
         * {
             margin: 0;
@@ -12,278 +12,254 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #e3e3e3 0%, #999999 100%);
-            min-height: 300vh; /* Tall page for scroll testing */
-            padding: 40px 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #000000;
+            color: white;
+            min-height: 300vh;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            padding: 60px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
         }
 
         h1 {
-            font-size: 48px;
-            color: #1a1a1a;
+            font-size: clamp(48px, 8vw, 84px);
+            font-weight: 700;
             margin-bottom: 20px;
+            letter-spacing: -3px;
+            background: linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .subtitle {
-            font-size: 20px;
-            color: #666;
+            font-size: clamp(18px, 3vw, 22px);
+            color: rgba(255, 255, 255, 0.6);
+            max-width: 600px;
             margin-bottom: 40px;
+            line-height: 1.6;
         }
 
-        .section {
-            margin-bottom: 60px;
+        .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
-        .section h2 {
-            font-size: 32px;
-            color: #2d3748;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
+        .btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            text-decoration: none;
         }
 
-        .section p {
-            font-size: 18px;
-            line-height: 1.8;
-            color: #4a5568;
-            margin-bottom: 20px;
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
         }
 
-        .feature-grid {
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .features {
+            padding: 120px 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
+            gap: 32px;
         }
 
-        .feature-card {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        .feature {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s ease;
         }
 
-        .feature-card h3 {
-            font-size: 24px;
-            color: #2d3748;
-            margin-bottom: 15px;
+        .feature:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(99, 102, 241, 0.5);
+            transform: translateY(-4px);
         }
 
-        .feature-card p {
-            font-size: 16px;
-            color: #4a5568;
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 16px;
         }
 
-        .cta-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 60px;
-            border-radius: 20px;
-            text-align: center;
-            margin: 60px 0;
-        }
-
-        .cta-section h2 {
-            color: white;
-            font-size: 36px;
-            margin-bottom: 20px;
-            border: none;
-        }
-
-        .cta-section p {
-            color: rgba(255,255,255,0.9);
+        .feature h3 {
             font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
         }
 
-        .test-info {
-            background: #fef3c7;
-            border: 2px solid #f59e0b;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 40px;
+        .feature p {
+            font-size: 15px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.6);
         }
 
-        .test-info h3 {
-            color: #92400e;
-            margin-bottom: 10px;
+        .social-proof {
+            text-align: center;
+            padding: 80px 20px;
+            max-width: 800px;
+            margin: 0 auto;
         }
 
-        .test-info ul {
-            list-style-position: inside;
-            color: #78350f;
+        .social-proof h2 {
+            font-size: 36px;
+            margin-bottom: 16px;
         }
 
-        .test-info li {
-            margin: 5px 0;
+        .social-proof p {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.7);
         }
 
-        code {
-            background: #e5e7eb;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            color: #1f2937;
+        .stats {
+            display: flex;
+            gap: 48px;
+            justify-content: center;
+            margin-top: 48px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Orchis Chatbot Popup Test Page 🎉</h1>
-        <p class="subtitle">This page demonstrates all popup triggers and content types</p>
-
-        <div class="test-info">
-            <h3>🧪 Testing Instructions</h3>
-            <ul>
-                <li><strong>First Visit:</strong> Popup shows immediately on page load (if configured)</li>
-                <li><strong>Return Visit:</strong> Clear localStorage and wait 1+ hour, or change trigger</li>
-                <li><strong>Exit Intent:</strong> Move your mouse to the top of the browser window</li>
-                <li><strong>Time Delay:</strong> Wait X seconds after page loads</li>
-                <li><strong>Scroll Depth:</strong> Scroll down to trigger at X% scroll position</li>
-            </ul>
-            <p style="margin-top: 15px; color: #92400e;">
-                💡 <strong>Tip:</strong> Clear localStorage via DevTools → Application → Local Storage to reset popups
-            </p>
-        </div>
-
-        <div class="section">
-            <h2>📋 Content Types Available</h2>
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h3>💰 Discount</h3>
-                    <p>Show a discount code with copy-to-clipboard functionality. Perfect for special offers and promotions.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>📢 Announcement</h3>
-                    <p>Display important updates, news, or general messages to your visitors with a call-to-action button.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🎥 Video</h3>
-                    <p>Embed YouTube videos directly in the popup. Great for product demos, tutorials, or marketing content.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>🔗 Link</h3>
-                    <p>Create a button that redirects users to any URL. Use it for landing pages, blog posts, or external resources.</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>⚡ Trigger Options</h2>
-            <p>
-                <strong>First Visit:</strong> Perfect for welcoming new visitors and making a strong first impression.
-            </p>
-            <p>
-                <strong>Return Visit:</strong> Engage returning customers with loyalty offers or new updates.
-            </p>
-            <p>
-                <strong>Exit Intent:</strong> Catch users before they leave with a last-minute offer or important message.
-            </p>
-            <p>
-                <strong>Time Delay:</strong> Show popups after users have spent time exploring your content.
-            </p>
-            <p>
-                <strong>Scroll Depth:</strong> Trigger popups when users demonstrate engagement by scrolling through your page.
-            </p>
-        </div>
-
-        <div class="cta-section">
-            <h2>Ready to Get Started?</h2>
-            <p>Configure your popups in the dashboard and watch engagement soar!</p>
-        </div>
-
-        <div class="section">
-            <h2>📚 Sample Content - Scroll to Test</h2>
-            <p>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-                Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-            </p>
-            <p>
-                Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-                Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-            </p>
-            <p>
-                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam,
-                eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-            </p>
-        </div>
-
-        <div class="section">
-            <h2>🎨 Features & Benefits</h2>
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h3>Easy Setup</h3>
-                    <p>Configure popups in minutes through an intuitive dashboard interface.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Smart Triggers</h3>
-                    <p>Multiple trigger options ensure your message appears at the perfect moment.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>No Coding Required</h3>
-                    <p>Visual editor makes it simple for anyone to create stunning popups.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Mobile Optimized</h3>
-                    <p>Popups look great and function perfectly on all device sizes.</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>🚀 More Sample Content</h2>
-            <p>
-                Keep scrolling to test the scroll depth trigger! This page is intentionally long to demonstrate
-                how popups can be triggered at specific scroll percentages (e.g., 50%, 75%, etc.).
-            </p>
-            <p>
-                You can also try hovering your mouse near the top edge of the browser window to trigger
-                the exit intent popup. This is a powerful tool for capturing users who are about to leave your site.
-            </p>
-        </div>
-
-        <div class="section">
-            <h2>💡 Use Cases</h2>
-            <p><strong>E-commerce:</strong> Show discount codes to increase conversions</p>
-            <p><strong>SaaS:</strong> Announce new features or product updates</p>
-            <p><strong>Media:</strong> Promote latest articles or video content</p>
-            <p><strong>Education:</strong> Share course previews or enrollment offers</p>
-        </div>
-
-        <div class="section">
-            <h2>🎯 Best Practices</h2>
-            <p>
-                <strong>Timing is everything:</strong> Don't interrupt users immediately. Let them explore your content first.
-            </p>
-            <p>
-                <strong>Clear messaging:</strong> Keep your popup content concise and action-oriented.
-            </p>
-            <p>
-                <strong>Value proposition:</strong> Make sure your popup offers real value to the visitor.
-            </p>
-            <p>
-                <strong>Test different triggers:</strong> Experiment to find what works best for your audience.
-            </p>
-        </div>
-
-        <div class="section" style="margin-top: 100px;">
-            <h2>🎊 You've Reached the Bottom!</h2>
-            <p>
-                If you scrolled all the way down, you should have triggered the scroll depth popup (if configured to 75% or 100%).
-                Great job testing! 🎉
-            </p>
+    <div class="hero">
+        <div class="badge">🚀 Now in Beta</div>
+        <h1>CloudSync</h1>
+        <p class="subtitle">Sync your files, photos, and data across all your devices. Simple, secure, and blazing fast.</p>
+        <div class="cta-buttons">
+            <button class="btn btn-primary">Get Started Free</button>
+            <button class="btn btn-secondary">Watch Demo</button>
         </div>
     </div>
 
-    <!-- Orchis Chatbot Widget -->
+    <div class="features">
+        <div class="features-grid">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <h3>Lightning Fast</h3>
+                <p>Sync your files in seconds with our optimized cloud infrastructure</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <h3>Secure & Private</h3>
+                <p>End-to-end encryption keeps your data safe and private</p>
+            </div>
+            <div class="feature">
+                <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h3>Works Everywhere</h3>
+                <p>Access your files from any device, anywhere in the world</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="social-proof">
+        <h2>Trusted by thousands</h2>
+        <p>Join over 50,000 users who rely on CloudSync every day</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number">50K+</div>
+                <div class="stat-label">Users</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">10M+</div>
+                <div class="stat-label">Files Synced</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">99.9%</div>
+                <div class="stat-label">Uptime</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Widget Script -->
+    <script src="/chatbot-widget.js"></script>
+    <script>
+        OrchisWidget.init({
+            apiKey: 'test-key-12345',
+            agentId: 'test-agent',
+            projectName: 'CloudSync'
+        });
+
+        // Test popup after 5 seconds
+        setTimeout(() => {
+            OrchisWidget.showPopup({
+                type: 'discount',
+                title: '🎉 Welcome Offer!',
+                message: 'Get 50% off your first 3 months',
+                codeType: 'discount',
+                code: 'CLOUD50'
+            });
+        }, 5000);
+    </script>
+
+        <!-- Orchis Chatbot Widget -->
     <script>
     (function(){
       if(!window.OrchisChatbot){
@@ -295,7 +271,7 @@
           if(window.OrchisChatbot) {
             window.OrchisChatbot.init({
               // IMPORTANT: Replace with your actual agent ID
-              agentId: 'YUtxUdsTvLauRmozIgKT'
+              agentId: 'ya1zzwmkoMil65IPEqoq'
             });
           }
         };
@@ -303,25 +279,5 @@
       }
     })();
     </script>
-
-    <!--
-    🧪 TESTING INSTRUCTIONS:
-
-    Option 1 - Test with local dev server:
-    1. Make sure your dev server is running: npm run dev
-    2. Open this file directly in browser: file:///path/to/popup-test.html
-    3. Widget will load from localhost:5173
-
-    Option 2 - Test with production:
-    1. Change script.src to: 'https://orchis.app/chatbot-widget.js'
-    2. Replace YOUR_AGENT_ID_HERE with real agent ID
-    3. Open file in browser
-
-    Option 3 - Test with static file server:
-    1. cd to public folder
-    2. Run: python3 -m http.server 8000
-    3. Open: http://localhost:8000/popup-test.html
-    4. Change script.src to: './chatbot-widget.js'
-    -->
 </body>
 </html>

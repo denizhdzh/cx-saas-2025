@@ -15,8 +15,8 @@ const SENTIMENT_MAPPING = {
 };
 
 const COLORS = {
-  light: '#8b5cf64a', // violet-500 with opacity
-  dark: '#a78bfa4a'   // violet-400 with opacity
+  light: '#f973164a', // violet-500 with opacity
+  dark: '#f973164a'   // violet-400 with opacity
 };
 
 export default function SentimentChart({ data = [] }) {

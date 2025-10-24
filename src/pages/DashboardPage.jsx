@@ -240,6 +240,7 @@ export default function DashboardPage() {
           {/* View Content */}
           {showEmbedView ? (
             <EmbedView
+              key={selectedAgent?.id}
               agent={selectedAgent}
               onBack={() => {
                 setShowEmbedView(false);
@@ -249,6 +250,7 @@ export default function DashboardPage() {
             />
           ) : (
             <AgentDashboard
+              key={selectedAgent?.id}
               agent={selectedAgent}
               onShowEmbed={() => setShowEmbedView(true)}
             />

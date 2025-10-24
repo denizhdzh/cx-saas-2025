@@ -3,7 +3,7 @@ import { useAgent } from '../contexts/AgentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   BinaryCodeIcon,
@@ -15,6 +15,9 @@ import {
   GiftIcon,
   Alert02Icon,
   CheckmarkCircle01Icon,
+  FolderLibraryIcon,
+  FileUploadIcon,
+  Delete02Icon,
 } from '@hugeicons/core-free-icons';
 
 
@@ -49,6 +52,15 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
   const [logoPreview, setLogoPreview] = useState(null);
   const [activeSection, setActiveSection] = useState(initialSection || 'branding');
   const [alerts, setAlerts] = useState([]);
+  const [trainingSources, setTrainingSources] = useState([]);
+  const [loadingTrainingData, setLoadingTrainingData] = useState(false);
+  const [showAddDataModal, setShowAddDataModal] = useState(false);
+  const [showDeleteRetrainModal, setShowDeleteRetrainModal] = useState(false);
+  const [newTrainingText, setNewTrainingText] = useState('');
+  const [retrainText, setRetrainText] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [retrainUploadedFiles, setRetrainUploadedFiles] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (agent) {
@@ -90,6 +102,49 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
 
     return () => unsubscribe();
   }, [user, agent]);
+
+  // Load training data (chunks)
+  useEffect(() => {
+    if (!user || !agent) return;
+
+    const loadTrainingData = async () => {
+      setLoadingTrainingData(true);
+      try {
+        const chunksRef = collection(db, 'users', user.uid, 'agents', agent.id, 'chunks');
+        const snapshot = await getDocs(chunksRef);
+
+        // Group chunks by source
+        const sourceMap = {};
+        snapshot.forEach(doc => {
+          const chunk = doc.data();
+          const source = chunk.source || 'Unknown Source';
+
+          if (!sourceMap[source]) {
+            sourceMap[source] = {
+              source: source,
+              chunks: [],
+              totalChunks: 0,
+              totalChars: 0,
+              fileType: chunk.metadata?.fileType || 'text/plain'
+            };
+          }
+
+          sourceMap[source].chunks.push({ id: doc.id, ...chunk });
+          sourceMap[source].totalChunks++;
+          sourceMap[source].totalChars += (chunk.content?.length || 0);
+        });
+
+        setTrainingSources(Object.values(sourceMap));
+      } catch (error) {
+        console.error('Error loading training data:', error);
+        showNotification('Error loading training data', 'error');
+      } finally {
+        setLoadingTrainingData(false);
+      }
+    };
+
+    loadTrainingData();
+  }, [user, agent, showNotification]);
 
   const embedCode = agent ? `<!-- Orchis Chatbot -->
 <script>
@@ -297,8 +352,320 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
     }
   };
 
+  // Delete training source (all chunks from a specific source)
+  const handleDeleteTrainingSource = async (sourceName) => {
+    if (!user || !agent) return;
+
+    const confirmed = window.confirm(`Are you sure you want to delete all chunks from "${sourceName}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setLoadingTrainingData(true);
+
+      const chunksRef = collection(db, 'users', user.uid, 'agents', agent.id, 'chunks');
+      const snapshot = await getDocs(chunksRef);
+
+      const batch = writeBatch(db);
+      let deleteCount = 0;
+
+      snapshot.forEach(docSnapshot => {
+        const chunk = docSnapshot.data();
+        if (chunk.source === sourceName) {
+          batch.delete(docSnapshot.ref);
+          deleteCount++;
+        }
+      });
+
+      await batch.commit();
+
+      // Reload training data
+      setTrainingSources(prev => prev.filter(s => s.source !== sourceName));
+
+      showNotification(`Deleted ${deleteCount} chunks from "${sourceName}"`, 'success');
+    } catch (error) {
+      console.error('Error deleting training source:', error);
+      showNotification('Error deleting training source: ' + error.message, 'error');
+    } finally {
+      setLoadingTrainingData(false);
+    }
+  };
+
+  // Open delete & retrain modal
+  const handleRetrainAll = () => {
+    setShowDeleteRetrainModal(true);
+  };
+
+  // Delete all chunks and retrain with new data
+  const handleDeleteAndRetrain = async () => {
+    if (!user || !agent) return;
+
+    const readyFiles = retrainUploadedFiles.filter(f => f.status === 'ready');
+    const totalContent = retrainText.trim().length + readyFiles.reduce((acc, f) => acc + (f.textContent?.length || 0), 0);
+
+    if (totalContent === 0) {
+      showNotification('Please add some training data (text or files)', 'error');
+      return;
+    }
+
+    try {
+      setLoadingTrainingData(true);
+
+      // Step 1: Delete all existing chunks
+      const chunksRef = collection(db, 'users', user.uid, 'agents', agent.id, 'chunks');
+      const snapshot = await getDocs(chunksRef);
+
+      const batch = writeBatch(db);
+      snapshot.forEach(docSnapshot => {
+        batch.delete(docSnapshot.ref);
+      });
+
+      await batch.commit();
+      console.log(`🗑️ Deleted ${snapshot.size} old chunks`);
+
+      // Step 2: Combine text and file contents
+      let combinedText = retrainText.trim();
+      readyFiles.forEach(file => {
+        if (file.textContent) {
+          combinedText += '\n\n' + file.textContent;
+        }
+      });
+
+      // Step 3: Train with new data immediately
+      const { functions } = await import('../firebase');
+      const { httpsCallable } = await import('firebase/functions');
+      const addTrainingData = httpsCallable(functions, 'addTrainingData');
+
+      await addTrainingData({
+        agentId: agent.id,
+        trainingText: combinedText
+      });
+
+      console.log('✅ Re-trained with new data');
+
+      // Step 4: Update agent status
+      await updateAgent(agent.id, {
+        trainingStatus: 'trained',
+        updatedAt: new Date().toISOString()
+      });
+
+      // Reload training data
+      const newSnapshot = await getDocs(chunksRef);
+      const sourceMap = {};
+      newSnapshot.forEach(doc => {
+        const chunk = doc.data();
+        const source = chunk.source || 'Unknown Source';
+        if (!sourceMap[source]) {
+          sourceMap[source] = {
+            source: source,
+            chunks: [],
+            totalChunks: 0,
+            totalChars: 0,
+            fileType: chunk.metadata?.fileType || 'text/plain'
+          };
+        }
+        sourceMap[source].chunks.push({ id: doc.id, ...chunk });
+        sourceMap[source].totalChunks++;
+        sourceMap[source].totalChars += (chunk.content?.length || 0);
+      });
+      setTrainingSources(Object.values(sourceMap));
+
+      showNotification('Successfully deleted old data and re-trained with new data!', 'success');
+      setShowDeleteRetrainModal(false);
+      setRetrainText('');
+      setRetrainUploadedFiles([]);
+
+    } catch (error) {
+      console.error('Error in delete & retrain:', error);
+      showNotification('Error: ' + error.message, 'error');
+    } finally {
+      setLoadingTrainingData(false);
+    }
+  };
+
+  // Handle file upload for Add Data modal
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setIsUploading(true);
+
+    for (const file of files) {
+      const fileData = {
+        file: file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        status: 'uploading',
+        textContent: null
+      };
+
+      setUploadedFiles(prev => [...prev, fileData]);
+
+      try {
+        // Upload to Firebase Storage
+        const { storage } = await import('../firebase');
+        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+
+        const storageRef = ref(storage, `training-files/${user.uid}/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+
+        // Process document to extract text
+        const { functions } = await import('../firebase');
+        const { httpsCallable } = await import('firebase/functions');
+        const processDocument = httpsCallable(functions, 'processDocument');
+
+        const result = await processDocument({
+          agentId: 'temp',
+          fileName: file.name,
+          fileUrl: url
+        });
+
+        // Update file status
+        setUploadedFiles(prev => prev.map(f =>
+          f.name === file.name ? { ...f, status: 'ready', textContent: result.data.textContent } : f
+        ));
+
+      } catch (error) {
+        console.error('File upload error:', error);
+        setUploadedFiles(prev => prev.map(f =>
+          f.name === file.name ? { ...f, status: 'error' } : f
+        ));
+        showNotification(`Error processing ${file.name}: ${error.message}`, 'error');
+      }
+    }
+
+    setIsUploading(false);
+  };
+
+  // Handle file upload for Retrain modal
+  const handleRetrainFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setIsUploading(true);
+
+    for (const file of files) {
+      const fileData = {
+        file: file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        status: 'uploading',
+        textContent: null
+      };
+
+      setRetrainUploadedFiles(prev => [...prev, fileData]);
+
+      try {
+        // Upload to Firebase Storage
+        const { storage } = await import('../firebase');
+        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+
+        const storageRef = ref(storage, `training-files/${user.uid}/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+
+        // Process document to extract text
+        const { functions } = await import('../firebase');
+        const { httpsCallable } = await import('firebase/functions');
+        const processDocument = httpsCallable(functions, 'processDocument');
+
+        const result = await processDocument({
+          agentId: 'temp',
+          fileName: file.name,
+          fileUrl: url
+        });
+
+        // Update file status
+        setRetrainUploadedFiles(prev => prev.map(f =>
+          f.name === file.name ? { ...f, status: 'ready', textContent: result.data.textContent } : f
+        ));
+
+      } catch (error) {
+        console.error('File upload error:', error);
+        setRetrainUploadedFiles(prev => prev.map(f =>
+          f.name === file.name ? { ...f, status: 'error' } : f
+        ));
+        showNotification(`Error processing ${file.name}: ${error.message}`, 'error');
+      }
+    }
+
+    setIsUploading(false);
+  };
+
+  // Add new training data (append to existing chunks)
+  const handleAddTrainingData = async () => {
+    if (!user || !agent) return;
+
+    const readyFiles = uploadedFiles.filter(f => f.status === 'ready');
+    const totalContent = newTrainingText.trim().length + readyFiles.reduce((acc, f) => acc + (f.textContent?.length || 0), 0);
+
+    if (totalContent === 0) {
+      showNotification('Please add some training data (text or files)', 'error');
+      return;
+    }
+
+    try {
+      setLoadingTrainingData(true);
+
+      // Combine text and file contents
+      let combinedText = newTrainingText.trim();
+      readyFiles.forEach(file => {
+        if (file.textContent) {
+          combinedText += '\n\n' + file.textContent;
+        }
+      });
+
+      // Call backend to chunk and add embeddings
+      const { functions } = await import('../firebase');
+      const { httpsCallable } = await import('firebase/functions');
+      const addTrainingData = httpsCallable(functions, 'addTrainingData');
+
+      await addTrainingData({
+        agentId: agent.id,
+        trainingText: combinedText
+      });
+
+      showNotification('Training data added successfully!', 'success');
+      setShowAddDataModal(false);
+      setNewTrainingText('');
+      setUploadedFiles([]);
+
+      // Reload training data
+      const chunksRef = collection(db, 'users', user.uid, 'agents', agent.id, 'chunks');
+      const snapshot = await getDocs(chunksRef);
+      const sourceMap = {};
+      snapshot.forEach(doc => {
+        const chunk = doc.data();
+        const source = chunk.source || 'Unknown Source';
+        if (!sourceMap[source]) {
+          sourceMap[source] = {
+            source: source,
+            chunks: [],
+            totalChunks: 0,
+            totalChars: 0,
+            fileType: chunk.metadata?.fileType || 'text/plain'
+          };
+        }
+        sourceMap[source].chunks.push({ id: doc.id, ...chunk });
+        sourceMap[source].totalChunks++;
+        sourceMap[source].totalChars += (chunk.content?.length || 0);
+      });
+      setTrainingSources(Object.values(sourceMap));
+
+    } catch (error) {
+      console.error('Error adding training data:', error);
+      showNotification('Error adding training data: ' + error.message, 'error');
+    } finally {
+      setLoadingTrainingData(false);
+    }
+  };
+
+
   const sections = [
     { id: 'branding', title: 'Branding', icon: Store01Icon },
+    { id: 'training', title: 'Training Data', icon: FolderLibraryIcon },
     { id: 'security', title: 'Allowed Domains', icon: BinaryCodeIcon },
     { id: 'discounts', title: 'Dynamic Contents', icon: GiftIcon },
     { id: 'alerts', title: 'Security Alerts', icon: Alert02Icon },
@@ -728,6 +1095,119 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
   );
 
 
+  const renderTrainingDataSection = () => {
+    const totalChunks = trainingSources.reduce((sum, s) => sum + s.totalChunks, 0);
+    const totalChars = trainingSources.reduce((sum, s) => sum + s.totalChars, 0);
+
+    return (
+      <div className="space-y-6">
+        {/* 3 Main Options */}
+        <div className="space-y-4">
+          {/* Option 1: Add New Data */}
+          <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-black dark:text-white mb-1">Add New Training Data</h4>
+                <p className="text-xs text-stone-600 dark:text-stone-400">
+                  Add new content without affecting existing chunks. Appends to your current training data.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddDataModal(true)}
+                className="btn-primary text-xs py-2 px-4 whitespace-nowrap"
+              >
+                Add Data
+              </button>
+            </div>
+          </div>
+
+          {/* Option 2: Delete All & Re-train */}
+          <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-black dark:text-white mb-1">Delete All & Re-train</h4>
+                <p className="text-xs text-stone-600 dark:text-stone-400">
+                  Remove all training data and start fresh. Use when rebuilding your entire knowledge base.
+                </p>
+              </div>
+              <button
+                onClick={handleRetrainAll}
+                disabled={loadingTrainingData || trainingSources.length === 0}
+                className="btn-secondary text-xs py-2 px-4 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+            <div className="text-xs text-stone-500 mb-1">Total Sources</div>
+            <div className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
+              {trainingSources.length}
+            </div>
+          </div>
+          <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+            <div className="text-xs text-stone-500 mb-1">Total Embedding Knowledge</div>
+            <div className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
+              {totalChunks}
+            </div>
+          </div>
+        </div>
+
+        {/* Training Sources List */}
+        {loadingTrainingData ? (
+          <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+            <div className="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+            <p className="text-sm text-stone-500">Loading training data...</p>
+          </div>
+        ) : trainingSources.length === 0 ? (
+          <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+            <HugeiconsIcon icon={FolderLibraryIcon} className="w-12 h-12 text-stone-300 dark:text-stone-600 mx-auto mb-3" />
+            <p className="text-sm text-stone-500">No training data yet</p>
+            <p className="text-xs text-stone-400 mt-1">Upload documents in the agent creation page to train your agent</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-black dark:text-white">Training Sources</h3>
+            {trainingSources.map((source, idx) => (
+              <div key={idx} className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <HugeiconsIcon icon={FolderLibraryIcon} className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                      <p className="text-sm font-medium text-black dark:text-white">{source.source}</p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-stone-500">
+                      <span>{source.totalChunks} chunks</span>
+                      <span>•</span>
+                      <span>{source.totalChars.toLocaleString()} characters</span>
+                      <span>•</span>
+                      <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+                        {source.fileType}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <button
+                      onClick={() => handleDeleteTrainingSource(source.source)}
+                      disabled={loadingTrainingData}
+                      className="text-xs text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderAlertsSection = () => {
     const unreadAlerts = alerts.filter(alert => !alert.read);
     const readAlerts = alerts.filter(alert => alert.read);
@@ -919,12 +1399,188 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
           </h2>
           
           {activeSection === 'branding' && renderBrandingSection()}
+          {activeSection === 'training' && renderTrainingDataSection()}
           {activeSection === 'security' && renderSecuritySection()}
           {activeSection === 'discounts' && renderDiscountsSection()}
           {activeSection === 'alerts' && renderAlertsSection()}
           {activeSection === 'embed' && renderEmbedSection()}
         </div>
       </div>
+
+      {/* Add Training Data Modal */}
+      {showAddDataModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Add New Training Data</h3>
+
+            <div className="space-y-4">
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium text-black dark:text-white mb-2">Upload Files (Optional)</label>
+                <input
+                  type="file"
+                  multiple
+                  accept=".txt,.pdf,.doc,.docx"
+                  onChange={handleFileUpload}
+                  className="block w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-stone-100 dark:file:bg-stone-800 file:text-stone-700 dark:file:text-stone-300 hover:file:bg-stone-200 dark:hover:file:bg-stone-700"
+                />
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {uploadedFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-stone-50 dark:bg-stone-800 rounded">
+                        <span className="flex-1 truncate">{file.name}</span>
+                        <span className={`px-2 py-0.5 rounded ${
+                          file.status === 'ready' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                          file.status === 'uploading' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+                          'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                        }`}>
+                          {file.status}
+                        </span>
+                        <button
+                          onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-red-600 dark:text-red-400 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Text Input */}
+              <div>
+                <label className="block text-sm font-medium text-black dark:text-white mb-2">Training Text (Optional)</label>
+                <textarea
+                  value={newTrainingText}
+                  onChange={(e) => setNewTrainingText(e.target.value)}
+                  placeholder="Or paste your training content here (FAQ, product info, etc.)..."
+                  className="w-full h-40 px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-black dark:text-white resize-none"
+                />
+                <p className="text-xs text-stone-500 mt-1">{newTrainingText.length} characters</p>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-lg p-3">
+                <p className="text-xs text-black dark:text-white">
+                  💡 Upload files and/or paste text. All content will be chunked and embedded, then added to your existing training data.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={handleAddTrainingData}
+                disabled={loadingTrainingData || isUploading || (uploadedFiles.filter(f => f.status === 'ready').length === 0 && !newTrainingText.trim())}
+                className="btn-primary text-xs py-2 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingTrainingData ? 'Adding...' : isUploading ? 'Processing Files...' : 'Add Training Data'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddDataModal(false);
+                  setNewTrainingText('');
+                  setUploadedFiles([]);
+                }}
+                disabled={loadingTrainingData || isUploading}
+                className="btn-secondary text-xs py-2 px-4 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All & Retrain Modal */}
+      {showDeleteRetrainModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Delete All & Re-train</h3>
+
+            <div className="space-y-4">
+              <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg p-4">
+                <p className="text-sm font-medium text-red-900 dark:text-red-100 mb-2">⚠️ Warning</p>
+                <p className="text-xs text-red-800 dark:text-red-200">
+                  This will permanently delete ALL existing training data ({trainingSources.reduce((sum, s) => sum + s.totalChunks, 0)} chunks from {trainingSources.length} sources) and replace it with your new training data below.
+                </p>
+              </div>
+
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium text-black dark:text-white mb-2">Upload Files (Optional)</label>
+                <input
+                  type="file"
+                  multiple
+                  accept=".txt,.pdf,.doc,.docx"
+                  onChange={handleRetrainFileUpload}
+                  className="block w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-stone-100 dark:file:bg-stone-800 file:text-stone-700 dark:file:text-stone-300 hover:file:bg-stone-200 dark:hover:file:bg-stone-700"
+                />
+                {retrainUploadedFiles.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {retrainUploadedFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-stone-50 dark:bg-stone-800 rounded">
+                        <span className="flex-1 truncate">{file.name}</span>
+                        <span className={`px-2 py-0.5 rounded ${
+                          file.status === 'ready' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                          file.status === 'uploading' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+                          'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                        }`}>
+                          {file.status}
+                        </span>
+                        <button
+                          onClick={() => setRetrainUploadedFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-red-600 dark:text-red-400 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Text Input */}
+              <div>
+                <label className="block text-sm font-medium text-black dark:text-white mb-2">New Training Data (Optional)</label>
+                <textarea
+                  value={retrainText}
+                  onChange={(e) => setRetrainText(e.target.value)}
+                  placeholder="Or paste your new training content here (FAQ, product info, etc.)..."
+                  className="w-full h-40 px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-black dark:text-white resize-none"
+                />
+                <p className="text-xs text-stone-500 mt-1">{retrainText.length} characters</p>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-lg p-3">
+                <p className="text-xs text-black dark:text-white">
+                  💡 Upload files and/or paste text. All old data will be deleted and your agent will be re-trained with the new content.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={handleDeleteAndRetrain}
+                disabled={loadingTrainingData || isUploading || (retrainUploadedFiles.filter(f => f.status === 'ready').length === 0 && !retrainText.trim())}
+                className="btn-primary text-xs text-white py-2 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingTrainingData ? 'Deleting & Re-training...' : isUploading ? 'Processing Files...' : 'Delete All & Re-train'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteRetrainModal(false);
+                  setRetrainText('');
+                  setRetrainUploadedFiles([]);
+                }}
+                disabled={loadingTrainingData || isUploading}
+                className="btn-secondary text-xs py-2 px-4 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

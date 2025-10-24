@@ -268,17 +268,17 @@ export default function UserWorldMap({ data }) {
 
     // Violet gradient based on intensity
     if (isDark) {
-      if (intensity > 0.8) return '#a78bfa'; // violet-400
-      if (intensity > 0.6) return '#a78bfacc'; // violet-400 80%
-      if (intensity > 0.4) return '#a78bfa99'; // violet-400 60%
-      if (intensity > 0.2) return '#a78bfa66'; // violet-400 40%
-      return '#a78bfa33'; // violet-400 20%
+      if (intensity > 0.8) return '#f97316'; // violet-400
+      if (intensity > 0.6) return '#f97316cc'; // violet-400 80%
+      if (intensity > 0.4) return '#f9731699'; // violet-400 60%
+      if (intensity > 0.2) return '#f9731666'; // violet-400 40%
+      return '#f9731633'; // violet-400 20%
     } else {
-      if (intensity > 0.8) return '#8b5cf6'; // violet-500
-      if (intensity > 0.6) return '#8b5cf6cc'; // violet-500 80%
-      if (intensity > 0.4) return '#8b5cf699'; // violet-500 60%
-      if (intensity > 0.2) return '#8b5cf666'; // violet-500 40%
-      return '#8b5cf633'; // violet-500 20%
+      if (intensity > 0.8) return '#f97316'; // violet-500
+      if (intensity > 0.6) return '#f97316cc'; // violet-500 80%
+      if (intensity > 0.4) return '#f9731699'; // violet-500 60%
+      if (intensity > 0.2) return '#f9731666'; // violet-500 40%
+      return '#f9731633'; // violet-500 20%
     }
   };
 
@@ -380,9 +380,9 @@ export default function UserWorldMap({ data }) {
         {/* Legend */}
         <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm rounded-md px-2 py-2">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#a78bfa33' : '#8b5cf633' }}></div>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#a78bfa99' : '#8b5cf699' }}></div>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#a78bfa' : '#8b5cf6' }}></div>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#f9731633' : '#f9731633' }}></div>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#f9731699' : '#f9731699' }}></div>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#f97316' : '#f97316' }}></div>
             <span className="text-xs text-white ml-1">Activity</span>
           </div>
         </div>

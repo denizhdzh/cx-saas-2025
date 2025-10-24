@@ -8,10 +8,8 @@ import UrgencyChart from './UrgencyChart';
 import TopicChart from './TopicChart';
 import UserWorldMap from './UserWorldMap';
 import LanguageChart from './LanguageChart';
-import EngagementChart from './EngagementChart';
 import BrowserChart from './BrowserChart';
 import DeviceChart from './DeviceChart';
-import DetailedMetricsCard from './DetailedMetricsCard';
 import ReturnUserChart from './ReturnUserChart';
 import KnowledgeGapModal from './KnowledgeGapModal';
 import IntentChart from './IntentChart';
@@ -61,6 +59,14 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Reset state when agent changes
+  useEffect(() => {
+    setAnalyticsData(null);
+    setKnowledgeGaps([]);
+    setSessions([]);
+    setTimeRange('weekly');
+  }, [agent?.id]);
 
   // Load analytics data when agent changes or timeRange changes
   useEffect(() => {
@@ -755,7 +761,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           ) : (
             <div className="h-64 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No customer conversations yet</div>
+                <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No tickets yet</div>
                 <div className="text-stone-300 dark:text-stone-600 text-xs">When someone reaches out with a question or issue, it'll appear here</div>
               </div>
             </div>

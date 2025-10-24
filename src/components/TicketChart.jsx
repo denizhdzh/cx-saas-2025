@@ -9,10 +9,10 @@ const COLORS = {
     darkBg: '#fb718580'   // rose-400 with 50% opacity for bars
   },
   nonAnalyzed: {
-    light: '#8b5cf6',     // violet-500 (full opacity)
-    dark: '#a78bfa',      // violet-400 (full opacity)
-    lightBg: '#8b5cf680', // violet-500 with 50% opacity for bars
-    darkBg: '#a78bfa80'   // violet-400 with 50% opacity for bars
+    light: '#f97316',     // violet-500 (full opacity)
+    dark: '#f97316',      // violet-400 (full opacity)
+    lightBg: '#f9731680', // violet-500 with 50% opacity for bars
+    darkBg: '#f9731680'   // violet-400 with 50% opacity for bars
   }
 };
 

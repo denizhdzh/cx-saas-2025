@@ -1,19 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const [isYearly, setIsYearly] = useState(true);
 
   const plans = [
     {
       name: "Starter",
-      price: "$20",
-      period: "month",
+      priceMonthly: "$20",
+      priceYearly: "$200",
+      yearlyDiscount: "Save $40",
       description: "For small businesses",
       features: [
         "~1,500 messages/month",
         "1 AI agent",
         "Unlimited training data",
+        "Session intelligence",
+        "Page awareness",
         "Advanced analytics",
         "Email support"
       ],
@@ -22,13 +26,17 @@ export default function Pricing() {
     },
     {
       name: "Growth",
-      price: "$60",
-      period: "month",
+      priceMonthly: "$60",
+      priceYearly: "$600",
+      yearlyDiscount: "Save $120",
       description: "Most popular choice",
       features: [
         "~7,500 messages/month",
         "5 AI agents",
         "Unlimited training data",
+        "Session intelligence",
+        "Page awareness",
+        "Personalized messaging",
         "Advanced analytics",
         "White-label branding",
         "Priority support"
@@ -38,17 +46,22 @@ export default function Pricing() {
     },
     {
       name: "Scale",
-      price: "$200",
-      period: "month",
+      priceMonthly: "$200",
+      priceYearly: "$2,000",
+      yearlyDiscount: "Save $400",
       description: "For growing teams",
       features: [
         "~50,000 messages/month",
         "Unlimited AI agents",
         "Unlimited training data",
+        "Session intelligence",
+        "Page awareness",
+        "Personalized messaging",
         "Advanced analytics",
         "White-label branding",
         "Priority support",
-        "Export data (CSV/JSON)"
+        "Export data (CSV/JSON)",
+        "Custom integrations"
       ],
       cta: "Get Started",
       highlighted: false
@@ -65,9 +78,30 @@ export default function Pricing() {
           <h2 className="text-4xl sm:text-5xl font-bold text-neutral-900 mb-4">
             Simple, transparent pricing
           </h2>
-          <p className="text-lg text-neutral-600 max-w-3xl mx-auto">
+          <p className="text-lg text-neutral-600 max-w-3xl mx-auto mb-6">
             Start for free. Upgrade when you're ready. All plans include unlimited training data.
           </p>
+
+          {/* Monthly/Yearly Toggle */}
+          <div className="flex items-center justify-center gap-3">
+            <span className={`text-sm font-medium transition-colors ${!isYearly ? 'text-neutral-900' : 'text-neutral-400'}`}>
+              Monthly
+            </span>
+            <button
+              onClick={() => setIsYearly(!isYearly)}
+              className="relative w-14 h-7 bg-neutral-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+              style={{ backgroundColor: isYearly ? '#f97316' : '#e5e5e5' }}
+            >
+              <span
+                className="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform"
+                style={{ transform: isYearly ? 'translateX(28px)' : 'translateX(0)' }}
+              />
+            </button>
+            <span className={`text-sm font-medium transition-colors ${isYearly ? 'text-neutral-900' : 'text-neutral-400'}`}>
+              Yearly
+              <span className="ml-1.5 text-xs text-orange-500 font-semibold">Save up to 17%</span>
+            </span>
+          </div>
         </div>
 
         {/* Single Unified Card */}
@@ -102,14 +136,24 @@ export default function Pricing() {
 
                 {/* Price Card */}
                 <div className="bg-neutral-50 border border-neutral-200/60 rounded-2xl p-5 mb-4">
-                  <div className="flex items-baseline gap-1">
+                  {isYearly && (
+                    <div className="text-xs text-green-600 font-medium mb-2">
+                      {plan.yearlyDiscount}
+                    </div>
+                  )}
+                  <div className="flex items-baseline gap-1 mb-1">
                     <span className="text-3xl font-bold text-neutral-900">
-                      {plan.price}
+                      {isYearly ? `$${Math.round(parseInt(plan.priceYearly.replace('$', '').replace(',', '')) / 12)}` : plan.priceMonthly}
                     </span>
                     <span className="text-xs text-neutral-500">
-                      /{plan.period}
+                      /month
                     </span>
                   </div>
+                  {isYearly && (
+                    <div className="text-xs text-neutral-500">
+                      Billed yearly {plan.priceYearly}
+                    </div>
+                  )}
                 </div>
 
                 {/* Features Card */}

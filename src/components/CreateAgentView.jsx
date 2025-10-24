@@ -27,7 +27,7 @@ import {
 export default function CreateAgentView({ onBack }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { createAgent } = useAgent();
+  const { createAgent, agents } = useAgent();
   const { showNotification } = useNotification();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -1934,14 +1934,16 @@ export default function CreateAgentView({ onBack }) {
         <div className="grid grid-cols-1 lg:grid-cols-2">
           {/* Left Column - Form */}
           <div className="p-4 sm:p-6 lg:p-10 flex flex-col min-h-[600px] lg:min-h-[700px]">
-            {/* Back Button */}
-            <button
-              onClick={onBack}
-              className="flex items-center gap-1.5 px-2 py-1 text-stone-500 hover:text-stone-900 dark:hover:text-stone-50 transition-colors rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 mb-4 text-xs w-fit"
-            >
-              <ArrowLeftIcon className="w-3 h-3" />
-              Cancel
-            </button>
+            {/* Back Button - Only show if user has other agents */}
+            {agents && agents.length > 0 && (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-1.5 px-2 py-1 text-stone-500 hover:text-stone-900 dark:hover:text-stone-50 transition-colors rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 mb-4 text-xs w-fit"
+              >
+                <ArrowLeftIcon className="w-3 h-3" />
+                Cancel
+              </button>
+            )}
             {/* Welcome Message - Only show on Step 1 */}
             {currentStep === 1 && (
               <>

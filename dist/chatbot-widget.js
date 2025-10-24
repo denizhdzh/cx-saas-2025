@@ -770,7 +770,7 @@
           background: rgba(255, 255, 255, 0);
           border: none;
           border-radius: 20px;
-          padding: 2px;
+          padding: 3px 5px 3px 3px;
           transition: all 0.2s ease;
           flex: 1;
         }
@@ -1914,7 +1914,7 @@ buildVideoPopup: function(popup) {
           <div class="orchis-offer-title" style="margin:0; font-size:14px; font-weight:bold;">
             ${popup.title || 'Watch Video'}
           </div>
-          ${popup.message ? `<div class="orchis-offer-subtitle" style="margin:2px 0 0; font-size:12px; color:#555;">
+          ${popup.message ? `<div class="orchis-offer-subtitle" style="margin:2px 0 0; font-size:12px; color:#ffffff;">
             ${popup.message}
           </div>` : ''}
         </div>

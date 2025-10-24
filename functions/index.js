@@ -578,17 +578,21 @@ exports.chatWithAgentExternal = onRequest({
     if (agent.allowedDomains && agent.allowedDomains.length > 0) {
       let domainAllowed = false;
 
-      if (origin) {
-        const requestDomain = new URL(origin).hostname;
-        console.log('🔍 Checking domain:', requestDomain);
+      if (origin && origin !== 'null' && origin !== 'undefined') {
+        try {
+          const requestDomain = new URL(origin).hostname;
+          console.log('🔍 Checking domain:', requestDomain);
 
-        for (const allowedDomain of agent.allowedDomains) {
-          const cleanDomain = allowedDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-          if (requestDomain === cleanDomain || requestDomain.endsWith('.' + cleanDomain)) {
-            domainAllowed = true;
-            console.log('✅ Domain allowed:', requestDomain);
-            break;
+          for (const allowedDomain of agent.allowedDomains) {
+            const cleanDomain = allowedDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            if (requestDomain === cleanDomain || requestDomain.endsWith('.' + cleanDomain)) {
+              domainAllowed = true;
+              console.log('✅ Domain allowed:', requestDomain);
+              break;
+            }
           }
+        } catch (error) {
+          console.error('❌ Error parsing origin URL:', origin, error);
         }
       }
 
@@ -2147,6 +2151,194 @@ Return ONLY the enhanced answer, without any preamble or explanation.`;
 });
 
 // Initialize user document on first sign-in
+// Add new training data (append to existing chunks)
+exports.addTrainingData = onCall({
+  timeoutSeconds: 300,
+  memory: '1GiB'
+}, async (request) => {
+  if (!request.auth) {
+    throw new Error('User must be authenticated');
+  }
+
+  const { agentId, trainingText } = request.data;
+  const userId = request.auth.uid;
+
+  try {
+    console.log('📝 Adding new training data for agent:', agentId);
+
+    // Chunk the text
+    const chunks = chunkText(trainingText);
+    console.log(`✂️ Created ${chunks.length} chunks from new training text`);
+
+    const agentRef = db.collection('users').doc(userId).collection('agents').doc(agentId);
+    const allChunks = [];
+
+    // Create embeddings for each chunk
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+
+      try {
+        // Rate limiting
+        const now = Date.now();
+        const timeSinceLastCall = now - lastApiCall;
+        if (timeSinceLastCall < MIN_API_INTERVAL) {
+          await delay(MIN_API_INTERVAL - timeSinceLastCall);
+        }
+        lastApiCall = now;
+
+        // Generate embedding
+        const embeddingResponse = await getOpenAI().embeddings.create({
+          model: "text-embedding-ada-002",
+          input: chunk,
+        });
+
+        const embedding = embeddingResponse.data[0].embedding;
+
+        // Store chunk with embedding
+        const chunkRef = agentRef.collection('chunks').doc();
+        const chunkData = {
+          id: chunkRef.id,
+          content: chunk,
+          embedding: embedding,
+          source: 'Added Training Content',
+          sourceId: `added-${Date.now()}`,
+          index: i,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          metadata: {
+            fileType: 'text/plain',
+            fileName: 'Added Training Content',
+            chunkIndex: i,
+            totalChunks: chunks.length,
+            originalSize: trainingText.length,
+            embeddingModel: "text-embedding-ada-002"
+          }
+        };
+
+        await chunkRef.set(chunkData);
+        allChunks.push(chunkData);
+
+        console.log(`✅ Created embedding for chunk ${i + 1}/${chunks.length}`);
+      } catch (error) {
+        console.error(`❌ Error creating embedding for chunk ${i}:`, error);
+      }
+    }
+
+    // Update agent total chunks
+    await agentRef.update({
+      totalChunks: admin.firestore.FieldValue.increment(chunks.length),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`✅ Added ${allChunks.length} new chunks to agent ${agentId}`);
+
+    return {
+      success: true,
+      chunksAdded: allChunks.length,
+      message: 'Training data added successfully'
+    };
+
+  } catch (error) {
+    console.error('❌ Error adding training data:', error);
+    throw new Error(`Failed to add training data: ${error.message}`);
+  }
+});
+
+// Update chunk with AI (intelligently replace specific info)
+exports.updateChunkWithAI = onCall({
+  timeoutSeconds: 120,
+  memory: '512MiB'
+}, async (request) => {
+  if (!request.auth) {
+    throw new Error('User must be authenticated');
+  }
+
+  const { agentId, chunkId, oldInfo, newInfo, originalContent } = request.data;
+  const userId = request.auth.uid;
+
+  try {
+    console.log(`🤖 Updating chunk ${chunkId} with AI`);
+    console.log(`📝 Replacing "${oldInfo}" with "${newInfo}"`);
+
+    // Use AI to intelligently update the chunk content
+    const updatePrompt = `You are a precise text editor. Update the following text by replacing "${oldInfo}" with "${newInfo}", while keeping everything else exactly the same.
+
+Original text:
+${originalContent}
+
+Instructions:
+- Only replace "${oldInfo}" with "${newInfo}"
+- Keep all other text, formatting, and structure identical
+- If the old info appears multiple times, replace all occurrences
+- Return ONLY the updated text, no explanations
+
+Updated text:`;
+
+    // Rate limiting
+    const now = Date.now();
+    const timeSinceLastCall = now - lastApiCall;
+    if (timeSinceLastCall < MIN_API_INTERVAL) {
+      await delay(MIN_API_INTERVAL - timeSinceLastCall);
+    }
+    lastApiCall = Date.now();
+
+    const completion = await getOpenAI().chat.completions.create({
+      model: "gpt-4.1-nano",
+      messages: [
+        {
+          role: "system",
+          content: "You are a precise text editor. Only make the requested changes, nothing more."
+        },
+        {
+          role: "user",
+          content: updatePrompt
+        }
+      ],
+      max_completion_tokens: 2000,
+      temperature: 0.1
+    });
+
+    const updatedContent = completion.choices[0].message.content.trim();
+    console.log(`✅ AI updated the content`);
+
+    // Generate new embedding for updated content
+    const embeddingResponse = await getOpenAI().embeddings.create({
+      model: "text-embedding-ada-002",
+      input: updatedContent,
+    });
+
+    const newEmbedding = embeddingResponse.data[0].embedding;
+
+    // Update the chunk in Firestore
+    const chunkRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('chunks').doc(chunkId);
+
+    await chunkRef.update({
+      content: updatedContent,
+      embedding: newEmbedding,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      'metadata.lastUpdated': new Date().toISOString(),
+      'metadata.updateHistory': admin.firestore.FieldValue.arrayUnion({
+        oldInfo: oldInfo,
+        newInfo: newInfo,
+        updatedAt: new Date().toISOString()
+      })
+    });
+
+    console.log(`✅ Chunk ${chunkId} updated successfully`);
+
+    return {
+      success: true,
+      updatedContent: updatedContent,
+      message: 'Chunk updated successfully'
+    };
+
+  } catch (error) {
+    console.error('❌ Error updating chunk:', error);
+    throw new Error(`Failed to update chunk: ${error.message}`);
+  }
+});
+
 exports.initializeUser = onCall({ cors: true }, async (request) => {
   try {
     const userId = request.auth?.uid;
