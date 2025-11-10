@@ -75,31 +75,50 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
 
     // Calculate date range
     switch (timeRange) {
-      case 'weekly':
+      case 'hourly': // Last 24 hours
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case 'daily': // Last 7 days
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
-      case 'monthly':
+      case 'weekly': // Last 30 days
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
-      default: // daily
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      case 'quarterly': // Last 90 days
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case 'alltime': // All time - no filter
+        startDate = new Date(0); // January 1, 1970
+        break;
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     }
 
     // Get all sessions for this agent
     const sessionsRef = collection(db, 'users', userId, 'agents', agentId, 'sessions');
     const sessionsSnapshot = await getDocs(sessionsRef);
 
+    // Get all tickets for this agent
+    const ticketsRef = collection(db, 'users', userId, 'agents', agentId, 'tickets');
+    const ticketsSnapshot = await getDocs(ticketsRef);
+
     const allConversations = [];
     const allSessions = [];
     const allMessages = [];
+    const allTickets = [];
 
     // Process all sessions in parallel for maximum speed
     await Promise.all(sessionsSnapshot.docs.map(async (sessionDoc) => {
       const sessionData = sessionDoc.data();
-      allSessions.push({
-        id: sessionDoc.id,
-        ...sessionData
-      });
+      const sessionLastMessageTime = sessionData.lastMessageTime?.toDate?.();
+
+      // Only include sessions within time range
+      if (sessionLastMessageTime && sessionLastMessageTime >= startDate) {
+        allSessions.push({
+          id: sessionDoc.id,
+          ...sessionData
+        });
+      }
 
       const conversationsRef = collection(
         db, 'users', userId, 'agents', agentId, 'sessions', sessionDoc.id, 'conversations'
@@ -138,13 +157,25 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
       }));
     }));
 
+    // Filter tickets within time range
+    ticketsSnapshot.docs.forEach(ticketDoc => {
+      const ticketData = ticketDoc.data();
+      const ticketCreatedAt = ticketData.createdAt?.toDate?.();
+      if (ticketCreatedAt && ticketCreatedAt >= startDate) {
+        allTickets.push({
+          id: ticketDoc.id,
+          ...ticketData
+        });
+      }
+    });
+
     // Filter only analyzed conversations
     const analyzedConversations = allConversations.filter(conv =>
       conv.analyzed && conv.analysis
     );
 
-    // Build analytics from conversations (pass both all and analyzed, plus sessions and messages)
-    const analytics = buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions, allMessages);
+    // Build analytics from conversations (pass both all and analyzed, plus sessions, messages, and tickets)
+    const analytics = buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions, allMessages, allTickets);
 
     return analytics;
 
@@ -157,7 +188,7 @@ export const getConversationAnalytics = async (agentId, timeRange = 'daily', use
 /**
  * Build analytics data structure from analyzed conversations
  */
-function buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions = [], allMessages = []) {
+function buildAnalyticsFromConversations(allConversations, analyzedConversations, timeRange, allSessions = [], allMessages = [], allTickets = []) {
   // Initialize chart data structure
   const chartData = {};
   const now = new Date();
@@ -303,10 +334,10 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
       percentage: allConversations.length > 0 ? Math.round((value / allConversations.length) * 100) : 0
     }));
 
-  // Calculate sentiment distribution (from ALL messages with analytics.sentimentScore)
+  // Calculate sentiment distribution (from ALL messages with analytics.userSentimentScore)
   const sentimentBuckets = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
   allMessages.forEach(msg => {
-    const score = msg.analytics?.sentimentScore;
+    const score = msg.analytics?.userSentimentScore;
     if (score && score >= 1 && score <= 10) {
       sentimentBuckets[score] += 1;
     }
@@ -382,12 +413,30 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
   const confidenceRanges = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
   let totalConfidence = 0;
   let confidenceCount = 0;
+  let highConfidenceMessages = 0; // Count messages with >80% confidence
+  let totalAIMessages = 0; // Count total AI messages (messages with confidence)
+
+  // Group messages by conversation to calculate AI resolution rate
+  const messagesByConversation = {};
+  allMessages.forEach(msg => {
+    const convId = msg.conversationId || 'unknown';
+    if (!messagesByConversation[convId]) {
+      messagesByConversation[convId] = [];
+    }
+    messagesByConversation[convId].push(msg);
+  });
 
   allMessages.forEach(msg => {
     const confidence = msg.analytics?.aiConfidence || msg.analytics?.confidence;
     if (confidence !== undefined && confidence !== null) {
+      totalAIMessages++; // Count this as an AI message
       totalConfidence += confidence;
       confidenceCount++;
+
+      // Count high confidence messages (>80%)
+      if (confidence > 80) {
+        highConfidenceMessages++;
+      }
 
       // Categorize into ranges
       if (confidence >= 0 && confidence <= 20) confidenceRanges['0-20']++;
@@ -395,6 +444,19 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
       else if (confidence >= 41 && confidence <= 60) confidenceRanges['41-60']++;
       else if (confidence >= 61 && confidence <= 80) confidenceRanges['61-80']++;
       else if (confidence >= 81 && confidence <= 100) confidenceRanges['81-100']++;
+    }
+  });
+
+  // Calculate AI-resolved conversations (conversations with at least 1 message >80% confidence)
+  let aiResolvedConversations = 0;
+  allConversations.forEach(conv => {
+    const convMessages = messagesByConversation[conv.id] || [];
+    const hasHighConfidence = convMessages.some(msg => {
+      const confidence = msg.analytics?.aiConfidence || msg.analytics?.confidence;
+      return confidence !== undefined && confidence > 80;
+    });
+    if (hasHighConfidence) {
+      aiResolvedConversations++;
     }
   });
 
@@ -414,9 +476,9 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
   const unresolvedConversations = analyzedCount - resolvedConversations;
   const resolutionRate = analyzedCount > 0 ? Math.round((resolvedConversations / analyzedCount) * 100) : 0;
 
-  // Calculate average sentiment (from ALL conversations with latestAnalytics)
-  const sentimentScores = allConversations
-    .map(c => c.latestAnalytics?.userSentimentScore || c.analysis?.sentimentScore)
+  // Calculate average sentiment from ALL messages (user sentiment per message)
+  const sentimentScores = allMessages
+    .map(m => m.analytics?.userSentimentScore)
     .filter(score => score && score >= 1 && score <= 10);
   const avgSentiment = sentimentScores.length > 0
     ? (sentimentScores.reduce((sum, score) => sum + score, 0) / sentimentScores.length).toFixed(1)
@@ -540,6 +602,12 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
     totalSessions: allSessions.length
   };
 
+  // Calculate ticket creation rate and AI resolution rate
+  const totalMessages = allMessages.length;
+  const totalTickets = allTickets.length;
+  const ticketCreationRate = totalConversations > 0 ? Math.round((totalTickets / totalConversations) * 100) : 0;
+  const aiResolutionRate = totalAIMessages > 0 ? Math.round((highConfidenceMessages / totalAIMessages) * 100) : 0;
+
   return {
     chartData,
     categoryData,
@@ -562,7 +630,14 @@ function buildAnalyticsFromConversations(allConversations, analyzedConversations
       unresolvedConversations,
       resolutionRate,
       avgSentiment: parseFloat(avgSentiment),
-      avgConfidence
+      avgConfidence,
+      totalMessages,
+      totalAIMessages,
+      totalTickets,
+      highConfidenceMessages,
+      aiResolvedConversations,
+      ticketCreationRate,
+      aiResolutionRate
     },
     recentSessions,
     totalConversations: allConversations.length
@@ -629,7 +704,14 @@ function createEmptyAnalytics() {
       unresolvedConversations: 0,
       resolutionRate: 0,
       avgSentiment: 5.0,
-      avgConfidence: 0
+      avgConfidence: 0,
+      totalMessages: 0,
+      totalAIMessages: 0,
+      totalTickets: 0,
+      highConfidenceMessages: 0,
+      aiResolvedConversations: 0,
+      ticketCreationRate: 0,
+      aiResolutionRate: 0
     },
     recentSessions: [],
     totalConversations: 0

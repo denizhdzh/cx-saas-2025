@@ -146,23 +146,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
     loadTrainingData();
   }, [user, agent, showNotification]);
 
-  const embedCode = agent ? `<!-- Orchis Chatbot -->
-<script>
-(function(){
-  if(!window.OrchisChatbot){
-    const script = document.createElement('script');
-    script.src = 'https://orchis.app/chatbot-widget.js';
-    script.onload = function() {
-      if(window.OrchisChatbot) {
-        window.OrchisChatbot.init({
-          agentId: '${agent.id}'
-        });
-      }
-    };
-    document.head.appendChild(script);
-  }
-})();
-</script>` : '';
+  const embedCode = agent ? `<script src="https://orchis.app/chatbot-widget.js" data-agent-id="${agent.id}"></script>` : '';
 
   const copyToClipboard = async () => {
     try {

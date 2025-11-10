@@ -1,25 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDownIcon, DocumentArrowUpIcon, CogIcon } from '@heroicons/react/24/outline';
+import { ArrowDown01Icon, Settings02Icon, MachineRobotIcon } from '@hugeicons/core-free-icons';
 import TicketChart from './TicketChart';
 import CategoryDonutChart from './CategoryDonutChart';
 import SentimentChart from './SentimentChart';
 import UrgencyChart from './UrgencyChart';
-import TopicChart from './TopicChart';
 import UserWorldMap from './UserWorldMap';
 import LanguageChart from './LanguageChart';
 import BrowserChart from './BrowserChart';
 import DeviceChart from './DeviceChart';
 import ReturnUserChart from './ReturnUserChart';
+import { HugeiconsIcon } from '@hugeicons/react';
 import KnowledgeGapModal from './KnowledgeGapModal';
 import IntentChart from './IntentChart';
 import ConfidenceChart from './ConfidenceChart';
+import VisitorDetailModal from './VisitorDetailModal';
+import TicketDetailModal from './TicketDetailModal';
 import { useAgent } from '../contexts/AgentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getConversationAnalytics, getKnowledgeGaps } from '../utils/newAnalyticsFunctions';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function AgentDashboard({ agent, onShowEmbed }) {
   const navigate = useNavigate();
@@ -37,12 +38,16 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [selectedGap, setSelectedGap] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' or 'messages'
-  const [sessions, setSessions] = useState([]);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [conversationMessages, setConversationMessages] = useState([]);
-  const [isConversationModalOpen, setIsConversationModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('analytics'); // 'analytics', 'visitors', or 'tickets'
+  const [visitors, setVisitors] = useState([]);
+  const [visitorsLoading, setVisitorsLoading] = useState(false);
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [chatbotLoaded, setChatbotLoaded] = useState(false);
+  const [selectedVisitor, setSelectedVisitor] = useState(null);
+  const [isVisitorModalOpen, setIsVisitorModalOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -64,8 +69,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
   useEffect(() => {
     setAnalyticsData(null);
     setKnowledgeGaps([]);
-    setSessions([]);
+    setVisitors([]);
+    setTickets([]);
     setTimeRange('weekly');
+    setChatbotLoaded(false); // Reset chatbot when agent changes
   }, [agent?.id]);
 
   // Load analytics data when agent changes or timeRange changes
@@ -91,59 +98,125 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     loadAnalytics();
   }, [agent?.id, timeRange, user?.uid]);
 
-  // Load sessions when Messages tab is active
+  // Load visitors when Visitors tab is active
   useEffect(() => {
-    const loadSessions = async () => {
-      if (activeTab !== 'messages' || !agent?.id || !user?.uid) return;
+    const loadVisitors = async () => {
+      if (activeTab !== 'visitors' || !agent?.id || !user?.uid) return;
 
-      setSessionsLoading(true);
+      setVisitorsLoading(true);
       try {
+        // Calculate startDate based on timeRange
+        const now = new Date();
+        let startDate;
+        switch (timeRange) {
+          case 'hourly':
+            startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            break;
+          case 'daily':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'weekly':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case 'quarterly':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+            break;
+          case 'alltime':
+            startDate = new Date(0);
+            break;
+          default:
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        }
+
         const sessionsRef = collection(db, 'users', user.uid, 'agents', agent.id, 'sessions');
         const sessionsSnapshot = await getDocs(sessionsRef);
 
-        const allConversations = [];
+        const visitorsList = sessionsSnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            anonymousUserId: doc.id,
+            ...doc.data()
+          }))
+          .filter(visitor => {
+            const lastMessageTime = visitor.lastMessageTime?.toDate?.();
+            return lastMessageTime && lastMessageTime >= startDate;
+          })
+          .sort((a, b) => {
+            const timeA = a.lastMessageTime?.toDate?.() || new Date(0);
+            const timeB = b.lastMessageTime?.toDate?.() || new Date(0);
+            return timeB - timeA;
+          })
+          .slice(0, 5);
 
-        for (const sessionDoc of sessionsSnapshot.docs) {
-          const sessionData = sessionDoc.data();
-          const anonymousUserId = sessionDoc.id;
-
-          const conversationsRef = collection(sessionDoc.ref, 'conversations');
-          const conversationsSnapshot = await getDocs(conversationsRef);
-
-          for (const convDoc of conversationsSnapshot.docs) {
-            const convData = convDoc.data();
-
-            // Show only analyzed conversations (those with analysis data)
-            if (convData.analysis && Object.keys(convData.analysis).length > 0) {
-              allConversations.push({
-                id: convDoc.id,
-                anonymousUserId,
-                ...convData,
-                userInfo: sessionData.userInfo || {},
-                userEmail: sessionData.userEmail || null,
-                conversationSummary: convData.conversationSummary || {},
-                analysis: convData.analysis || {}
-              });
-            }
-          }
-        }
-
-        allConversations.sort((a, b) => {
-          const timeA = a.lastMessageTime?.toDate?.() || new Date(0);
-          const timeB = b.lastMessageTime?.toDate?.() || new Date(0);
-          return timeB - timeA;
-        });
-
-        setSessions(allConversations);
+        setVisitors(visitorsList);
       } catch (error) {
-        console.error('Error loading sessions:', error);
+        console.error('Error loading visitors:', error);
       } finally {
-        setSessionsLoading(false);
+        setVisitorsLoading(false);
       }
     };
 
-    loadSessions();
-  }, [activeTab, agent?.id, user?.uid]);
+    loadVisitors();
+  }, [activeTab, agent?.id, user?.uid, timeRange]);
+
+  // Load tickets when Tickets tab is active
+  useEffect(() => {
+    const loadTickets = async () => {
+      if (activeTab !== 'tickets' || !agent?.id || !user?.uid) return;
+
+      setTicketsLoading(true);
+      try {
+        // Calculate startDate based on timeRange
+        const now = new Date();
+        let startDate;
+        switch (timeRange) {
+          case 'hourly':
+            startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            break;
+          case 'daily':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'weekly':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case 'quarterly':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+            break;
+          case 'alltime':
+            startDate = new Date(0);
+            break;
+          default:
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        }
+
+        const ticketsRef = collection(db, 'users', user.uid, 'agents', agent.id, 'tickets');
+        const ticketsSnapshot = await getDocs(ticketsRef);
+
+        const ticketsList = ticketsSnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .filter(ticket => {
+            const createdAt = ticket.createdAt?.toDate?.();
+            return createdAt && createdAt >= startDate;
+          })
+          .sort((a, b) => {
+            const timeA = a.createdAt?.toDate?.() || new Date(0);
+            const timeB = b.createdAt?.toDate?.() || new Date(0);
+            return timeB - timeA;
+          });
+
+        setTickets(ticketsList);
+      } catch (error) {
+        console.error('Error loading tickets:', error);
+      } finally {
+        setTicketsLoading(false);
+      }
+    };
+
+    loadTickets();
+  }, [activeTab, agent?.id, user?.uid, timeRange]);
 
   const handleAgentSelect = (selectedAgent) => {
     selectAgent(selectedAgent);
@@ -212,39 +285,66 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     }
   };
 
-  const handleSessionClick = async (session) => {
-    setSelectedSession(session);
-    setIsConversationModalOpen(true);
+  const handleVisitorClick = (visitor) => {
+    setSelectedVisitor(visitor);
+    setIsVisitorModalOpen(true);
+  };
 
-    try {
-      const messagesRef = collection(
-        db,
-        'users',
-        user.uid,
-        'agents',
-        agent.id,
-        'sessions',
-        session.anonymousUserId,
-        'conversations',
-        session.id,
-        'messages'
-      );
-      const messagesSnapshot = await getDocs(messagesRef);
+  const handleTicketClick = (ticket) => {
+    setSelectedTicket(ticket);
+    setIsTicketModalOpen(true);
+  };
 
-      const messageList = messagesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a, b) => {
-        const timeA = a.timestamp?.toDate?.() || new Date(0);
-        const timeB = b.timestamp?.toDate?.() || new Date(0);
-        return timeA - timeB;
-      });
+  const handleTestAgent = () => {
+    // AGGRESSIVE CLEANUP - Remove ALL orchis elements
+    const orchisElements = document.querySelectorAll('[id*="orchis"], [class*="orchis"]');
+    orchisElements.forEach(el => {
+      console.log('🗑️ Removing:', el);
+      el.remove();
+    });
 
-      setConversationMessages(messageList);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-      setConversationMessages([]);
-    }
+    // Remove any iframes that might be chatbot
+    const iframes = document.querySelectorAll('iframe[src*="orchis"]');
+    iframes.forEach(iframe => iframe.remove());
+
+    // Reset chatbot loaded state
+    setChatbotLoaded(false);
+
+    // Wait a bit for cleanup
+    setTimeout(() => {
+      if (!window.OrchisChatbot) {
+        // First time - load the script
+        const script = document.createElement('script');
+        script.src = 'https://orchis.app/chatbot-widget.js';
+        script.onload = function() {
+          if (window.OrchisChatbot) {
+            console.log('✅ Initializing chatbot for agent:', agent?.id);
+            window.OrchisChatbot.init({
+              agentId: agent?.id || 'YUtxUdsTvLauRmozIgKT'
+            });
+            setChatbotLoaded(true);
+            setTimeout(() => {
+              if (window.OrchisChatbot?.open) {
+                window.OrchisChatbot.open();
+              }
+            }, 500);
+          }
+        };
+        document.head.appendChild(script);
+      } else {
+        // Script exists - reinit with new agent
+        console.log('✅ Reinitializing chatbot for agent:', agent?.id);
+        window.OrchisChatbot.init({
+          agentId: agent?.id || 'YUtxUdsTvLauRmozIgKT'
+        });
+        setChatbotLoaded(true);
+        setTimeout(() => {
+          if (window.OrchisChatbot?.open) {
+            window.OrchisChatbot.open();
+          }
+        }, 500);
+      }
+    }, 200);
   };
 
   const getCategoryColor = (category) => {
@@ -252,20 +352,14 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       'Feedback': 'bg-blue-500/5 text-blue-500 border-blue-500',
       'Question': 'bg-purple-500/5 text-purple-500 border-purple-500',
       'Support Request': 'bg-orange-500/5 text-orange-500 border-orange-500',
+      'Support': 'bg-orange-500/5 text-orange-500 border-orange-500',
       'Sales Inquiry': 'bg-green-500/5 text-green-500 border-green-500',
+      'Sales': 'bg-green-500/5 text-green-500 border-green-500',
       'Bug Report': 'bg-red-500/5 text-red-500 border-red-500',
+      'Complaint': 'bg-red-500/5 text-red-500 border-red-500',
       'General': 'bg-stone-500/5 text-stone-500 border-stone-500'
     };
     return colors[category] || 'bg-stone-100 text-stone-800 border-stone-200';
-  };
-
-  const getUrgencyColor = (urgency) => {
-    const colors = {
-      'high': 'bg-red-500/5 text-red-500 border-red-500',
-      'medium': 'bg-yellow-500/5 text-yellow-500 border-yellow-500',
-      'low': 'bg-green-500/5 text-green-500 border-green-500'
-    };
-    return colors[urgency] || 'bg-stone-100 text-stone-800 border-stone-200';
   };
 
   if (!agent) {
@@ -280,7 +374,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
+    <div className="max-w-6xl mx-auto px-4 md:px-6 py-6">
       {/* Controls Row */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2 md:gap-4 flex-wrap w-full md:w-auto">
@@ -306,7 +400,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                   {agent?.projectName || agent?.name || 'Select Agent'}
                 </div>
               </div>
-              <ChevronDownIcon className={`w-4 h-4 text-stone-500 transition-transform ${isAgentDropdownOpen ? 'rotate-180' : ''}`} />
+              <HugeiconsIcon icon={ArrowDown01Icon} className={`w-4 h-4 text-stone-500 transition-transform ${isAgentDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
@@ -344,7 +438,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                       onClick={handleAgentSettings}
                       className="w-full flex items-center gap-1 px-2 py-1 mt-1 text-left rounded-md hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors group"
                     >
-                      <CogIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                      <HugeiconsIcon icon={Settings02Icon} className="w-4 h-4 text-stone-500 dark:text-stone-400" />
                       <span className="text-sm font-medium text-stone-700 dark:text-stone-300">Agent Settings</span>
                     </button>
                   </div>
@@ -368,7 +462,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                    'All Time'}
                 </div>
               </div>
-              <ChevronDownIcon className={`w-4 h-4 text-stone-500 transition-transform ${isTimeDropdownOpen ? 'rotate-180' : ''}`} />
+              <HugeiconsIcon icon={ArrowDown01Icon} className={`w-4 h-4 text-stone-500 transition-transform ${isTimeDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
@@ -401,6 +495,15 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
               </div>
             )}
           </div>
+
+          {/* Test Agent Button */}
+          <button
+            onClick={handleTestAgent}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-all cursor-pointer"
+            title={`Chat with ${agent?.projectName || 'your agent'}`}
+          >
+            Show {agent?.projectName || 'Agent'} Demo
+          </button>
         </div>
 
         {/* Tab System */}
@@ -416,14 +519,24 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             Analytics
           </button>
           <button
-            onClick={() => setActiveTab('messages')}
+            onClick={() => setActiveTab('visitors')}
             className={`flex-1 md:flex-initial px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'messages'
+              activeTab === 'visitors'
                 ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
             }`}
           >
-            Messages
+            Visitors
+          </button>
+          <button
+            onClick={() => setActiveTab('tickets')}
+            className={`flex-1 md:flex-initial px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              activeTab === 'tickets'
+                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
+            }`}
+          >
+            Tickets
           </button>
         </div>
       </div>
@@ -432,90 +545,29 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       {activeTab === 'analytics' && (
         <>
       {/* Analytics Dashboard */}
-      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-4 md:p-6">
-        {/* Top Metrics Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:flex lg:items-center gap-4 md:gap-6 lg:gap-8 mb-6 md:mb-8">
-          <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Total Conversations</div>
-            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
-              {analyticsData?.summary?.totalConversations || '0'}
-            </div>
+      <div className="mb-6">
+        {analyticsLoading ? (
+          <div className="h-40 flex items-center justify-center bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800">
+            <div className="text-stone-400 text-sm">Loading analytics...</div>
           </div>
+        ) : (
+          <TicketChart analyticsData={analyticsData} />
+        )}
+      </div>
 
-          <div className="hidden lg:block w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-
-          <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Analyzed</div>
-            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
-              {analyticsData?.summary?.analyzedConversations || '0'}
-            </div>
-          </div>
-
-          <div className="hidden lg:block w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-
-          <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Non-Analyzed</div>
-            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
-              {analyticsData?.summary?.nonAnalyzedConversations || '0'}
-            </div>
-          </div>
-
-          <div className="hidden lg:block w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-
-          <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Success Rate</div>
-            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
-              {analyticsData?.summary?.resolutionRate || '0'}%
-            </div>
-          </div>
-
-          <div className="hidden lg:block w-px h-12 bg-stone-200 dark:bg-stone-700"></div>
-
-          <div>
-            <div className="text-xs font-medium text-stone-500 mb-1">Knowledge Gaps</div>
-            <div className="text-2xl md:text-4xl font-bold text-stone-900 dark:text-stone-100">
-              {knowledgeGaps?.length || '0'}
-            </div>
-          </div>
+      {/* User Sentiment Analysis - Full Width */}
+      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">User Sentiment</h3>
+          <div className="text-sm text-stone-500">Customer Mood Distribution</div>
         </div>
-
-        {/* Chart Area */}
-        <div className="h-80">
-          {analyticsLoading ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-stone-400 text-sm">Loading analytics...</div>
-            </div>
-          ) : analyticsData?.totalConversations > 0 ? (
-            <TicketChart
-              chartData={analyticsData?.chartData || {}}
-              showOpened={true}
-              showResolved={false}
-              timeRange={timeRange}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-stone-400 text-sm">No conversations in this period</div>
-                <div className="text-stone-300 text-xs mt-1">Your customers haven't started any chats yet</div>
-              </div>
-            </div>
-          )}
+        <div className="h-64">
+          <SentimentChart data={analyticsData?.sentimentData || []} />
         </div>
       </div>
 
       {/* Bottom Analytics Row - 2x2 Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* User Sentiment Analysis */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Sentiment</h3>
-            <div className="text-sm text-stone-500">Customer Mood</div>
-          </div>
-          <div className="h-64">
-            <SentimentChart data={analyticsData?.sentimentData || []} />
-          </div>
-        </div>
-
         {/* User Intent */}
         <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
           <div className="flex items-center justify-between mb-4">
@@ -563,71 +615,6 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           </div>
         </div>
 
-        {/* Topic Distribution */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Topics</h3>
-            <div className="text-sm text-stone-500">What They Ask About</div>
-          </div>
-          <div className="h-64">
-            <TopicChart data={analyticsData?.topicData || []} />
-          </div>
-        </div>
-
-        {/* Languages */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Languages</h3>
-            <div className="text-sm text-stone-500">User Preferences</div>
-          </div>
-          <div className="h-64">
-            <LanguageChart data={analyticsData?.languageData || {}} />
-          </div>
-        </div>
-
-        {/* Browsers */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Browsers</h3>
-            <div className="text-sm text-stone-500">Browser Distribution</div>
-          </div>
-          <div className="h-64">
-            <BrowserChart data={analyticsData?.browserData || {}} />
-          </div>
-        </div>
-
-        {/* Devices */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Devices</h3>
-            <div className="text-sm text-stone-500">Device Types</div>
-          </div>
-          <div className="h-64">
-            <DeviceChart data={analyticsData?.deviceData || {}} />
-          </div>
-        </div>
-
-        {/* Return Users */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Type</h3>
-            <div className="text-sm text-stone-500">New vs Return</div>
-          </div>
-          <div className="h-64">
-            <ReturnUserChart data={analyticsData?.returnUserData || []} />
-          </div>
-        </div>
-      </div>
-
-      {/* User Locations - Full Width */}
-      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">User Locations</h3>
-          <div className="text-sm text-stone-500">Geographic Distribution</div>
-        </div>
-        <div className="h-96">
-          <UserWorldMap data={analyticsData?.locationData || []} />
-        </div>
       </div>
 
 
@@ -646,7 +633,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
+                    <span className="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
                       {gap.category || 'General'}
                     </span>
                   </div>
@@ -658,12 +645,12 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                   </div>
                 </div>
                 <div className="ml-4 flex items-center gap-3">
-                  <span className="text-xs px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-400 font-semibold">
+                  <span className="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 font-semibold">
                     Asked {gap.count}x
                   </span>
                   <button
                     onClick={() => handleFillGap(gap)}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
                   >
                     Fill Gap
                   </button>
@@ -684,211 +671,244 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         </>
       )}
 
-      {/* Messages Tab */}
-      {activeTab === 'messages' && (
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          {sessionsLoading ? (
-            <div className="h-64 flex items-center justify-center">
-              <div className="text-stone-400 text-sm">Loading conversations...</div>
+      {/* Visitors Tab */}
+      {activeTab === 'visitors' && (
+        <>
+        {/* User Locations - Full Width */}
+          <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">User Locations</h3>
+              <div className="text-sm text-stone-500">Geographic Distribution</div>
             </div>
-          ) : sessions.length > 0 ? (
-            <div className="space-y-3">
-              {sessions.map((session) => (
-                <button
-                  key={session.id}
-                  onClick={() => handleSessionClick(session)}
-                  className="w-full flex items-start gap-4 p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-600 transition-colors text-left"
-                >
-                  {/* Left: Main Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      {session.analysis?.mainCategory ? (
-                        <>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${getCategoryColor(session.analysis.mainCategory)}`}>
-                            {session.analysis.mainCategory}
+            <div className="h-96">
+              {analyticsLoading ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-stone-400 text-sm">Loading...</div>
+                </div>
+              ) : (
+                <UserWorldMap data={analyticsData?.locationData || []} />
+              )}
+            </div>
+          </div>
+          {/* User Analytics Charts - 2x2 Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+            
+            {/* Languages */}
+            <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Languages</h3>
+                <div className="text-sm text-stone-500">User Preferences</div>
+              </div>
+              <div className="h-64">
+                {analyticsLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-stone-400 text-sm">Loading...</div>
+                  </div>
+                ) : (
+                  <LanguageChart data={analyticsData?.languageData || {}} />
+                )}
+              </div>
+            </div>
+
+            {/* Browsers */}
+            <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Browsers</h3>
+                <div className="text-sm text-stone-500">Browser Distribution</div>
+              </div>
+              <div className="h-64">
+                {analyticsLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-stone-400 text-sm">Loading...</div>
+                  </div>
+                ) : (
+                  <BrowserChart data={analyticsData?.browserData || {}} />
+                )}
+              </div>
+            </div>
+
+            {/* Devices */}
+            <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Devices</h3>
+                <div className="text-sm text-stone-500">Device Types</div>
+              </div>
+              <div className="h-64">
+                {analyticsLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-stone-400 text-sm">Loading...</div>
+                  </div>
+                ) : (
+                  <DeviceChart data={analyticsData?.deviceData || {}} />
+                )}
+              </div>
+            </div>
+
+            {/* Return Users */}
+            <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Type</h3>
+                <div className="text-sm text-stone-500">New vs Return</div>
+              </div>
+              <div className="h-64">
+                {analyticsLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-stone-400 text-sm">Loading...</div>
+                  </div>
+                ) : (
+                  <ReturnUserChart data={analyticsData?.returnUserData || []} />
+                )}
+              </div>
+            </div>
+          </div>
+
+          
+
+          {/* All Visitors List */}
+          <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Latest Visitors</h3>
+              <div className="text-sm text-stone-500">{visitors.length} total</div>
+            </div>
+            {visitorsLoading ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="text-stone-400 text-sm">Loading visitors...</div>
+              </div>
+            ) : visitors.length > 0 ? (
+              <div className="space-y-3">
+                {visitors.map((visitor) => (
+                  <div
+                    key={visitor.id}
+                    onClick={() => handleVisitorClick(visitor)}
+                    className="p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-900/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-medium text-stone-900 dark:text-stone-50">
+                            {visitor.anonymousUserId}
                           </span>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${getUrgencyColor(session.analysis.urgency)}`}>
-                            {session.analysis.urgency || 'low'} priority
-                          </span>
-                          {session.analysis.resolved ? (
-                            <span className="text-xs px-2 py-1 rounded-full bg-green-500/5 text-green-500 border border-green-500">
-                              ✓ Resolved
-                            </span>
-                          ) : (
-                            <span className="text-xs px-2 py-1 rounded-full bg-orange-500/5 text-orange-500 border border-orange-500">
-                              Unresolved
+                          {visitor.userEmail && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-500/5 text-blue-500 border border-blue-500">
+                              {visitor.userEmail}
                             </span>
                           )}
-                        </>
-                      ) : (
-                        <span className="text-xs px-2 py-1 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                          {session.shouldAnalyze === 'false' ? 'Trivial Chat' :
-                           session.shouldAnalyze === 'pending' ? 'Pending Analysis' :
-                           session.shouldAnalyze === 'true' ? 'Analyzing...' : 'Not Analyzed'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm font-medium text-stone-900 dark:text-stone-50 mb-1 truncate">
-                      {session.analysis?.summary || session.analysisReason || 'Conversation'}
-                    </div>
-                    <div className="text-xs text-stone-500 dark:text-stone-400">
-                      {session.lastMessageTime?.toDate?.().toLocaleString() || 'Unknown time'}
-                      {session.userEmail && <> • {session.userEmail}</>}
-                      {session.userInfo?.location?.city && (
-                        <> • {session.userInfo.location.city}, {session.userInfo.location.country}</>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: Stats */}
-                  <div className="flex flex-col items-end gap-1">
-                    {session.analysis?.sentimentScore ? (
-                      <div className="text-xs text-stone-500">
-                        Sentiment: <span className="font-semibold text-stone-900 dark:text-stone-50">{session.analysis.sentimentScore}/10</span>
+                        </div>
+                        <div className="text-xs text-stone-500 dark:text-stone-400">
+                          {visitor.userInfo?.location?.city && visitor.userInfo?.location?.country && (
+                            <>📍 {visitor.userInfo.location.city}, {visitor.userInfo.location.country}</>
+                          )}
+                          {visitor.userInfo?.device?.browser && (
+                            <> • 💻 {visitor.userInfo.device.browser} on {visitor.userInfo.device.deviceType}</>
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-xs text-stone-400">
-                        No sentiment data
+                      <div className="text-right">
+                        <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">
+                          {visitor.totalConversations || 0} conversations
+                        </div>
+                        <div className="text-xs text-stone-400">
+                          Last visit: {visitor.lastMessageTime?.toDate?.().toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                    {visitor.userInfo?.language && (
+                      <div className="text-xs text-stone-500">
+                        🌐 Language: {visitor.userInfo.language}
                       </div>
                     )}
-                    <div className="text-xs text-stone-500">
-                      Click to view messages
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No visitors yet</div>
+                  <div className="text-stone-300 dark:text-stone-600 text-xs">When someone visits your site, they'll appear here</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Tickets Tab */}
+      {activeTab === 'tickets' && (
+        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Support Tickets</h3>
+            <div className="text-sm text-stone-500">{tickets.length} total</div>
+          </div>
+          {ticketsLoading ? (
+            <div className="h-64 flex items-center justify-center">
+              <div className="text-stone-400 text-sm">Loading tickets...</div>
+            </div>
+          ) : tickets.length > 0 ? (
+            <div className="space-y-3">
+              {tickets.map((ticket) => (
+                <div
+                  key={ticket.id}
+                  onClick={() => handleTicketClick(ticket)}
+                  className="p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-900/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Left: Main Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-xs px-2 py-1 rounded-full border ${getCategoryColor(ticket.category)}`}>
+                          {ticket.category}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${
+                          ticket.urgency >= 7 ? 'bg-red-500/5 text-red-500 border-red-500' :
+                          ticket.urgency >= 4 ? 'bg-yellow-500/5 text-yellow-500 border-yellow-500' :
+                          'bg-green-500/5 text-green-500 border-green-500'
+                        }`}>
+                          Urgency: {ticket.urgency}/10
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${
+                          ticket.status === 'open'
+                            ? 'bg-orange-500/5 text-orange-500 border-orange-500'
+                            : 'bg-green-500/5 text-green-500 border-green-500'
+                        }`}>
+                          {ticket.status === 'open' ? '🔴 Open' : '✓ Closed'}
+                        </span>
+                      </div>
+                      <div className="text-sm font-medium text-stone-900 dark:text-stone-50 mb-1">
+                        {ticket.summary}
+                      </div>
+                      <div className="text-xs text-stone-500 dark:text-stone-400">
+                        {ticket.email && <>📧 {ticket.email}</>}
+                        {ticket.userInfo?.location?.city && (
+                          <> • 📍 {ticket.userInfo.location.city}, {ticket.userInfo.location.country}</>
+                        )}
+                      </div>
+                      <div className="text-xs text-stone-400 mt-1">
+                        Created: {ticket.createdAt?.toDate?.().toLocaleString()}
+                      </div>
+                    </div>
+
+                    {/* Right: Stats */}
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="text-xs text-stone-500">
+                        Sentiment: <span className="font-semibold text-stone-900 dark:text-stone-50">{ticket.userSentimentScore}/10</span>
+                      </div>
+                      <div className="text-xs text-stone-500">
+                        AI Confidence: <span className="font-semibold text-stone-900 dark:text-stone-50">{ticket.aiConfidence}%</span>
+                      </div>
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           ) : (
             <div className="h-64 flex items-center justify-center">
               <div className="text-center">
                 <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No tickets yet</div>
-                <div className="text-stone-300 dark:text-stone-600 text-xs">When someone reaches out with a question or issue, it'll appear here</div>
+                <div className="text-stone-300 dark:text-stone-600 text-xs">When someone needs support, tickets will appear here</div>
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Conversation Detail Modal */}
-      {isConversationModalOpen && selectedSession && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between p-6 border-b border-stone-200 dark:border-stone-700">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-xs px-2 py-1 rounded-full border ${getCategoryColor(selectedSession.analysis?.mainCategory)}`}>
-                    {selectedSession.analysis?.mainCategory || 'General'}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${getUrgencyColor(selectedSession.analysis?.urgency)}`}>
-                    {selectedSession.analysis?.urgency || 'low'} priority
-                  </span>
-                  {selectedSession.analysis?.resolved ? (
-                    <span className="text-xs px-2 py-1 rounded-full bg-green-500/5 text-green-500 border border-green-500">
-                      ✓ Resolved
-                    </span>
-                  ) : (
-                    <span className="text-xs px-2 py-1 rounded-full bg-orange-500/5 text-orange-500 border border-orange-500">
-                      Unresolved
-                    </span>
-                  )}
-                </div>
-                <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50 mb-1">
-                  {selectedSession.analysis?.summary || 'Conversation Details'}
-                </h2>
-                <div className="text-sm text-stone-500 dark:text-stone-400">
-                  {selectedSession.lastMessageTime?.toDate?.().toLocaleString()}
-                  {selectedSession.userEmail && <> • {selectedSession.userEmail}</>}
-                  {selectedSession.userInfo?.location && (
-                    <> • {selectedSession.userInfo.location.city}, {selectedSession.userInfo.location.country}</>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setIsConversationModalOpen(false);
-                  setSelectedSession(null);
-                  setConversationMessages([]);
-                }}
-                className="p-1 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
-              >
-                <XMarkIcon className="w-5 h-5 text-stone-500" />
-              </button>
-            </div>
-
-            {/* Modal Body - Analysis */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {/* Analysis Section */}
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-3">AI Analysis</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg">
-                    <div className="text-xs text-stone-500 mb-1">Intent</div>
-                    <div className="text-sm font-medium text-stone-900 dark:text-stone-50 capitalize">
-                      {selectedSession.analysis?.intent || 'N/A'}
-                    </div>
-                  </div>
-                  <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg">
-                    <div className="text-xs text-stone-500 mb-1">Sentiment Score</div>
-                    <div className="text-sm font-medium text-stone-900 dark:text-stone-50">
-                      {selectedSession.analysis?.sentimentScore || 5}/10
-                    </div>
-                  </div>
-                  <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg col-span-2">
-                    <div className="text-xs text-stone-500 mb-1">Sub-Category</div>
-                    <div className="text-sm font-medium text-stone-900 dark:text-stone-50">
-                      {selectedSession.analysis?.subCategory || 'N/A'}
-                    </div>
-                  </div>
-                  {selectedSession.analysis?.keyTopics && selectedSession.analysis.keyTopics.length > 0 && (
-                    <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg col-span-2">
-                      <div className="text-xs text-stone-500 mb-2">Key Topics</div>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedSession.analysis.keyTopics.map((topic, idx) => (
-                          <span key={idx} className="text-xs px-2 py-1 bg-orange-500/5 text-orange-500 rounded-full">
-                            {topic}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Messages Section */}
-              <div>
-                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-3">Conversation</h3>
-                {conversationMessages.length > 0 ? (
-                  <div className="space-y-3">
-                    {conversationMessages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`p-3 rounded-lg ${
-                          msg.role === 'user'
-                            ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-                            : 'bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700'
-                        }`}
-                      >
-                        <div className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1 capitalize">
-                          {msg.role}
-                        </div>
-                        <div className="text-sm text-stone-900 dark:text-stone-50 whitespace-pre-wrap">
-                          {msg.content}
-                        </div>
-                        <div className="text-xs text-stone-400 dark:text-stone-500 mt-1">
-                          {msg.timestamp?.toDate?.().toLocaleTimeString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-stone-50 dark:bg-stone-800/50 rounded-lg text-center text-sm text-stone-500">
-                    Messages have been archived after analysis
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -902,6 +922,30 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         }}
         onSubmit={handleSubmitAnswer}
         onSkip={handleSkipGap}
+      />
+
+      {/* Visitor Detail Modal */}
+      <VisitorDetailModal
+        visitor={selectedVisitor}
+        isOpen={isVisitorModalOpen}
+        onClose={() => {
+          setIsVisitorModalOpen(false);
+          setSelectedVisitor(null);
+        }}
+        agentId={agent?.id}
+        userId={user?.uid}
+      />
+
+      {/* Ticket Detail Modal */}
+      <TicketDetailModal
+        ticket={selectedTicket}
+        isOpen={isTicketModalOpen}
+        onClose={() => {
+          setIsTicketModalOpen(false);
+          setSelectedTicket(null);
+        }}
+        agentId={agent?.id}
+        userId={user?.uid}
       />
     </div>
   );

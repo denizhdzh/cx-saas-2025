@@ -456,7 +456,7 @@ export default function CreateAgentView({ onBack }) {
           const url = new URL(normalizedUrl);
           // Remove 'www.' prefix if present
           const domain = url.hostname.replace(/^www\./, '');
-          allowedDomains = [domain];
+          allowedDomains = [domain, 'orchis.app'];
           console.log('✅ Extracted domain for allowedDomains:', domain);
         } catch (e) {
           console.warn('Could not extract domain from URL:', e);
@@ -830,7 +830,7 @@ export default function CreateAgentView({ onBack }) {
     const readyFiles = uploadedFiles.filter(f => f.status === 'ready');
     const totalTrainingContent = formData.trainingText.trim().length +
       readyFiles.reduce((acc, f) => acc + (f.textContent?.length || 0), 0);
-    const hasTrainingContent = totalTrainingContent >= 300;
+    const hasTrainingContent = totalTrainingContent >= 100;
 
     const hasText = formData.trainingText.trim().length > 0;
     const hasDocuments = uploadedFiles.filter(f => f.status === 'ready').length > 0;
@@ -2035,7 +2035,10 @@ export default function CreateAgentView({ onBack }) {
               {currentStep === 4 && !trainingComplete && (
                 <button
                   onClick={handleTrainAgent}
-                  disabled={isTraining || uploadedFiles.filter(f => f.status === 'ready').length === 0}
+                  disabled={
+                    isTraining ||
+                    (formData.trainingText.trim().length === 0 && uploadedFiles.filter(f => f.status === 'ready').length === 0)
+                  }
                   className="btn-primary text-xs py-2 sm:py-1.5 px-4 rounded-xl inline-flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {isTraining ? (

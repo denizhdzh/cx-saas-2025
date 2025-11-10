@@ -23,7 +23,7 @@ export default function RoadmapPage() {
 
   const fetchRoadmapData = async () => {
     try {
-      // Fetch next feature (roadmap)
+      // Fetch next feature (roadmap) - get the one with closest expectedDate
       const roadmapQuery = query(
         collection(db, 'admin/roadmap/items'),
         where('status', '==', 'upcoming'),

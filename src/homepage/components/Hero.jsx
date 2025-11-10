@@ -1,114 +1,222 @@
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+
+// DynamicContentPreview Component (from SignInPage - Glassy Design)
+function DynamicContentPreview() {
+  const contentVariants = [
+    {
+      type: 'discount',
+      title: 'Special Offer',
+      message: 'Get 20% off with code',
+      code: 'SAVE20'
+    },
+    {
+      type: 'video',
+      title: 'Watch Our Demo',
+      message: 'See how it works in 2 minutes'
+    },
+    {
+      type: 'link',
+      title: 'New Feature Alert',
+      message: 'Check out our latest update',
+      link: 'orchis.app/features'
+    }
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % contentVariants.length);
+        setIsTransitioning(false);
+      }, 400);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentContent = contentVariants[currentIndex];
+
+  return (
+    <div className="w-full">
+      <div className="text-xs font-bold text-white mb-3 text-center">Live Preview</div>
+
+      {/* Mini Widget */}
+      <div className="relative mx-auto bg-gradient-to-br from-stone-900/60 to-stone-800/40 backdrop-blur-md border border-stone-700/50 rounded-2xl p-3 shadow-2xl">
+
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-6 h-6 rounded-lg bg-stone-700/50 flex items-center justify-center overflow-hidden">
+            <img src="/logo.webp" alt="Orchis" className="w-6 h-6 object-cover rounded-lg" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-white truncate">
+              ORCHIS AI
+            </div>
+            <div className="text-xs text-stone-400">Online</div>
+          </div>
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+        </div>
+
+        {/* Dynamic Popup Preview */}
+        <div className={`mb-2 px-2 py-2 transition-all duration-700 ease-in-out ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-0.5 h-6 bg-white rounded-full flex-shrink-0"></div>
+            <div className="flex-1 min-w-0">
+              <div className="text-white text-xs font-semibold mb-0.5 transition-all duration-700">
+                {currentContent.title}
+              </div>
+              <div className="text-white/75 text-xs transition-all duration-700">
+                {currentContent.type === 'discount' ? (
+                  <>
+                    {currentContent.message}{' '}
+                    <strong className="text-white font-bold font-mono">{currentContent.code}</strong>
+                  </>
+                ) : currentContent.type === 'video' ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <div
+                      className="w-12 h-9 rounded flex-shrink-0 bg-cover bg-center"
+                      style={{ backgroundImage: "url('/livepreview6.webp')" }}
+                    ></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white text-xs font-semibold mb-0.5">Watch Now</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-1">
+                    <div className="mb-1 text-xs">{currentContent.message}</div>
+                    <div className="flex items-center gap-1 text-blue-400 text-xs">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path>
+                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path>
+                      </svg>
+                      <span className="truncate text-xs">orchis.app</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <button className="text-white/50 hover:text-white/80 text-sm leading-none flex-shrink-0">
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Input */}
+        <div className="bg-white/5 rounded-xl p-1.5 flex items-center gap-2">
+          <input
+            type="text"
+            disabled
+            placeholder="Ask anything..."
+            className="flex-1 bg-transparent text-xs text-stone-300 placeholder:text-stone-500 border-none outline-none"
+          />
+          <div className="px-2 py-1 bg-white/90 text-black rounded-full text-xs font-semibold">
+            send
+          </div>
+        </div>
+
+        {/* Powered by */}
+        <div className="flex items-center justify-center gap-1 mt-1.5 text-xs text-stone-400">
+          <img src="https://orchis.app/logo.webp" alt="Orchis" className="w-2.5 h-2.5 rounded" />
+          <span className="text-xs">Powered by <span className="font-bold">ORCHIS</span></span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Hero() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative py-20 lg:py-20 overflow-hidden">
+    <section className="relative py-12 lg:py-12 overflow-hidden bg-stone-50">
 
-      {/* Noise/Pattern for blur to work on */}
-      <div className="absolute inset-0" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-      }} />
+      <div className="relative max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 z-10">
 
-      {/* Glass Cards Background Layer */}
-      <div className="absolute inset-0 flex">
-        {[...Array(10)].map((_, i) => (
-          <div
-            key={i}
-            className="flex-1 h-full backdrop-blur-2xl bg-black/0 border-r border-black/1 shadow-2xl shadow-neutral-200/70"
-          />
-        ))}
-      </div>
+        {/* Main Container */}
+        <div className="bg-neutral-500/5 rounded-2xl sm:rounded-3xl overflow-hidden border border-stone-200/50">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+            {/* Left Column - Hero Content */}
+            <div className="p-8 lg:p-12 flex flex-col justify-center bg-white min-h-[600px]">
+              <div className="w-full max-w-md mx-auto lg:mx-0">
 
-        {/* Main Hero Card */}
-        <div className="bg-transparent rounded-3xl overflow-hidden">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 mb-6 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.1s_forwards]">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs font-semibold text-stone-700 uppercase tracking-wider">Powered by AI</span>
+                </div>
 
-          <div className="relative p-8 sm:p-12 lg:p-16 text-center">
+                {/* Headline */}
+                <h1 className="text-4xl sm:text-5xl font-bold text-stone-900 mb-5 tracking-tight leading-[1.15] opacity-0 animate-[fadeInUp_0.6s_ease-out_0.2s_forwards]">
+                  Beyond Chatbots: The Smartest<br />
+                  <span className="text-orange-500">Interactive Widget</span>
+                </h1>
 
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 border border-neutral-200/60 bg-neutral-50 rounded-full px-4 py-2 mb-6 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.1s_forwards]">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs font-semibold text-neutral-700 uppercase tracking-wider">Powered by AI</span>
+                {/* Subheadline */}
+                <p className="text-lg text-stone-600 mb-8 leading-relaxed opacity-0 animate-[fadeInUp_0.6s_ease-out_0.3s_forwards]">
+                  AI chatbot that remembers every visitor, learns from every conversation, and converts 8x more than traditional support.
+                </p>
+
+                {/* CTA */}
+                <div className="mb-8 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.4s_forwards]">
+                  <button
+                    onClick={() => navigate('/signin')}
+                    className="btn-landing text-base"
+                  >
+                    Start Converting Now
+                  </button>
+                </div>
+
+                {/* Trust Signals */}
+                <div className="space-y-3 mb-8 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.5s_forwards]">
+                  <div className="flex items-center gap-2 text-sm text-stone-600">
+                    <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span>Free forever plan</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-stone-600">
+                    <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span>Setup in 90 seconds</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-stone-600">
+                    <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span>No credit card required</span>
+                  </div>
+                </div>
+
+                {/* Social Proof */}
+                <div className="flex items-center gap-3 pt-6 border-t border-stone-200opacity-0 animate-[fadeInUp_0.6s_ease-out_0.6s_forwards]">
+                  <div className="flex -space-x-2">
+                    <img src="/lungoai.webp" alt="LungoAI" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
+                    <img src="/simplelister.webp" alt="SimpleLister" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
+                    <img src="/toolslash.webp" alt="ToolSlash" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
+                    <img src="/unit3media.webp" alt="Unit3Media" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
+                  </div>
+                  <p className="text-sm text-stone-600">
+                    <span className="font-semibold text-stone-900">300+ makers</span> converted visitors this week
+                  </p>
+                </div>
+
+              </div>
             </div>
 
-            {/* Headline - Conversion focused */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-medium text-neutral-900 mb-5 tracking-tight leading-[1.15] opacity-0 animate-[fadeInUp_0.6s_ease-out_0.2s_forwards]">
-              Not Just a Chatbot. A Dynamic, Intelligent Layer for Your Product.              
-            </h1>
-
-            {/* Subheadline - Benefit driven */}
-            <p className="text-lg sm:text-xl text-neutral-600 max-w-2xl mx-auto mb-10 leading-relaxed opacity-0 animate-[fadeInUp_0.6s_ease-out_0.3s_forwards]">
-              AI chatbot that remembers every visitor, learns from every conversation,
-              and converts 3x more than traditional support.
-            </p>
-
-            {/* CTA */}
-            <div className="flex items-center justify-center mb-6 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.4s_forwards]">
-              <button
-                onClick={() => navigate('/signin')}
-                className="btn-landing text-base"
-              >
-                Start Converting Now
-              </button>
-            </div>
-
-            {/* Trust Signals - More concrete */}
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-neutral-600 mb-8 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.5s_forwards]">
-              <div className="flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>Free forever plan</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>Setup in 90 seconds</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>No credit card</span>
+            {/* Right Column - Chatbot Preview */}
+            <div className="relative bg-gradient-to-br from-orange-50 to-stone-50 p-8 lg:p-12 flex items-center justify-center min-h-[600px]">
+              <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-90" style={{backgroundImage: "url('/livepreview5.webp')"}}></div>
+              <div className="relative z-10 w-full max-w-sm opacity-0 animate-[fadeInUp_0.6s_ease-out_0.4s_forwards]">
+                <DynamicContentPreview />
               </div>
             </div>
-
-            {/* Social Proof */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.6s_forwards]">
-              <div className="flex -space-x-2">
-                <img src="/lungoai.webp" alt="LungoAI" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
-                <img src="/simplelister.webp" alt="SimpleLister" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
-                <img src="/toolslash.webp" alt="ToolSlash" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
-                <img src="/unit3media.webp" alt="Unit3Media" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
-              </div>
-              <p className="text-sm text-neutral-600">
-                <span className="font-semibold text-neutral-900">300+ makers</span> converted visitors this week
-              </p>
-            </div>
-
 
           </div>
-
-          {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-0 border-t border-neutral-200/50 bg-white/15 rounded-3xl backdrop-blur-md opacity-0 animate-[fadeInUp_0.6s_ease-out_0.7s_forwards]">
-            <div className="p-5 text-center border-r border-neutral-200/50">
-              <div className="text-2xl sm:text-3xl font-bold text-neutral-900">8x</div>
-              <div className="text-xs sm:text-sm text-neutral-500 mt-1">Higher Conversion</div>
-            </div>
-            <div className="p-5 text-center border-r border-neutral-200/50">
-              <div className="text-2xl sm:text-3xl font-bold text-neutral-900">&lt;100ms</div>
-              <div className="text-xs sm:text-sm text-neutral-500 mt-1">Load Time</div>
-            </div>
-            <div className="p-5 text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-neutral-900">24/7</div>
-              <div className="text-xs sm:text-sm text-neutral-500 mt-1">Always Online</div>
-            </div>
-          </div>
-
         </div>
 
       </div>

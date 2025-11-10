@@ -42,7 +42,7 @@ export default function FAQ() {
   return (
     <section className="relative">
       
-      <div className="max-w-5xl mx-auto px-2 py-24 relative">
+      <div className="max-w-7xl mx-auto px-2 py-24 relative">
 
         <div className="mx-6">
           <div className="grid lg:grid-cols-2 gap-16 items-start">

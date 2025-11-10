@@ -16,9 +16,33 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Load Orchis Chatbot
+  useEffect(() => {
+    // Check if script already exists in the DOM
+    const existingScript = document.querySelector('script[src="https://orchis.app/chatbot-widget.js"]');
+
+    if (!existingScript && !window.OrchisChatbot) {
+      const script = document.createElement('script');
+      script.src = 'https://orchis.app/chatbot-widget.js';
+      script.onload = function() {
+        if (window.OrchisChatbot) {
+          window.OrchisChatbot.init({
+            agentId: 'YUtxUdsTvLauRmozIgKT'
+          });
+        }
+      };
+      document.head.appendChild(script);
+    } else if (window.OrchisChatbot && !window.OrchisChatbot.isInitialized) {
+      // If script loaded but not initialized
+      window.OrchisChatbot.init({
+        agentId: 'YUtxUdsTvLauRmozIgKT'
+      });
+    }
+  }, []);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative">
         <div className={`flex items-center justify-between transition-all duration-200 ${
           isScrolled 
             ? 'bg-white/90 backdrop-blur-xs border border-neutral-300 rounded-3xl px-3 sm:px-4 py-2 sm:py-3' 

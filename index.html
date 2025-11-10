@@ -30,22 +30,6 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-<!-- Orchis Chatbot -->
-<script>
-(function(){
-  if(!window.OrchisChatbot){
-    const script = document.createElement('script');
-    script.src = 'https://orchis.app/chatbot-widget.js';
-    script.onload = function() {
-      if(window.OrchisChatbot) {
-        window.OrchisChatbot.init({
-          agentId: 'YUtxUdsTvLauRmozIgKT'
-        });
-      }
-    };
-    document.head.appendChild(script);
-  }
-})();
-</script>
+
   </body>
 </html>

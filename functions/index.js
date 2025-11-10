@@ -782,16 +782,25 @@ async function processChatMessage(agentId, message, sessionId, conversationHisto
     // Build conversation messages with history
     const platformInfo = agentData.websiteUrl ? `\n\nPLATFORM INFO:\n- Company/Platform: ${agentName}\n- Website: ${agentData.websiteUrl}\n- You are the official customer service agent for this platform` : '';
 
+    // Count conversation messages
+    const conversationMessageCount = conversationHistory.length + 1; // +1 for current message
+    const hasEmail = sessionData?.userEmail ? true : false;
+
     const messages = [
       {
         role: "system",
         content: `You are ${agentName}, a helpful AI customer service assistant.${platformInfo}
 
+CONVERSATION CONTEXT:
+- This is message #${conversationMessageCount} in the conversation
+- User email ${hasEmail ? 'is available' : 'is NOT available yet'}
+
 GUIDELINES:
-1. Be warm and conversational (2-4 sentences)
-2. ONLY answer questions related to ${agentName} - politely reject off-topic questions (recipes, general knowledge, etc.)
-3. If you don't know something, say "I don't have that information yet" - never make things up
-4. Use page context when relevant
+1. Be warm, natural, and conversational - like a friendly human helper
+2. Answer ANY question about ${agentName} - even if you don't have the exact answer
+3. If you don't have specific info, admit it naturally: "I don't have that specific detail yet, but I can help with [what you know]"
+4. ONLY reject questions that are completely unrelated (recipes, math homework, other products)
+5. Use page context when relevant
 
 KNOWLEDGE BASE:
 ${context}${pageContext}
@@ -816,9 +825,13 @@ RESPOND WITH VALID JSON ONLY:
   "requestEmail": true/false
 }
 
-RELEVANCE:
-- isRelevant=false if question is unrelated (recipes, math, trivia)
-- If irrelevant, reply: "I can only help with ${agentName} questions"
+RELEVANCE RULES (IMPORTANT):
+- isRelevant=true if the question is ABOUT ${agentName} in any way (features, pricing, setup, capabilities, etc.)
+- isRelevant=false ONLY if completely unrelated (pudding recipes, math problems, other companies)
+- If question is about ${agentName} but you don't know the answer:
+  → isRelevant=true, aiConfidence=20-40, reply naturally: "I don't have that specific info, but I can help with..."
+  → knowledgeGapDetected=true
+- NEVER say "I can only help with X questions" unless truly off-topic
 
 USER SENTIMENT (analyze the USER'S message tone):
 - positive (8-10): happy, satisfied, grateful, friendly
@@ -830,22 +843,37 @@ AI CONFIDENCE (how confident YOU are in your answer):
 - 50-79: Moderately confident, partial info
 - 0-49: Low confidence, guessing or no info
 
-KNOWLEDGE GAP (be selective):
-- Only flag if user asked 2+ times OR shows frustration (negative sentiment)
-- Must be specific question, not greetings
+KNOWLEDGE GAP:
+- Flag if you don't have the answer and user seems to need it (not greetings)
+- Be smart about it - use context and conversation flow
 
-TICKET CREATION:
-- shouldCreateTicket=true ONLY if: unresolved after 2+ messages OR urgency>7 OR user frustrated
-- Don't create for simple questions or greetings
+TICKET CREATION (USE YOUR JUDGMENT):
+Think like a human support agent. Create a ticket (shouldCreateTicket=true) if:
+- User seems frustrated or unhappy
+- You can't answer their question well and they need real help
+- Conversation is going in circles (multiple messages, no resolution)
+- User explicitly wants human assistance (they'll say so in various ways - be smart!)
+- High urgency situation
+
+requestEmail=true ONLY if:
+- shouldCreateTicket=true AND user email is NOT available yet
+- When you request email, naturally ask for it in your reply: "I'd love to help! Can I get your email to set up proper support?"
+
+DON'T create tickets for:
+- Simple greetings or browsing
+- Questions you answered well
+- When everything is resolved
 
 Examples:
-- "hello" → isRelevant:true, intent:"greeting", userSentiment:"neutral", aiConfidence:95, shouldAnalyze:"false"
-- "pudding recipe?" → isRelevant:false, relevanceScore:0, reply:"I can only help with ${agentName} questions"
-- "still broken!" (3rd msg) → userSentiment:"negative", urgency:9, shouldCreateTicket:true, aiConfidence:30`
+- "hello" → isRelevant:true, intent:"greeting", shouldAnalyze:"false"
+- "can you do X?" (no answer) → isRelevant:true, aiConfidence:30, knowledgeGapDetected:true, reply naturally
+- "I need help" OR "can someone assist" → shouldCreateTicket:true, requestEmail:true (if no email)
+- "still not working" (frustrated, 3rd msg) → shouldCreateTicket:true, requestEmail:true`
       }
     ];
 
     // Add conversation history for context
+    console.log(`📚 Adding ${conversationHistory.length} previous messages to context`);
     conversationHistory.forEach(msg => {
       messages.push({
         role: msg.role,
@@ -858,6 +886,8 @@ Examples:
       role: "user",
       content: message
     });
+
+    console.log(`💬 Total messages sent to AI: ${messages.length} (1 system + ${conversationHistory.length} history + 1 current)`);
 
     // Generate response using OpenAI
     const completion = await getOpenAI().chat.completions.create({
@@ -926,6 +956,7 @@ Examples:
     if (requestEmail) {
       console.log(`📧 Email requested from user`);
     }
+
     // Ensure anonymousUserId is defined
     const finalAnonymousUserId = anonymousUserId || `anon_${Date.now()}`;
 
@@ -966,8 +997,8 @@ Examples:
       shouldAnalyze: shouldAnalyze,
       analysisReason: analysisReason,
       analyzed: shouldAnalyze === "true" ? false : null, // Only set analyzed flag if we need to analyze
-      // Latest analytics (from most recent message)
-      latestAnalytics: {
+      // Analytics (from most recent message) - single source of truth
+      analytics: {
         userSentiment: userSentiment,
         userSentimentScore: userSentimentScore,
         aiConfidence: aiConfidence,
@@ -978,7 +1009,8 @@ Examples:
       },
       // Track if ticket creation was suggested
       ticketSuggested: shouldCreateTicket,
-      ticketReason: ticketReason
+      ticketReason: ticketReason,
+      awaitingEmailForTicket: (shouldCreateTicket && requestEmail && !userEmail) ? true : false
     }, { merge: true });
 
     // Save user message in conversation
@@ -1029,20 +1061,84 @@ Examples:
     }
 
     // If knowledge gap detected AND it's a real issue, process it asynchronously
-    // Only trigger if: it's not a simple greeting AND (user is frustrated OR urgency is high)
+    // More sensitive detection: trigger if user frustrated OR high urgency OR low confidence with multiple messages
     const shouldProcessGap = knowledgeGapDetected &&
                              unansweredQuestion &&
                              intent !== 'greeting' &&
-                             (userSentiment === 'negative' || urgency >= 7);
+                             (
+                               userSentiment === 'negative' ||
+                               urgency >= 6 ||  // Lowered from 7 to 6
+                               aiConfidence < 50 ||  // New: low confidence
+                               (isRelevant && aiConfidence < 70 && conversationHistory.length >= 1)  // New: 2+ messages with low confidence
+                             );
 
     if (shouldProcessGap) {
-      console.log(`📚 Processing knowledge gap (frustrated user or high urgency): "${unansweredQuestion}"`);
+      console.log(`📚 Processing knowledge gap (frustrated/high urgency/low confidence): "${unansweredQuestion}"`);
       processKnowledgeGap(userId, agentId, unansweredQuestion, message).catch(error => {
         console.error('❌ Knowledge gap processing failed:', error);
         // Don't throw - this shouldn't break chat flow
       });
     } else if (knowledgeGapDetected && unansweredQuestion) {
       console.log(`⏭️ Skipping knowledge gap (low priority): "${unansweredQuestion}"`);
+    }
+
+    // Check if we were waiting for email from previous messages
+    const existingConversationData = await conversationRef.get();
+    const wasAwaitingEmail = existingConversationData.exists ? existingConversationData.data()?.awaitingEmailForTicket : false;
+    const ticketAlreadyCreated = existingConversationData.exists ? existingConversationData.data()?.ticketCreated : false;
+
+    // If ticket already created for this conversation, skip
+    if (ticketAlreadyCreated) {
+      console.log(`⏭️ Ticket already created for this conversation, skipping`);
+    } else {
+      // If user just provided email and we were waiting for it, force ticket creation
+      let forceTicketCreation = false;
+      if (wasAwaitingEmail && userEmail) {
+        console.log(`✅ User provided email after we requested it - forcing ticket creation`);
+        forceTicketCreation = true;
+      }
+
+      // Handle ticket creation if needed
+      if (shouldCreateTicket || forceTicketCreation) {
+        console.log(`🎫 Ticket creation triggered: ${forceTicketCreation ? 'Email received after request' : ticketReason}`);
+
+        // Check if we already have user email
+        const existingSessionData = await sessionRef.get();
+        const existingEmail = existingSessionData.exists ? existingSessionData.data()?.userEmail : null;
+
+        if (existingEmail || userEmail) {
+          // Create ticket immediately
+          const finalEmail = userEmail || existingEmail;
+          console.log(`📧 Creating ticket with email: ${finalEmail}`);
+
+          try {
+            await createTicket(userId, agentId, finalAnonymousUserId, conversationId, {
+              email: finalEmail,
+              category: category,
+              urgency: urgency,
+              ticketReason: ticketReason || 'User requested support',
+              userSentiment: userSentiment,
+              userSentimentScore: userSentimentScore,
+              aiConfidence: aiConfidence
+            });
+
+            // Update conversation to mark ticket created
+            await conversationRef.update({
+              ticketCreated: true,
+              ticketCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              awaitingEmailForTicket: false
+            });
+
+            console.log(`✅ Ticket created successfully for conversation ${conversationId}`);
+          } catch (ticketError) {
+            console.error('❌ Ticket creation failed:', ticketError);
+            // Don't throw - chat should continue even if ticket fails
+          }
+        } else if (requestEmail) {
+          console.log(`📧 Email requested from user for ticket creation`);
+          // awaitingEmailForTicket already set in conversation update above
+        }
+      }
     }
 
     // Update message usage AFTER successful chat
@@ -1180,6 +1276,108 @@ Guidelines:
 
   } catch (error) {
     console.error('❌ Error processing knowledge gap:', error);
+    throw error;
+  }
+}
+
+// Create a support ticket
+async function createTicket(userId, agentId, anonymousUserId, conversationId, ticketData) {
+  try {
+    console.log(`🎫 Creating ticket for conversation ${conversationId}`);
+
+    // Get conversation summary
+    const conversationRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('sessions').doc(anonymousUserId)
+      .collection('conversations').doc(conversationId);
+
+    const conversationDoc = await conversationRef.get();
+    const conversationData = conversationDoc.exists ? conversationDoc.data() : {};
+
+    // Get session data for user info
+    const sessionRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('sessions').doc(anonymousUserId);
+
+    const sessionDoc = await sessionRef.get();
+    const sessionData = sessionDoc.exists ? sessionDoc.data() : {};
+
+    // Generate AI summary of the conversation
+    let summary = conversationData.analysisReason || ticketData.ticketReason || 'Support request';
+
+    // Get messages for detailed summary
+    const messagesSnapshot = await conversationRef.collection('messages').orderBy('timestamp', 'asc').get();
+    if (!messagesSnapshot.empty) {
+      const messages = messagesSnapshot.docs.map(doc => doc.data());
+      const conversationText = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+
+      // Generate better summary with AI
+      try {
+        const now = Date.now();
+        const timeSinceLastCall = now - lastApiCall;
+        if (timeSinceLastCall < MIN_API_INTERVAL) {
+          await delay(MIN_API_INTERVAL - timeSinceLastCall);
+        }
+        lastApiCall = Date.now();
+
+        const summaryCompletion = await getOpenAI().chat.completions.create({
+          model: "gpt-4.1-nano",
+          messages: [
+            {
+              role: "system",
+              content: "You are a support ticket summarizer. Create a brief, clear 1-2 sentence summary of the user's issue."
+            },
+            {
+              role: "user",
+              content: `Summarize this support conversation:\n\n${conversationText}`
+            }
+          ],
+          max_completion_tokens: 100,
+          temperature: 0.3
+        });
+
+        summary = summaryCompletion.choices[0].message.content;
+      } catch (summaryError) {
+        console.error('❌ Failed to generate AI summary:', summaryError);
+        // Keep existing summary
+      }
+    }
+
+    // Create ticket document
+    const ticketRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('tickets').doc();
+
+    const ticketDocument = {
+      ticketId: ticketRef.id,
+      email: ticketData.email,
+      conversationId: conversationId,
+      sessionId: anonymousUserId,
+      category: ticketData.category || 'Support',
+      urgency: ticketData.urgency || 5,
+      status: 'open',
+      summary: summary,
+      ticketReason: ticketData.ticketReason,
+      userSentiment: ticketData.userSentiment || 'neutral',
+      userSentimentScore: ticketData.userSentimentScore || 5,
+      aiConfidence: ticketData.aiConfidence || 50,
+      userInfo: {
+        location: sessionData.userInfo?.location || {},
+        device: sessionData.userInfo?.device || {},
+        language: sessionData.userInfo?.language || 'en-US'
+      },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await ticketRef.set(ticketDocument);
+
+    console.log(`✅ Ticket ${ticketRef.id} created successfully`);
+
+    return ticketRef.id;
+
+  } catch (error) {
+    console.error('❌ Error creating ticket:', error);
     throw error;
   }
 }

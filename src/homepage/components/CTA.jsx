@@ -9,7 +9,7 @@ export default function CTA() {
       {/* Section separator line */}
       <div className="w-full h-px bg-transparent mb-24"></div>
 
-      <div className="max-w-6xl mx-auto px-2 py-24 relative">
+      <div className="max-w-7xl mx-auto px-2 py-24 relative">
 
         <div className="mx-6">
           <div className="text-center">

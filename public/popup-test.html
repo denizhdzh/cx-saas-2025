@@ -259,25 +259,7 @@
         }, 5000);
     </script>
 
-        <!-- Orchis Chatbot Widget -->
-    <script>
-    (function(){
-      if(!window.OrchisChatbot){
-        const script = document.createElement('script');
-        // Use local file (same directory as this HTML)
-        script.src = './chatbot-widget.js';
-        // OR use production: script.src = 'https://orchis.app/chatbot-widget.js';
-        script.onload = function() {
-          if(window.OrchisChatbot) {
-            window.OrchisChatbot.init({
-              // IMPORTANT: Replace with your actual agent ID
-              agentId: 'ya1zzwmkoMil65IPEqoq'
-            });
-          }
-        };
-        document.head.appendChild(script);
-      }
-    })();
-    </script>
+    <!-- Orchis Chatbot Widget - New Simple Format -->
+    <script src="./chatbot-widget.js" data-agent-id="ya1zzwmkoMil65IPEqoq"></script>
 </body>
 </html>

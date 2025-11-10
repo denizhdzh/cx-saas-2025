@@ -1,4 +1,3 @@
-import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import Header from '../homepage/components/Header';
 import Hero from '../homepage/components/Hero';
@@ -12,6 +11,7 @@ import SessionIntelligence from '../homepage/components/SessionIntelligence';
 
 
 export default function HomePage() {
+
   return (
     <>
       <Helmet>

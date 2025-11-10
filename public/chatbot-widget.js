@@ -2022,4 +2022,17 @@ buildLinkPopup: function(popup) {
   };
 
   console.log('🌸 Orchis Chatbot Widget loaded');
+
+  // Auto-initialize if data-agent-id attribute is present
+  // Use setTimeout to ensure DOM is ready
+  setTimeout(() => {
+    const scripts = document.querySelectorAll('script[data-agent-id]');
+    scripts.forEach(script => {
+      const agentId = script.getAttribute('data-agent-id');
+      if (agentId && !instances[agentId]) {
+        console.log('🚀 Auto-initializing chatbot for agent:', agentId);
+        window.OrchisChatbot.init({ agentId: agentId });
+      }
+    });
+  }, 0);
 })();

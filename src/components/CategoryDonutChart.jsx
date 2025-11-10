@@ -76,7 +76,7 @@ export default function CategoryDonutChart({ data = [] }) {
           transition: fill 0.2s ease;
         }
         .category-bar:hover {
-          fill: ${isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'} !important;
+          fill: ${isDark ? 'rgba(255, 119, 0, 0.8)' : 'rgba(255, 119, 0, 0.8)'} !important;
         }
       `}</style>
       <ResponsiveContainer width="100%" height="100%" key={isDark ? 'dark' : 'light'}>

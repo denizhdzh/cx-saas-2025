@@ -42,7 +42,7 @@ export default function AdminDashboard() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <img src="/logonaked.png" alt="Orchis" className="h-8 w-auto" />
+              <img src="/logonaked2.png" alt="Orchis" className="h-8 w-auto" />
               <span className="text-sm text-neutral-500">/</span>
               <span className="text-sm font-medium text-neutral-900">Admin</span>
             </div>
@@ -186,8 +186,8 @@ export default function AdminDashboard() {
                   onClick={seedDataFromAdmin}
                   className="p-4 border border-neutral-200 rounded-lg hover:border-neutral-300 hover:bg-neutral-50 transition-colors text-left"
                 >
-                  <div className="font-medium text-neutral-900 mb-1">Seed Data</div>
-                  <div className="text-xs text-neutral-500">Sample roadmap</div>
+                  <div className="font-medium text-neutral-900 mb-1">Seed Roadmap</div>
+                  <div className="text-xs text-neutral-500">Add sample roadmap items</div>
                 </button>
 
                 <button

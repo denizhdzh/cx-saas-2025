@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, LabelList } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 
 const SENTIMENT_MAPPING = {
   1: { label: 'Very Angry', icon: '😡' },
@@ -12,11 +12,6 @@ const SENTIMENT_MAPPING = {
   8: { label: 'Very Happy', icon: '😄' },
   9: { label: 'Excited', icon: '😁' },
   10: { label: 'Delighted', icon: '🤩' }
-};
-
-const COLORS = {
-  light: '#f973164a', // violet-500 with opacity
-  dark: '#f973164a'   // violet-400 with opacity
 };
 
 export default function SentimentChart({ data = [] }) {
@@ -65,8 +60,7 @@ export default function SentimentChart({ data = [] }) {
       score: score,
       label: SENTIMENT_MAPPING[score].label,
       count: processedData[score] || 0,
-      icon: SENTIMENT_MAPPING[score].icon,
-      color: isDark ? COLORS.dark : COLORS.light
+      icon: SENTIMENT_MAPPING[score].icon
     };
   });
 
@@ -75,19 +69,19 @@ export default function SentimentChart({ data = [] }) {
       const item = payload[0].payload;
       return (
         <div
-          className="backdrop-blur-sm rounded-lg shadow-xl p-3"
+          className="backdrop-blur-sm rounded-lg shadow-xl p-3 border"
           style={{
-            backgroundColor: isDark ? '#1c1917' : '#f5f5f4',
-            border: `1px solid ${isDark ? '#44403c' : '#e7e5e4'}`
+            backgroundColor: isDark ? 'rgba(28, 25, 23, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+            borderColor: '#f97316'
           }}
         >
           <div className="flex items-center gap-2">
             <span className="text-2xl">{item.icon}</span>
             <div>
-              <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
-                Score {item.score}/10
+              <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
+                {item.label}
               </p>
-              <p className="text-xs" style={{ color: isDark ? COLORS.dark : COLORS.light }}>
+              <p className="text-xs text-stone-600 dark:text-stone-400">
                 {item.count} {item.count === 1 ? 'message' : 'messages'}
               </p>
             </div>
@@ -98,58 +92,79 @@ export default function SentimentChart({ data = [] }) {
     return null;
   };
 
-  return (
-    <div className="h-full w-full relative">
-      <style>{`
-        .sentiment-bar {
-          transition: fill 0.2s ease;
-        }
-        .sentiment-bar:hover {
-          fill: ${isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'} !important;
-        }
-      `}</style>
-      <ResponsiveContainer width="100%" height="100%" key={isDark ? 'dark' : 'light'}>
-        <BarChart
-          data={chartData}
-          layout="vertical"
-          margin={{ left: 0, right: 60, top: 5, bottom: 5 }}
-        >
-          <XAxis type="number" hide />
-          <YAxis type="category" dataKey="score" hide />
-          <Tooltip content={<CustomTooltip />} cursor={false} />
-          <Bar dataKey="count" radius={10} barSize={40} key={isDark ? 'dark' : 'light'}>
-            {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={entry.color}
-                className="sentiment-bar"
-                style={{ transition: 'fill 0.2s ease' }}
-              />
-            ))}
-            <LabelList
-              dataKey="label"
-              position="insideLeft"
-              offset={8}
-              className="sentiment-label"
-              style={{ fill: isDark ? '#ffffff' : '#1c1917', fontSize: 12, fontWeight: 600 }}
-            />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+  // Custom Dot with Emoji
+  const CustomDot = (props) => {
+    const { cx, cy, payload } = props;
+    if (!payload || payload.count === 0) return null;
 
-      {/* Count numbers on the right edge */}
-      <div className="absolute right-2 top-0 bottom-0 flex flex-col justify-around py-1">
-        {chartData.map((item, index) => (
-          <div key={index} className="flex items-center h-[40px]">
-            <span
-              className="text-xs font-semibold"
-              style={{ color: isDark ? '#f5f5f4' : '#292524' }}
-            >
-              {item.count}
-            </span>
-          </div>
-        ))}
-      </div>
+    return (
+      <g>
+        <circle
+          cx={cx}
+          cy={cy}
+          r={5}
+          fill="#f97316"
+          stroke={isDark ? '#1c1917' : '#ffffff'}
+          strokeWidth={2}
+        />
+        <text
+          x={cx}
+          y={cy - 12}
+          textAnchor="middle"
+          fontSize={14}
+        >
+          {payload.icon}
+        </text>
+      </g>
+    );
+  };
+
+  return (
+    <div className="h-full w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart
+          data={chartData}
+          margin={{ left: 10, right: 10, top: 40, bottom: 10 }}
+        >
+          <defs>
+            <linearGradient id="sentimentGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
+              <stop offset="95%" stopColor="#f97316" stopOpacity={0.1}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke={isDark ? '#44403c' : '#e7e5e4'}
+            vertical={false}
+          />
+          <XAxis
+            dataKey="score"
+            stroke={isDark ? '#78716c' : '#a8a29e'}
+            tick={{ fill: isDark ? '#a8a29e' : '#78716c', fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            stroke={isDark ? '#78716c' : '#a8a29e'}
+            tick={{ fill: isDark ? '#a8a29e' : '#78716c', fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            width={30}
+          />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#f97316', strokeWidth: 2 }} />
+          <Area
+            type="monotone"
+            dataKey="count"
+            stroke="#f97316"
+            strokeWidth={3}
+            fill="url(#sentimentGradient)"
+            dot={<CustomDot />}
+            activeDot={{ r: 6, stroke: '#f97316', strokeWidth: 3 }}
+            animationDuration={800}
+            animationEasing="ease-out"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }

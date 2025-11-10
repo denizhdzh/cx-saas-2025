@@ -136,8 +136,8 @@ export default function ImagePicker({ onImageSelect, selectedImage }) {
 
       {/* Image Picker Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4" onClick={() => setIsOpen(false)}>
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-neutral-200">
               <h3 className="text-lg font-medium text-neutral-900">Select Featured Image</h3>

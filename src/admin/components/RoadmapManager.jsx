@@ -59,6 +59,35 @@ export default function RoadmapManager() {
     }));
   };
 
+  const getLatestVersion = async () => {
+    try {
+      const q = query(
+        collection(db, 'admin/changelog/items'),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        return '1.0.0'; // Default first version
+      }
+
+      const latestItem = snapshot.docs[0].data();
+      return latestItem.version || '1.0.0';
+    } catch (error) {
+      console.error('Error getting latest version:', error);
+      return '1.0.0';
+    }
+  };
+
+  const incrementVersion = (version) => {
+    const parts = version.split('.').map(Number);
+    if (parts.length !== 3) return '1.0.1';
+
+    // Increment patch version (1.0.5 -> 1.0.6)
+    parts[2] += 1;
+    return parts.join('.');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -74,11 +103,15 @@ export default function RoadmapManager() {
       if (editingItem) {
         // Eğer status completed'a değişiyorsa changelog'a ekle
         if (editingItem.status !== 'completed' && formData.status === 'completed') {
+          // Get latest version and increment it
+          const latestVersion = await getLatestVersion();
+          const newVersion = incrementVersion(latestVersion);
+
           await addDoc(collection(db, 'admin/changelog/items'), {
             title: formData.title,
             description: formData.description,
-            version: '1.0.0', // Default version, admin düzenleyebilir
-            type: 'minor',
+            version: newVersion,
+            type: 'patch', // Auto-incremented versions are patch updates
             releaseDate: serverTimestamp(),
             features: [formData.title],
             published: true,
@@ -94,7 +127,7 @@ export default function RoadmapManager() {
           createdAt: serverTimestamp()
         });
       }
-      
+
       await loadItems();
       setShowForm(false);
       setEditingItem(null);
