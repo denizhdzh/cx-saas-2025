@@ -5,70 +5,71 @@ export default function CTA() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative">
-      {/* Section separator line */}
-      <div className="w-full h-px bg-transparent mb-24"></div>
+    <section className="relative py-32">
+      {/* Subtle top separator */}
+      <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-neutral-800 to-transparent mb-32"></div>
 
-      <div className="max-w-7xl mx-auto px-2 py-24 relative">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center">
+          {/* Category Label */}
+          <div className="text-[10px] font-light text-neutral-600 mb-8 tracking-[0.3em] uppercase">
+            Start Today
+          </div>
 
-        <div className="mx-6">
-          <div className="text-center">
-            <div className="text-xs text-orange-600 font-bold mb-6 tracking-wider">
-              START AUTOMATING TODAY
+          {/* Main Heading */}
+          <h2 className="text-5xl lg:text-7xl font-extralight text-neutral-50 mb-10 leading-[1.1] max-w-3xl mx-auto">
+            Start converting visitors<br />
+            into happy customers
+          </h2>
+
+          {/* Subtitle */}
+          <p className="text-base text-neutral-500 mb-16 leading-relaxed max-w-xl mx-auto font-light">
+            Join companies using AI that actually learns from gaps, not just logs messages.
+          </p>
+
+          {/* Stats highlight - Minimal */}
+          <div className="mb-16 space-y-2">
+            <div className="text-xl font-light text-neutral-300">
+              Average response: <span className="text-green-400">0.8s</span>
             </div>
-            <h2 className="text-3xl lg:text-4xl font-thin text-neutral-900 mb-6 leading-tight max-w-3xl mx-auto">
-              Start converting visitors<br />
-              into <span className="text-neutral-500">happy customers</span>
-            </h2>
-            <p className="text-neutral-600 text-base mb-8 leading-relaxed max-w-2xl mx-auto">
-              Join companies using AI that actually learns from gaps, not just logs messages.
-            </p>
-
-            {/* Stats highlight */}
-            <div className="mb-12">
-              <div className="text-2xl font-thin text-neutral-900 mb-2">
-                Average response time: <span className="text-orange-600">0.8 seconds</span>
-              </div>
-              <div className="text-sm text-neutral-500">
-                While your competitors make customers wait hours
-              </div>
-            </div>
-
-            <div className="max-w-md mx-auto mb-12">
-              <button
-                onClick={() => navigate('/signin')}
-                className="btn-landing"
-              >
-                Get Started Free →
-              </button>
-              <p className="text-xs text-neutral-500 text-center mt-3">
-                No spam, no tricks. Just smart AI that works.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-              <div className="flex flex-col items-center">
-                <div className="text-lg font-medium text-neutral-900 mb-1">✓</div>
-                <span className="text-sm text-neutral-600">No credit card</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="text-lg font-medium text-neutral-900 mb-1">✓</div>
-                <span className="text-sm text-neutral-600">60s setup</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="text-lg font-medium text-neutral-900 mb-1">✓</div>
-                <span className="text-sm text-neutral-600">Cancel anytime</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="text-lg font-medium text-neutral-900 mb-1">✓</div>
-                <span className="text-sm text-neutral-600">100 free messages</span>
-              </div>
+            <div className="text-sm text-neutral-600 font-light">
+              While competitors make customers wait hours
             </div>
           </div>
 
+          {/* CTA Button */}
+          <div className="max-w-md mx-auto mb-16">
+            <button
+              onClick={() => navigate('/signin')}
+              className="w-full bg-neutral-100 hover:bg-white text-neutral-900 px-8 py-4 rounded-lg text-sm font-light tracking-wide transition-all duration-300 hover:scale-[1.02]"
+            >
+              Get Started Free →
+            </button>
+            <p className="text-xs text-neutral-600 text-center mt-4 font-light">
+              No spam, no tricks. Just smart AI that works.
+            </p>
+          </div>
 
+          {/* Feature Pills */}
+          <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
+            <div className="px-4 py-2 bg-neutral-900/50 border border-neutral-800/50 rounded-full text-xs text-neutral-400 font-light">
+              No credit card
+            </div>
+            <div className="px-4 py-2 bg-neutral-900/50 border border-neutral-800/50 rounded-full text-xs text-neutral-400 font-light">
+              60s setup
+            </div>
+            <div className="px-4 py-2 bg-neutral-900/50 border border-neutral-800/50 rounded-full text-xs text-neutral-400 font-light">
+              Cancel anytime
+            </div>
+            <div className="px-4 py-2 bg-neutral-900/50 border border-neutral-800/50 rounded-full text-xs text-neutral-400 font-light">
+              100 free messages
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Subtle bottom separator */}
+      <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-neutral-800 to-transparent mt-32"></div>
     </section>
   );
 }

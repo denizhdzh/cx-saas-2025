@@ -44,12 +44,12 @@ function DynamicContentPreview() {
       <div className="text-xs font-bold text-white mb-3 text-center">Live Preview</div>
 
       {/* Mini Widget */}
-      <div className="relative mx-auto bg-gradient-to-br from-stone-900/60 to-stone-800/40 backdrop-blur-md border border-stone-700/50 rounded-2xl p-3 shadow-2xl">
+      <div className="relative mx-auto bg-stone-950/40 backdrop-blur-md border border-stone-700/50 rounded-3xl p-3 shadow-2xl" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
 
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 rounded-lg bg-stone-700/50 flex items-center justify-center overflow-hidden">
-            <img src="/logo.webp" alt="Orchis" className="w-6 h-6 object-cover rounded-lg" />
+          <div className="w-8 h-8 rounded-lg bg-stone-700/50 flex items-center justify-center overflow-hidden">
+            <img src="/logo.webp" alt="Orchis" className="w-8 h-8 object-cover rounded-lg" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-white truncate">
@@ -119,7 +119,7 @@ function DynamicContentPreview() {
 
         {/* Powered by */}
         <div className="flex items-center justify-center gap-1 mt-1.5 text-xs text-stone-400">
-          <img src="https://orchis.app/logo.webp" alt="Orchis" className="w-2.5 h-2.5 rounded" />
+          <img src="https://orchis.app/logo.webp" alt="Orchis" className="w-4 h-4 rounded" />
           <span className="text-xs">Powered by <span className="font-bold">ORCHIS</span></span>
         </div>
       </div>
@@ -131,32 +131,32 @@ export default function Hero() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative py-12 lg:py-12 overflow-hidden bg-stone-50">
+    <section className="relative py-12 lg:py-12 overflow-hidden">
 
       <div className="relative max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 z-10">
 
         {/* Main Container */}
-        <div className="bg-neutral-500/5 rounded-2xl sm:rounded-3xl overflow-hidden border border-stone-200/50">
+        <div className="bg-stone-800/50 rounded-2xl sm:rounded-3xl overflow-hidden border border-stone-700/50">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
 
             {/* Left Column - Hero Content */}
-            <div className="p-8 lg:p-12 flex flex-col justify-center bg-white min-h-[600px]">
+            <div className="p-8 lg:p-12 flex flex-col justify-center min-h-[600px]">
               <div className="w-full max-w-md mx-auto lg:mx-0">
 
                 {/* Badge */}
                 <div className="inline-flex items-center gap-2 mb-6 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.1s_forwards]">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-stone-700 uppercase tracking-wider">Powered by AI</span>
+                  <span className="text-xs font-semibold text-stone-100 uppercase tracking-wider">Powered by AI</span>
                 </div>
 
                 {/* Headline */}
-                <h1 className="text-4xl sm:text-5xl font-bold text-stone-900 mb-5 tracking-tight leading-[1.15] opacity-0 animate-[fadeInUp_0.6s_ease-out_0.2s_forwards]">
+                <h1 className="text-4xl sm:text-5xl font-bold text-stone-100 mb-5 tracking-tight leading-[1.15] opacity-0 animate-[fadeInUp_0.6s_ease-out_0.2s_forwards]">
                   Beyond Chatbots: The Smartest<br />
-                  <span className="text-orange-500">Interactive Widget</span>
+                  <span className="text-green-500">Interactive Widget</span>
                 </h1>
 
                 {/* Subheadline */}
-                <p className="text-lg text-stone-600 mb-8 leading-relaxed opacity-0 animate-[fadeInUp_0.6s_ease-out_0.3s_forwards]">
+                <p className="text-lg text-stone-100 mb-8 leading-relaxed opacity-0 animate-[fadeInUp_0.6s_ease-out_0.3s_forwards]">
                   AI chatbot that remembers every visitor, learns from every conversation, and converts 8x more than traditional support.
                 </p>
 
@@ -172,19 +172,19 @@ export default function Hero() {
 
                 {/* Trust Signals */}
                 <div className="space-y-3 mb-8 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.5s_forwards]">
-                  <div className="flex items-center gap-2 text-sm text-stone-600">
+                  <div className="flex items-center gap-2 text-sm text-stone-100">
                     <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     <span>Free forever plan</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-stone-600">
+                  <div className="flex items-center gap-2 text-sm text-stone-100">
                     <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     <span>Setup in 90 seconds</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-stone-600">
+                  <div className="flex items-center gap-2 text-sm text-stone-100">
                     <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
@@ -193,15 +193,15 @@ export default function Hero() {
                 </div>
 
                 {/* Social Proof */}
-                <div className="flex items-center gap-3 pt-6 border-t border-stone-200opacity-0 animate-[fadeInUp_0.6s_ease-out_0.6s_forwards]">
+                <div className="flex items-center gap-3 pt-6 border-t border-stone-700 opacity-0 animate-[fadeInUp_0.6s_ease-out_0.6s_forwards]">
                   <div className="flex -space-x-2">
-                    <img src="/lungoai.webp" alt="LungoAI" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
-                    <img src="/simplelister.webp" alt="SimpleLister" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
-                    <img src="/toolslash.webp" alt="ToolSlash" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
-                    <img src="/unit3media.webp" alt="Unit3Media" className="w-8 h-8 rounded-lg border-2 border-white object-cover shadow-sm" />
+                    <img src="/lungoai.webp" alt="LungoAI" className="w-8 h-8 rounded-lg border-1 border-white/50 object-cover shadow-sm" />
+                    <img src="/simplelister.webp" alt="SimpleLister" className="w-8 h-8 rounded-lg border-1 border-white/50 object-cover shadow-sm" />
+                    <img src="/toolslash.webp" alt="ToolSlash" className="w-8 h-8 rounded-lg border-1 border-white/50 object-cover shadow-sm" />
+                    <img src="/unit3media.webp" alt="Unit3Media" className="w-8 h-8 rounded-lg border-1 border-white/50 object-cover shadow-sm" />
                   </div>
-                  <p className="text-sm text-stone-600">
-                    <span className="font-semibold text-stone-900">300+ makers</span> converted visitors this week
+                  <p className="text-sm text-stone-100">
+                    <span className="font-semibold text-stone-100">300+ makers</span> converted visitors this week
                   </p>
                 </div>
 
@@ -209,8 +209,9 @@ export default function Hero() {
             </div>
 
             {/* Right Column - Chatbot Preview */}
-            <div className="relative bg-gradient-to-br from-orange-50 to-stone-50 p-8 lg:p-12 flex items-center justify-center min-h-[600px]">
-              <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-90" style={{backgroundImage: "url('/livepreview5.webp')"}}></div>
+            <div className="relative bg-gradient-to-br from-green-950 to-stone-950 p-8 lg:p-12 flex items-center justify-center min-h-[600px]">
+              <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{backgroundImage: "url('/nnnn.webp')"}}></div>
+              <div className="absolute inset-0 bg-gradient-to-b from-stone-950/40 via-stone-950/20 to-stone-950/60"></div>
               <div className="relative z-10 w-full max-w-sm opacity-0 animate-[fadeInUp_0.6s_ease-out_0.4s_forwards]">
                 <DynamicContentPreview />
               </div>

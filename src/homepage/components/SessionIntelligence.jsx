@@ -207,7 +207,7 @@ function ContextDetection() {
           isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
         }`}>
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
             <div className="flex-1">
               <div className="text-sm font-mono font-semibold text-neutral-900">
                 {current.page}
@@ -227,7 +227,7 @@ function ContextDetection() {
             <div className="text-xs font-medium text-neutral-500">Active Triggers</div>
             {current.triggers.map((trigger, idx) => (
               <div key={idx} className="flex items-center gap-2.5 text-xs">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
                 <span className="text-neutral-700 font-medium">{trigger.replace(/_/g, ' ')}</span>
               </div>
             ))}
@@ -255,7 +255,7 @@ function ContextDetection() {
               <span className="text-neutral-600">Time Delay</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
               <span className="text-neutral-600">Scroll Depth</span>
             </div>
             <div className="flex items-center gap-2">
@@ -276,7 +276,7 @@ export default function SessionIntelligence() {
 
         {/* Section Header */}
         <div className="text-center mb-12 lg:mb-16">
-          <div className="text-sm text-orange-500 font-semibold mb-2">Session Intelligence</div>
+          <div className="text-sm text-green-500 font-semibold mb-2">Session Intelligence</div>
           <h2 className="text-4xl sm:text-5xl font-bold text-neutral-900 mb-4">
             Every visitor tracked, every conversation remembered
           </h2>

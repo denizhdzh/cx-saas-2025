@@ -5,24 +5,385 @@
   // Widget configuration
   let instances = {};
 
-  // Comprehensive Chat Session Manager
+  // Compact Analytics Manager - Optimized for AI Context
   class ChatSessionManager {
     constructor(agentId) {
       this.agentId = agentId;
       this.pageLoadTime = Date.now();
-
-      // IMPORTANT: Generate anonymousUserId FIRST before session!
       this.anonymousUserId = this.generateAnonymousUserId();
 
-      // Now we can use anonymousUserId in getOrCreateSessionId
-      this.sessionId = this.getOrCreateSessionId();
+      // Load compact analytics
+      this.analytics = this.loadAnalytics();
 
+      // Init or continue session (30min idle = new session)
+      this.currentSession = this.initOrContinueSession();
+
+      // Track visibility for accurate active time
+      this.setupVisibilityTracking();
+
+      // Session data for chat (Firebase sync)
+      this.sessionId = this.anonymousUserId + '_' + Date.now();
       this.sessionData = this.initializeSessionData();
       this.chatStartTime = null;
+      this.isReturnUser = this.analytics.visits.length > 1;
     }
 
+    // ===== ANALYTICS STORAGE (COMPACT) =====
+    loadAnalytics() {
+      const key = `orchis_analytics_${this.agentId}_${this.anonymousUserId}`;
+      const stored = localStorage.getItem(key);
+
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          console.warn('Failed to parse analytics', e);
+        }
+      }
+
+      // Initialize new analytics
+      return {
+        userId: this.anonymousUserId,
+        firstSeen: Date.now(),
+
+        // Visit history (keep last 20 for pattern analysis)
+        visits: [],
+
+        // Page stats (compact)
+        pages: {},
+
+        // Widget interaction
+        widget: {
+          views: 0,
+          opens: 0,
+          closes: 0
+        },
+
+        // Popup tracking
+        popups: {
+          shown: [],
+          clicked: [],
+          dismissed: []
+        }
+      };
+    }
+
+    saveAnalytics() {
+      const key = `orchis_analytics_${this.agentId}_${this.anonymousUserId}`;
+
+      // Keep only last 20 visits to save space
+      if (this.analytics.visits.length > 20) {
+        this.analytics.visits = this.analytics.visits.slice(-20);
+      }
+
+      localStorage.setItem(key, JSON.stringify(this.analytics));
+      console.log('💾 Analytics saved');
+    }
+
+    // ===== SESSION MANAGEMENT =====
+    initOrContinueSession() {
+      const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+      const lastSession = this.analytics.visits[this.analytics.visits.length - 1];
+      const now = Date.now();
+
+      // Check if continuing existing session or new
+      if (lastSession && !lastSession.end && (now - lastSession.start) < SESSION_TIMEOUT) {
+        // Continue existing session
+        console.log('⏰ Continuing existing session');
+        return lastSession;
+      }
+
+      // New session - close previous if exists
+      if (lastSession && !lastSession.end) {
+        lastSession.end = now;
+        lastSession.duration = now - lastSession.start;
+      }
+
+      // Create new session
+      const newSession = {
+        start: now,
+        end: null,
+        pages: [{
+          url: window.location.href,
+          title: document.title,
+          enter: now,
+          exit: null,
+          active: 0
+        }],
+        activeTime: 0,
+        idleTime: 0,
+        referrer: document.referrer || 'direct'
+      };
+
+      this.analytics.visits.push(newSession);
+      this.saveAnalytics();
+
+      console.log(`📊 New session #${this.analytics.visits.length} started`);
+      return newSession;
+    }
+
+    // ===== PAGE TRACKING =====
+    trackPageView(url, title) {
+      const now = Date.now();
+
+      // Close previous page
+      if (this.currentSession.pages.length > 0) {
+        const lastPage = this.currentSession.pages[this.currentSession.pages.length - 1];
+        if (!lastPage.exit) {
+          lastPage.exit = now;
+          lastPage.duration = now - lastPage.enter;
+        }
+      }
+
+      // Add new page
+      this.currentSession.pages.push({
+        url,
+        title,
+        enter: now,
+        exit: null,
+        active: 0
+      });
+
+      // Update page stats
+      if (!this.analytics.pages[url]) {
+        this.analytics.pages[url] = {v: 0, t: 0}; // v=views, t=time
+      }
+      this.analytics.pages[url].v++;
+
+      this.saveAnalytics();
+    }
+
+    // ===== VISIBILITY TRACKING =====
+    setupVisibilityTracking() {
+      this.isVisible = !document.hidden;
+      this.lastVisibilityChange = Date.now();
+
+      document.addEventListener('visibilitychange', () => {
+        const now = Date.now();
+        const elapsed = now - this.lastVisibilityChange;
+
+        if (document.hidden) {
+          // Tab became hidden - add to active time
+          this.currentSession.activeTime += elapsed;
+          const currentPage = this.currentSession.pages[this.currentSession.pages.length - 1];
+          if (currentPage) currentPage.active += elapsed;
+        } else {
+          // Tab became visible - previous time was idle
+          this.currentSession.idleTime += elapsed;
+        }
+
+        this.isVisible = !document.hidden;
+        this.lastVisibilityChange = now;
+      });
+
+      // Periodic save (every 10 seconds when active)
+      setInterval(() => {
+        if (this.isVisible) {
+          const now = Date.now();
+          const elapsed = now - this.lastVisibilityChange;
+          this.currentSession.activeTime += elapsed;
+
+          const currentPage = this.currentSession.pages[this.currentSession.pages.length - 1];
+          if (currentPage) {
+            currentPage.active += elapsed;
+
+            // Update page stats
+            const url = currentPage.url;
+            if (this.analytics.pages[url]) {
+              this.analytics.pages[url].t = (this.analytics.pages[url].t || 0) + elapsed;
+            }
+          }
+
+          this.lastVisibilityChange = now;
+          this.saveAnalytics();
+        }
+      }, 10000);
+    }
+
+    // ===== WIDGET TRACKING =====
+    trackWidgetOpen() {
+      this.analytics.widget.opens++;
+      this.saveAnalytics();
+    }
+
+    trackWidgetClose() {
+      this.analytics.widget.closes++;
+      this.saveAnalytics();
+    }
+
+    // ===== POPUP TRACKING =====
+    trackPopupShown(popupId) {
+      if (!this.analytics.popups.shown.includes(popupId)) {
+        this.analytics.popups.shown.push(popupId);
+        this.saveAnalytics();
+      }
+    }
+
+    trackPopupClicked(popupId) {
+      if (!this.analytics.popups.clicked.includes(popupId)) {
+        this.analytics.popups.clicked.push(popupId);
+        this.saveAnalytics();
+      }
+    }
+
+    trackPopupDismissed(popupId) {
+      if (!this.analytics.popups.dismissed.includes(popupId)) {
+        this.analytics.popups.dismissed.push(popupId);
+        this.saveAnalytics();
+      }
+    }
+
+    // ===== COMPUTED METRICS (for AI) =====
+    getTotalVisits() {
+      return this.analytics.visits.length;
+    }
+
+    getTotalActiveTime() {
+      return this.analytics.visits.reduce((sum, v) => sum + (v.activeTime || 0), 0);
+    }
+
+    getAvgSessionDuration() {
+      const completed = this.analytics.visits.filter(v => v.end);
+      if (completed.length === 0) return 0;
+      const total = completed.reduce((sum, v) => sum + (v.end - v.start), 0);
+      return Math.round(total / completed.length / 1000); // seconds
+    }
+
+    getDaysSinceFirst() {
+      return Math.floor((Date.now() - this.analytics.firstSeen) / (24 * 60 * 60 * 1000));
+    }
+
+    getDaysSinceLast() {
+      if (this.analytics.visits.length < 2) return 0;
+      const lastVisit = this.analytics.visits[this.analytics.visits.length - 2];
+      return Math.floor((Date.now() - lastVisit.start) / (24 * 60 * 60 * 1000));
+    }
+
+    getReturningPattern() {
+      const visits = this.analytics.visits;
+      if (visits.length < 2) return 'new';
+      if (visits.length < 3) return 'second_time';
+
+      // Calculate avg days between visits
+      let totalGap = 0;
+      for (let i = 1; i < visits.length; i++) {
+        totalGap += visits[i].start - visits[i-1].start;
+      }
+      const avgGapDays = totalGap / (visits.length - 1) / (24 * 60 * 60 * 1000);
+
+      if (avgGapDays < 1) return 'frequent';      // Multiple times per day
+      if (avgGapDays < 7) return 'regular';       // Weekly visitor
+      if (avgGapDays < 30) return 'occasional';   // Monthly
+      return 'rare';                               // Rare visitor
+    }
+
+    getBounceRate() {
+      const completed = this.analytics.visits.filter(v => v.end);
+      if (completed.length === 0) return 0;
+
+      const bounces = completed.filter(v => {
+        const duration = v.end - v.start;
+        return duration < 5000 && v.pages.length === 1; // < 5 seconds, 1 page
+      }).length;
+
+      return Math.round((bounces / completed.length) * 100);
+    }
+
+    getEngagementScore() {
+      // 0-100 score based on multiple factors
+      let score = 0;
+
+      // Visit frequency (max 30 points)
+      const pattern = this.getReturningPattern();
+      if (pattern === 'frequent') score += 30;
+      else if (pattern === 'regular') score += 25;
+      else if (pattern === 'occasional') score += 15;
+      else if (pattern === 'second_time') score += 10;
+
+      // Active time (max 25 points)
+      const avgSession = this.getAvgSessionDuration();
+      if (avgSession > 300) score += 25;        // > 5 min
+      else if (avgSession > 120) score += 20;   // > 2 min
+      else if (avgSession > 60) score += 15;    // > 1 min
+      else if (avgSession > 30) score += 10;    // > 30 sec
+
+      // Page depth (max 20 points)
+      const uniquePages = Object.keys(this.analytics.pages).length;
+      if (uniquePages >= 5) score += 20;
+      else if (uniquePages >= 3) score += 15;
+      else if (uniquePages >= 2) score += 10;
+      else score += 5;
+
+      // Widget interaction (max 15 points)
+      if (this.analytics.widget.opens > 3) score += 15;
+      else if (this.analytics.widget.opens > 1) score += 10;
+      else if (this.analytics.widget.opens > 0) score += 5;
+
+      // Low bounce rate bonus (max 10 points)
+      const bounceRate = this.getBounceRate();
+      if (bounceRate < 20) score += 10;
+      else if (bounceRate < 50) score += 5;
+
+      return Math.min(100, score);
+    }
+
+    getMostVisitedPage() {
+      let maxViews = 0;
+      let topPage = null;
+
+      for (const [url, stats] of Object.entries(this.analytics.pages)) {
+        if (stats.v > maxViews) {
+          maxViews = stats.v;
+          topPage = url;
+        }
+      }
+
+      return topPage;
+    }
+
+    // ===== AI SUMMARY =====
+    getAISummary() {
+      // Compact summary for AI context
+      return {
+        // Identity
+        userId: this.anonymousUserId,
+        daysSinceFirst: this.getDaysSinceFirst(),
+        daysSinceLast: this.getDaysSinceLast(),
+
+        // Behavior
+        visits: this.getTotalVisits(),
+        returning: this.getReturningPattern(),
+        engagement: this.getEngagementScore(),
+        bounceRate: this.getBounceRate(),
+
+        // Activity
+        avgSession: this.getAvgSessionDuration(),
+        totalActive: Math.round(this.getTotalActiveTime() / 1000),
+        pagesViewed: Object.keys(this.analytics.pages).length,
+        topPage: this.getMostVisitedPage(),
+
+        // Current session
+        currentPage: window.location.href,
+        timeOnSite: Math.round((Date.now() - this.pageLoadTime) / 1000),
+
+        // Interactions
+        widgetOpens: this.analytics.widget.opens,
+        popupsSeen: this.analytics.popups.shown.length,
+
+        // Context
+        referrer: this.currentSession.referrer,
+        device: this.getDeviceType(),
+        browser: this.getBrowserInfo()
+      };
+    }
+
+    // ===== USER ID =====
     generateAnonymousUserId() {
-      // Create persistent anonymous ID based on browser fingerprint
+      const storedUserId = localStorage.getItem('orchis_anonymous_user_id');
+      if (storedUserId) {
+        return storedUserId;
+      }
+
       const fingerprint = [
         window.location.hostname,
         navigator.userAgent,
@@ -30,74 +391,48 @@
         screen.width + 'x' + screen.height,
         Intl.DateTimeFormat().resolvedOptions().timeZone
       ].join('-');
-      
-      // Simple hash function for anonymous ID
+
       let hash = 0;
       for (let i = 0; i < fingerprint.length; i++) {
         const char = fingerprint.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32bit integer
+        hash = hash & hash;
       }
-      return 'anon_' + Math.abs(hash).toString(36);
+      const userId = 'anon_' + Math.abs(hash).toString(36);
+
+      localStorage.setItem('orchis_anonymous_user_id', userId);
+      return userId;
     }
 
-    getOrCreateSessionId() {
-      // Key based on agentId for site-specific tracking
-      const lastVisitKey = `orchis_last_visit_${this.agentId}`;
-      const sessionKey = `orchis_session_${this.anonymousUserId}`;
-
-      let sessionId = localStorage.getItem(sessionKey);
-      const lastVisit = localStorage.getItem(lastVisitKey);
-      const now = Date.now();
-
-      // Check if return user based on AGENT-SPECIFIC last visit
-      // Each agent has its own tracking - so user can be new on site A but return user on site B
-      const ONE_HOUR = 60 * 60 * 1000;
-
-      if (lastVisit) {
-        const timeSinceLastVisit = now - parseInt(lastVisit);
-
-        if (timeSinceLastVisit > ONE_HOUR) {
-          // More than 1 hour passed - this is a return user
-          this.isReturnUser = true;
-          console.log('🔄 Return user detected for agent ' + this.agentId);
-          console.log('   Last visit: ' + new Date(parseInt(lastVisit)).toLocaleString());
-          console.log('   Time since: ' + Math.round(timeSinceLastVisit / 1000 / 60) + ' minutes');
-
-          // NOW update the last visit timestamp (only for return users after 1h gap)
-          localStorage.setItem(lastVisitKey, now.toString());
-        } else {
-          // Less than 1 hour - same session
-          this.isReturnUser = false;
-          console.log('⏰ Same session for agent ' + this.agentId + ' (within 1 hour)');
-          // DON'T update lastVisit - keep the session active
-        }
-      } else {
-        // First time visiting this agent/site
-        this.isReturnUser = false;
-        console.log('✨ New user for agent ' + this.agentId);
-
-        // Set first visit timestamp
-        localStorage.setItem(lastVisitKey, now.toString());
-      }
-
-      // Create or get session ID (user-specific, not agent-specific)
-      if (!sessionId) {
-        sessionId = this.anonymousUserId;
-        localStorage.setItem(sessionKey, sessionId);
-      }
-
-      return sessionId;
+    // ===== DEVICE & BROWSER =====
+    getDeviceType() {
+      const width = window.innerWidth;
+      if (width <= 768) return 'mobile';
+      if (width <= 1024) return 'tablet';
+      return 'desktop';
     }
 
+    getBrowserInfo() {
+      const ua = navigator.userAgent;
+      if (ua.includes('Chrome')) return 'Chrome';
+      if (ua.includes('Firefox')) return 'Firefox';
+      if (ua.includes('Safari')) return 'Safari';
+      if (ua.includes('Edge')) return 'Edge';
+      return 'Unknown';
+    }
+
+    // ===== CHAT SESSION DATA (Firebase sync) =====
     initializeSessionData() {
+      const summary = this.getAISummary();
+
       return {
-        // User Identity
         userId: this.anonymousUserId,
         sessionId: this.sessionId,
         agentId: this.agentId,
 
-        // User Info
+        // Include AI summary in session data
+        userAnalytics: summary,
+
         userInfo: {
           location: {
             hostname: window.location.hostname,
@@ -112,21 +447,16 @@
             deviceType: this.getDeviceType()
           },
           language: navigator.language || 'en',
-          isReturnUser: this.isReturnUser,
-          firstVisit: !this.isReturnUser ? new Date().toISOString() : null,
-          lastVisit: new Date().toISOString(),
-          totalVisits: this.getPageViewCount()
+          isReturnUser: this.isReturnUser
         },
 
-        // Page content (lightweight scrape for context)
         pageContent: this.scrapePageContent(),
 
-        // Current Conversation
         currentConversation: {
           conversationId: 'conv_' + Date.now(),
           startedAt: new Date().toISOString(),
           messages: [],
-          analysis: null, // Will be populated by AI
+          analysis: null,
           metrics: {
             messageCount: 0,
             duration: 0,
@@ -135,43 +465,6 @@
           }
         }
       };
-    }
-
-    getPageViewCount() {
-      const key = `orchis_pageviews_${this.anonymousUserId}`;
-      let count = parseInt(localStorage.getItem(key) || '0');
-      count++;
-      localStorage.setItem(key, count.toString());
-      return count;
-    }
-
-    isReturnVisitor() {
-      const key = `orchis_visitor_${this.anonymousUserId}`;
-      const hasVisited = localStorage.getItem(key);
-      if (!hasVisited) {
-        localStorage.setItem(key, Date.now().toString());
-        return false;
-      }
-      return true;
-    }
-
-    getDeviceType() {
-      const width = window.innerWidth;
-      if (width <= 768) return 'mobile';
-      if (width <= 1024) return 'tablet';
-      return 'desktop';
-    }
-
-    getBrowserInfo() {
-      const ua = navigator.userAgent;
-      let browser = 'Unknown';
-      
-      if (ua.includes('Chrome')) browser = 'Chrome';
-      else if (ua.includes('Firefox')) browser = 'Firefox';
-      else if (ua.includes('Safari')) browser = 'Safari';
-      else if (ua.includes('Edge')) browser = 'Edge';
-      
-      return browser;
     }
 
     startChat() {
@@ -199,7 +492,6 @@
       if (isUser) {
         this.lastUserMessageTime = Date.now();
       } else {
-        // Track response time
         if (messageData.responseTime) {
           this.sessionData.currentConversation.metrics.responseTimes.push(messageData.responseTime);
           const times = this.sessionData.currentConversation.metrics.responseTimes;
@@ -211,22 +503,16 @@
       this.saveSession();
     }
 
-    // All analysis is now done by AI in the backend
-    // No client-side keyword analysis needed
-
     scrapePageContent() {
       try {
-        // Lightweight page context - just title, URL and main headings
         const title = document.title || '';
         const h1s = Array.from(document.querySelectorAll('h1')).map(h => h.textContent.trim()).join(', ');
-
         return {
           title,
           headings: h1s,
           url: window.location.href
         };
       } catch (error) {
-        console.error('Error scraping page:', error);
         return {
           title: document.title || '',
           url: window.location.href
@@ -235,15 +521,7 @@
     }
 
     saveSession() {
-      // Save to localStorage for persistence
       localStorage.setItem(`orchis_session_${this.sessionId}`, JSON.stringify(this.sessionData));
-
-      // Session will be synced to Firestore when messages are sent
-      console.log('💾 Session saved:', {
-        userId: this.sessionData.userId,
-        conversationId: this.sessionData.currentConversation.conversationId,
-        messageCount: this.sessionData.currentConversation.metrics.messageCount
-      });
     }
   }
 
@@ -331,10 +609,17 @@
       console.log('🔍 DEBUG: popups:', popups);
       console.log('🔍 DEBUG: isReturnUser:', this.sessionManager.isReturnUser);
 
+      // Check if ANY popup is already visible in DOM
+      const existingBanner = this.container?.querySelector('.orchis-offer-banner');
+      if (existingBanner) {
+        console.log('⚠️ Popup already visible, skipping all triggers');
+        return;
+      }
+
       // If no popups configured, check old discount configs for backward compatibility
       if (!popups || popups.length === 0) {
         console.log('⚠️ No popups found, checking old discount system...');
-        // Backward compatibility with old discount system
+        // Backward compatibility with old discount system (MUTUALLY EXCLUSIVE)
         if (this.sessionManager.isReturnUser && this.config.returnUserDiscount?.enabled) {
           setTimeout(() => this.showReturnUserDiscount(), 1500);
         } else if (!this.sessionManager.isReturnUser && this.config.firstTimeDiscount?.enabled) {
@@ -345,8 +630,16 @@
 
       console.log(`✅ Found ${popups.length} popup(s) to process`);
 
-      // Process each popup
+      // Track if we've already scheduled a popup to show
+      let popupScheduled = false;
+
+      // Process each popup (but only show ONE)
       popups.forEach((popup, index) => {
+        if (popupScheduled) {
+          console.log(`⏭️ Skipping popup #${index + 1} - another popup already scheduled`);
+          return;
+        }
+
         console.log(`🔄 Processing popup #${index + 1}:`, popup);
         const trigger = popup.trigger;
         const triggerValue = popup.triggerValue || 3;
@@ -368,14 +661,10 @@
           localStorage.removeItem(shownKey);
           localStorage.removeItem(expiryKey);
           // Continue to show popup
-        }
-
-        // If still active (shown + not expired), skip
-        if (localStorage.getItem(shownKey) && savedExpiry && Date.now() <= parseInt(savedExpiry)) {
-          console.log('✅ Popup still active, re-showing:', popup.id);
-          // Re-show the popup with remaining time
-          setTimeout(() => this.showPopup(popup), 1500);
-          return;
+        } else if (localStorage.getItem(shownKey) && savedExpiry) {
+          // Still active - re-show it (handles hard refresh)
+          console.log('🔄 Popup active but not in DOM (hard refresh?) - showing again');
+          // Continue to show popup
         }
 
         console.log(`🎯 Setting up trigger: ${trigger} for popup: ${popup.title}`);
@@ -385,6 +674,7 @@
             if (!this.sessionManager.isReturnUser) {
               console.log('✅ First visit trigger matched, showing popup in 1.5s');
               setTimeout(() => this.showPopup(popup), 1500);
+              popupScheduled = true;
             } else {
               console.log('❌ First visit trigger NOT matched (user is returning)');
             }
@@ -394,6 +684,7 @@
             if (this.sessionManager.isReturnUser) {
               console.log('✅ Return visit trigger matched, showing popup in 1.5s');
               setTimeout(() => this.showPopup(popup), 1500);
+              popupScheduled = true;
             } else {
               console.log('❌ Return visit trigger NOT matched (user is new)');
             }
@@ -402,16 +693,19 @@
           case 'exit_intent':
             console.log('✅ Setting up exit intent listener');
             this.setupExitIntentListener(popup);
+            popupScheduled = true;
             break;
 
           case 'time_delay':
             console.log(`✅ Setting up time delay: ${triggerValue}s`);
             setTimeout(() => this.showPopup(popup), triggerValue * 1000);
+            popupScheduled = true;
             break;
 
           case 'scroll_depth':
             console.log(`✅ Setting up scroll depth: ${triggerValue}%`);
             this.setupScrollDepthListener(popup, triggerValue);
+            popupScheduled = true;
             break;
 
           default:
@@ -532,7 +826,7 @@
         .orchis-position-top-left { top: 10px; left: 10px; }
         
         .orchis-chat-widget {
-          background: linear-gradient(135deg, rgba(22, 22, 22, 0.50) 0%, rgba(44, 44, 44, 0.92) 100%);
+          background: linear-gradient(135deg, rgba(22, 22, 22, 0.70) 0%, rgba(44, 44, 44, 0.92) 100%);
           backdrop-filter: blur(7px) saturate(180%);
           -webkit-backdrop-filter: blur(10px) saturate(180%);
           border: 0.5px solid rgba(255, 255, 255, 0.12);
@@ -589,7 +883,7 @@
         .orchis-agent-avatar {
           width: 32px;
           height: 32px;
-          border-radius: 12px;
+          border-radius: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -602,7 +896,7 @@
           width: 32px;
           height: 32px;
           object-fit: cover;
-          border-radius: 12px;
+          border-radius: 0px;
         }
         
         .orchis-default-avatar {
@@ -763,7 +1057,7 @@
           width: 32px;
           height: 32px;
           object-fit: cover;
-          border-radius: 50%;
+          border-radius: 10%;
         }
 
         .orchis-input-container {
@@ -866,7 +1160,7 @@
         .orchis-logo {
           width: 12px;
           height: 12px;
-          border-radius: 4px;
+          border-radius: 1px;
         }
 
         .orchis-link {
@@ -1220,12 +1514,18 @@
       const widget = this.container.querySelector('.orchis-chat-widget');
       widget.classList.remove('orchis-minimized');
       this.isMinimized = false;
+
+      // Track widget open
+      this.sessionManager.trackWidgetOpen();
     },
 
     minimize: function() {
       const widget = this.container.querySelector('.orchis-chat-widget');
       widget.classList.add('orchis-minimized');
       this.isMinimized = true;
+
+      // Track widget close
+      this.sessionManager.trackWidgetClose();
     },
 
     toggleMinimize: function() {
@@ -1236,43 +1536,6 @@
       }
     },
 
-    addWelcomeMessage: function() {
-      // Context-aware welcome based on current page
-      const currentPath = window.location.pathname.toLowerCase();
-      const currentURL = window.location.href.toLowerCase();
-
-      let welcomeMessage = '';
-      let contextualSuggestions = [];
-
-      // Smart context detection
-      if (currentPath.includes('pricing') || currentURL.includes('pricing')) {
-        welcomeMessage = `Hi! I see you're checking out pricing. I can help you find the perfect plan for your needs!`;
-        contextualSuggestions = ['Compare plans', 'Enterprise pricing', 'Free trial details'];
-      } else if (currentPath.includes('features') || currentURL.includes('features')) {
-        welcomeMessage = `Hey! Exploring our features? I'd love to show you what ${this.config.projectName} can do!`;
-        contextualSuggestions = ['Key features', 'Integrations', 'See demo'];
-      } else if (currentPath.includes('about') || currentPath.includes('contact')) {
-        welcomeMessage = `Hi there! Looking to get in touch? I can help answer questions or schedule a call!`;
-        contextualSuggestions = ['Book a demo', 'Talk to sales', 'Contact support'];
-      } else if (currentPath.includes('blog') || currentPath.includes('resources')) {
-        welcomeMessage = `Hey! Reading our content? Feel free to ask me anything about ${this.config.projectName}!`;
-        contextualSuggestions = ['Getting started', 'Use cases', 'Documentation'];
-      } else if (this.userName) {
-        welcomeMessage = `Welcome back, ${this.userName}! What would you like to know about ${this.config.projectName}?`;
-      } else {
-        welcomeMessage = `Hi! I'm ${this.config.projectName}'s AI assistant. What's your name so I can personalize our session?`;
-      }
-
-      this.messages.push({
-        id: 1,
-        role: 'assistant',
-        content: welcomeMessage,
-        timestamp: new Date(),
-        suggestions: contextualSuggestions
-      });
-
-      this.updateMessages();
-    },
 
 
     // HMAC generation helper
@@ -1330,24 +1593,21 @@
           ? `User ${this.userName} asks: ${message}`
           : message;
 
-        // Send conversation history with token limit (~2000 tokens = ~8000 chars)
+        // Send last 10 messages (5 user + 5 assistant pairs) for AI continuity
         let recentMessages = [];
-        let totalChars = 0;
-        const maxChars = 8000;
+        const maxMessages = 10;
 
-        // Add messages from newest to oldest until we hit limit
-        for (let i = this.messages.length - 1; i >= 0; i--) {
+        // Get last 10 messages (or all if less than 10)
+        const startIndex = Math.max(0, this.messages.length - maxMessages);
+        for (let i = startIndex; i < this.messages.length; i++) {
           const msg = this.messages[i];
-          const msgLength = msg.content.length;
-
-          if (totalChars + msgLength > maxChars) break;
-
-          recentMessages.unshift({
+          recentMessages.push({
             role: msg.role,
             content: msg.content
           });
-          totalChars += msgLength;
         }
+
+        console.log(`📚 Sending ${recentMessages.length} messages to AI (last ${Math.min(maxMessages, this.messages.length)} messages)`);
 
         // Prepare request data
         const timestamp = Date.now();
@@ -1405,6 +1665,18 @@
 
           // Add assistant response to session manager
           this.sessionManager.addMessage(result.data.response, false);
+
+          // Save userName if AI detected it
+          if (result.data.userName && !this.userName) {
+            this.userName = result.data.userName;
+            localStorage.setItem(`chatbot_user_${this.config.agentId}`, result.data.userName);
+            console.log(`👤 User name saved: ${this.userName}`);
+          }
+
+          // Warn if question was off-topic
+          if (result.data.isRelevant === false) {
+            console.log('⚠️ Question was off-topic, AI provided redirect message');
+          }
 
           // Handle AI analysis if available
           if (result.data.analysis) {
@@ -1817,6 +2089,9 @@
       // Insert after header
       header.parentNode.insertBefore(offerBanner, header.nextSibling);
 
+      // Track popup shown
+      this.sessionManager.trackPopupShown(popup.id);
+
       // Add close functionality - MANUAL CLOSE (removes expiry)
       const closeBtn = offerBanner.querySelector('.orchis-close-offer');
       if (closeBtn) {
@@ -1826,6 +2101,9 @@
             offerBanner.remove();
             // Remove expiry - this marks it as manually closed
             localStorage.removeItem(expiryKey);
+
+            // Track popup dismissed
+            this.sessionManager.trackPopupDismissed(popup.id);
             console.log('🚫 Popup manually closed, won\'t show again');
           }, 400);
         });
@@ -1984,6 +2262,9 @@ buildLinkPopup: function(popup) {
         if (couponEl) {
           const couponCode = popup.code;
           couponEl.addEventListener('click', () => {
+            // Track popup clicked (coupon copy)
+            this.sessionManager.trackPopupClicked(popup.id);
+
             navigator.clipboard.writeText(couponCode).then(() => {
               couponEl.classList.add('orchis-copied');
               setTimeout(() => couponEl.classList.remove('orchis-copied'), 1500);
@@ -1994,6 +2275,9 @@ buildLinkPopup: function(popup) {
         const btn = banner.querySelector('.orchis-popup-btn');
         if (btn) {
           btn.addEventListener('click', () => {
+            // Track popup clicked
+            this.sessionManager.trackPopupClicked(popup.id);
+
             banner.style.animation = 'orchis-offer-slide-out 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
             setTimeout(() => banner.remove(), 400);
           });

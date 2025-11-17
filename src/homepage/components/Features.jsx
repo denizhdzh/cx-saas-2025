@@ -270,10 +270,12 @@ export default function Features() {
 
         {/* Section Header */}
         <div className="text-center mb-12 lg:mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-neutral-900 mb-4">
+          <div className="text-[10px] font-light text-neutral-600 mb-6 tracking-[0.25em] uppercase">Features</div>
+          <h2 className="text-5xl font-extralight text-neutral-50 mb-6 leading-tight">
             Everything you need in one platform
           </h2>
-          <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+          <div className="w-24 h-[1px] bg-gradient-to-r from-transparent via-neutral-700 to-transparent mx-auto mb-8"></div>
+          <p className="text-base text-neutral-400 max-w-2xl mx-auto font-light leading-relaxed">
             AI-powered features designed to transform your customer support
           </p>
         </div>
@@ -296,11 +298,11 @@ export default function Features() {
 
             {/* Title & Description */}
             <div className="text-center">
-              <div className="text-sm text-orange-500 font-semibold mb-2">Brand-aligned AI</div>
-              <h3 className="text-xl sm:text-2xl font-semibold text-neutral-900 mb-2">
+              <div className="text-[10px] text-green-500 font-light mb-3 uppercase tracking-widest">Brand-aligned AI</div>
+              <h3 className="text-2xl font-extralight text-neutral-50 mb-3">
                 Trained on your files
               </h3>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-neutral-500 font-light leading-relaxed">
                 AI answers using only your documents. Creates tickets when needed and logs to dashboard for real-time follow-up.
               </p>
             </div>
@@ -321,11 +323,11 @@ export default function Features() {
 
             {/* Title & Description */}
             <div className="text-center">
-              <div className="text-sm text-orange-500 font-semibold mb-2">Dynamic Offer</div>
-              <h3 className="text-xl sm:text-2xl font-semibold text-neutral-900 mb-2">
+              <div className="text-[10px] text-green-500 font-light mb-3 uppercase tracking-widest">Dynamic Offer</div>
+              <h3 className="text-2xl font-extralight text-neutral-50 mb-3">
                 In-chat offers that convert
               </h3>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-neutral-500 font-light leading-relaxed">
                 Context-aware offers similar to Apple Live Activities. Configure for first-time and returning users to boost engagement.
               </p>
             </div>
@@ -346,11 +348,11 @@ export default function Features() {
 
             {/* Title & Description */}
             <div className="text-center">
-              <div className="text-sm text-orange-500 font-semibold mb-2">Knowledge Gap</div>
-              <h3 className="text-xl sm:text-2xl font-semibold text-neutral-900 mb-2">
+              <div className="text-[10px] text-green-500 font-light mb-3 uppercase tracking-widest">Knowledge Gap</div>
+              <h3 className="text-2xl font-extralight text-neutral-50 mb-3">
                 Single-click knowledge fill
               </h3>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-neutral-500 font-light leading-relaxed">
                 System creates knowledge gap entries instantly. Fill from dashboard with one click so AI learns and improves quickly.
               </p>
             </div>

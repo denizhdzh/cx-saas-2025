@@ -109,8 +109,10 @@ async function extractTextFromFile(buffer, mimeType, filename) {
 
 // Create and train agent
 exports.trainAgent = onCall({
-  timeoutSeconds: 540,
-  memory: '2GiB'
+  timeoutSeconds: 300,
+  memory: '512MiB',
+  minInstances: 0,
+  maxInstances: 3
 }, async (request) => {
   // Check authentication
   if (!request.auth) {
@@ -329,8 +331,10 @@ exports.trainAgent = onCall({
 
 // Process uploaded document
 exports.processDocument = onCall({
-  timeoutSeconds: 300,
-  memory: '1GiB'
+  timeoutSeconds: 180,
+  memory: '512MiB',
+  minInstances: 0,
+  maxInstances: 3
 }, async (request) => {
   // Check authentication
   if (!request.auth) {
@@ -454,8 +458,11 @@ function cosineSimilarity(vecA, vecB) {
 
 // Chat with agent using similarity search (authenticated)
 exports.chatWithAgent = onCall({
-  timeoutSeconds: 120,
-  memory: '512MiB'
+  timeoutSeconds: 60,
+  memory: '256MiB',
+  minInstances: 0,
+  maxInstances: 5,
+  concurrency: 80
 }, async (request) => {
   if (!request.auth) {
     throw new Error('User must be authenticated');
@@ -470,9 +477,12 @@ exports.chatWithAgent = onCall({
 
 // Chat with agent for external widgets (HMAC authenticated)
 exports.chatWithAgentExternal = onRequest({
-  timeoutSeconds: 120,
-  memory: '512MiB',
-  cors: true
+  timeoutSeconds: 60,
+  memory: '256MiB',
+  cors: true,
+  minInstances: 0,
+  maxInstances: 10,
+  concurrency: 100
 }, async (request, response) => {
   // Set CORS headers
   response.set('Access-Control-Allow-Origin', '*');
@@ -741,220 +751,257 @@ async function processChatMessage(agentId, message, sessionId, conversationHisto
       }
     });
     
-    // Sort by similarity and get top 3 most relevant chunks
+    // Sort by similarity and get top 2 most relevant chunks (reduced from 3)
     const topChunks = chunksWithScores
       .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, 3);
-    
+      .slice(0, 2);
+
     console.log(`🔍 Found ${topChunks.length} relevant chunks, top similarity: ${topChunks[0]?.similarity || 0}`);
-    
-    // Build context from relevant chunks
-    const context = topChunks.map(chunk => chunk.content).join('\n\n');
+
+    // Build context from relevant chunks (max 800 chars per chunk)
+    const context = topChunks.map(chunk => chunk.content.substring(0, 800)).join('\n\n');
     
     // Extract enriched context from session data if available
-    const currentPage = sessionData?.userInfo?.location?.pathname || 'unknown';
-    const pageContent = sessionData?.pageContent;
     const userLocation = sessionData?.userInfo?.location;
+    const hostname = userLocation?.hostname || '';
+    const pathname = userLocation?.pathname || '/';
+    const fullUrl = hostname ? `https://${hostname}${pathname}` : 'unknown';
+    const pageContent = sessionData?.pageContent;
     const previousConversations = conversationHistory.length;
-    const isReturningUser = sessionData?.returningUser || false;
+    const isReturningUser = sessionData?.userInfo?.isReturnUser || false;
+
+    // Get saved user info from previous conversations
+    const userSessionRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('sessions').doc(anonymousUserId);
+    const existingSessionDoc = await userSessionRef.get();
+    const savedUserName = existingSessionDoc.exists ? existingSessionDoc.data()?.userName : null;
 
     let pageContext = '';
     if (pageContent) {
       pageContext = `\n\nPAGE CONTEXT:
-- URL: ${pageContent.url || currentPage}
+- URL: ${pageContent.url || fullUrl}
 - Title: ${pageContent.title || 'Unknown'}
 - Main Headings: ${pageContent.headings || 'None'}`;
-    } else if (currentPage !== 'unknown') {
-      pageContext = `\n\nCONTEXT: User is currently on the "${currentPage}" page.`;
+    } else if (fullUrl !== 'unknown') {
+      pageContext = `\n\nCONTEXT: User is currently on "${fullUrl}"`;
     }
 
-    // Add user session context
+    // Add enriched user analytics context
+    const analytics = sessionData?.userAnalytics || {};
     let userContext = '';
-    if (isReturningUser) {
-      userContext += `\n\nUSER INFO: Returning user (${previousConversations > 0 ? `${previousConversations} previous messages` : 'first visit today'})`;
+
+    // Build comprehensive user profile
+    if (analytics.visits > 0) {
+      // Behavioral pattern
+      const pattern = analytics.returning || 'new';
+      const engagement = analytics.engagement || 0;
+      const bounceRate = analytics.bounceRate || 0;
+
+      userContext += `\n\nUSER PROFILE:`;
+
+      // Visit pattern and engagement
+      if (pattern === 'new' || pattern === 'second_time') {
+        userContext += `\n- Status: ${pattern === 'new' ? 'First time visitor' : 'Second visit'} - be welcoming and helpful!`;
+      } else {
+        userContext += `\n- Status: ${pattern.charAt(0).toUpperCase() + pattern.slice(1)} visitor (${analytics.visits} visits)`;
+      }
+
+      // Engagement insights
+      if (engagement >= 70) {
+        userContext += `\n- Engagement: HIGH (${engagement}/100) - highly engaged user, values detailed answers`;
+      } else if (engagement >= 40) {
+        userContext += `\n- Engagement: Medium (${engagement}/100) - interested but selective`;
+      } else if (pattern !== 'new') {
+        userContext += `\n- Engagement: Low (${engagement}/100) - quick answers preferred`;
+      }
+
+      // Bounce behavior
+      if (bounceRate > 50 && analytics.visits > 2) {
+        userContext += `\n- Behavior: Tends to bounce quickly - provide concise, direct answers`;
+      }
+
+      // Activity metrics
+      if (analytics.totalActive > 60) {
+        const mins = Math.floor(analytics.totalActive / 60);
+        userContext += `\n- Total time spent: ${mins}+ minutes across visits`;
+      }
+
+      if (analytics.pagesViewed > 1) {
+        userContext += `\n- Explored ${analytics.pagesViewed} different pages`;
+        if (analytics.topPage) {
+          const topPageName = analytics.topPage.split('/').filter(p => p).pop() || 'homepage';
+          userContext += ` (most time on: ${topPageName})`;
+        }
+      }
+
+      // Widget interaction
+      if (analytics.widgetOpens > 0) {
+        userContext += `\n- Widget opens: ${analytics.widgetOpens} time${analytics.widgetOpens > 1 ? 's' : ''}`;
+      }
+
+      // Context clues
+      if (analytics.referrer && analytics.referrer !== 'direct') {
+        userContext += `\n- Came from: ${analytics.referrer}`;
+      }
+
+      // Device/browser for context
+      if (analytics.device) {
+        userContext += `\n- Device: ${analytics.device}`;
+      }
+    } else {
+      // Fallback to basic info
+      if (isReturningUser) {
+        userContext += `\n\nUSER INFO: Returning user (${previousConversations > 0 ? `${previousConversations} previous messages` : 'first visit today'})`;
+      } else {
+        userContext += `\n\nUSER INFO: First time visitor`;
+      }
     }
-    if (userLocation?.city && userLocation?.country) {
-      userContext += `\nLocation: ${userLocation.city}, ${userLocation.country}`;
-    }
 
-    pageContext += userContext;
-
-    // Build conversation messages with history
-    const platformInfo = agentData.websiteUrl ? `\n\nPLATFORM INFO:\n- Company/Platform: ${agentName}\n- Website: ${agentData.websiteUrl}\n- You are the official customer service agent for this platform` : '';
-
-    // Count conversation messages
+    // Count conversation messages (needed before name section)
     const conversationMessageCount = conversationHistory.length + 1; // +1 for current message
-    const hasEmail = sessionData?.userEmail ? true : false;
 
-    const messages = [
+    // Build personalized user context for AI
+    let personalizedContext = '';
+
+    // User identity
+    if (savedUserName) {
+      personalizedContext += `\n👤 USER: ${savedUserName} (USE THEIR NAME!)`;
+    } else if (conversationMessageCount <= 1) {
+      personalizedContext += `\n👤 USER: Unknown - PROACTIVELY ASK: "May I know your name?" in your greeting`;
+    } else {
+      personalizedContext += `\n👤 USER: Unknown - ask naturally when appropriate`;
+    }
+
+    // Location
+    if (userLocation?.city && userLocation?.country) {
+      personalizedContext += `\n📍 LOCATION: ${userLocation.city}, ${userLocation.country}`;
+    }
+
+    // Behavior pattern
+    const pattern = analytics.returning || 'new';
+    const engagement = analytics.engagement || 0;
+
+    if (pattern === 'new') {
+      personalizedContext += `\n✨ STATUS: First-time visitor - be extra welcoming!`;
+    } else if (pattern === 'frequent' || pattern === 'regular') {
+      personalizedContext += `\n🌟 STATUS: ${pattern} visitor (${analytics.visits || 0} visits) - acknowledge their loyalty!`;
+    }
+
+    // Engagement level
+    if (engagement >= 70) {
+      personalizedContext += `\n💎 ENGAGEMENT: High (${engagement}/100) - they value detailed answers`;
+    } else if (engagement >= 40) {
+      personalizedContext += `\n📊 ENGAGEMENT: Medium (${engagement}/100) - balance detail with brevity`;
+    } else if (pattern !== 'new') {
+      personalizedContext += `\n⚡ ENGAGEMENT: Low (${engagement}/100) - keep answers concise`;
+    }
+
+    // Current page context
+    if (pageContent?.url) {
+      personalizedContext += `\n📄 CURRENT PAGE: ${pageContent.url}`;
+      if (pageContent.title) {
+        personalizedContext += ` - ${pageContent.title}`;
+      }
+    }
+
+    // Device context
+    if (analytics.device) {
+      personalizedContext += `\n📱 DEVICE: ${analytics.device}`;
+    }
+
+    // ============================================
+    // PHASE 1: QUICK RESPONSE (User waits here)
+    // ============================================
+
+    const quickMessages = [
       {
         role: "system",
-        content: `You are ${agentName}, a helpful AI customer service assistant.${platformInfo}
+        content: `You are ${agentName}, a warm and friendly customer service assistant${agentData.websiteUrl ? ` for ${agentData.websiteUrl}` : ''}.
 
-CONVERSATION CONTEXT:
-- This is message #${conversationMessageCount} in the conversation
-- User email ${hasEmail ? 'is available' : 'is NOT available yet'}
-
-GUIDELINES:
-1. Be warm, natural, and conversational - like a friendly human helper
-2. Answer ANY question about ${agentName} - even if you don't have the exact answer
-3. If you don't have specific info, admit it naturally: "I don't have that specific detail yet, but I can help with [what you know]"
-4. ONLY reject questions that are completely unrelated (recipes, math homework, other products)
-5. Use page context when relevant
+${personalizedContext}
 
 KNOWLEDGE BASE:
-${context}${pageContext}
+${context}
 
-RESPOND WITH VALID JSON ONLY:
+YOUR TASK:
+1. ${!savedUserName && conversationMessageCount <= 1 ? '⚠️ CRITICAL: This is the first message and you don\'t know their name. YOU MUST ask "May I know your name?" in your greeting. This is MANDATORY.' : 'Answer the user\'s question naturally and conversationally'}
+2. ONLY answer questions about ${agentName} - politely decline unrelated topics
+3. If you don't have specific information, say: "I don't have that detail yet, but I can help with [related topic]"
+4. Keep responses concise (2-3 sentences) unless complexity requires more
+5. Use a warm, friendly tone - like a helpful human colleague
+
+RESPOND WITH JSON ONLY:
 {
-  "reply": "your response",
-  "isRelevant": true/false,
-  "relevanceScore": 0-100,
-  "userSentiment": "positive|neutral|negative",
-  "userSentimentScore": 0-10,
-  "aiConfidence": 0-100,
-  "category": "Support|Sales|Question|Complaint|General",
-  "intent": "question|complaint|browsing|purchase|greeting",
-  "urgency": 0-10,
-  "shouldAnalyze": "false"|"pending"|"true",
-  "analysisReason": "brief reason",
-  "knowledgeGapDetected": true/false,
-  "unansweredQuestion": "specific topic or null",
-  "shouldCreateTicket": true/false,
-  "ticketReason": "reason or null",
-  "requestEmail": true/false
+  "reply": "your response (warm, natural, helpful)",
+  "userName": "extract if user shares name this message (e.g. 'I'm John' or 'My name is Sarah' → extract 'John'/'Sarah'), otherwise null",
+  "isRelevant": false (ONLY include if question is completely unrelated to ${agentName}),
+  "relevanceScore": 0-100 (ONLY include if isRelevant=false)
 }
 
-RELEVANCE RULES (IMPORTANT):
-- isRelevant=true if the question is ABOUT ${agentName} in any way (features, pricing, setup, capabilities, etc.)
-- isRelevant=false ONLY if completely unrelated (pudding recipes, math problems, other companies)
-- If question is about ${agentName} but you don't know the answer:
-  → isRelevant=true, aiConfidence=20-40, reply naturally: "I don't have that specific info, but I can help with..."
-  → knowledgeGapDetected=true
-- NEVER say "I can only help with X questions" unless truly off-topic
-
-USER SENTIMENT (analyze the USER'S message tone):
-- positive (8-10): happy, satisfied, grateful, friendly
-- neutral (4-7): factual questions, browsing, casual
-- negative (0-3): frustrated, angry, disappointed, upset
-
-AI CONFIDENCE (how confident YOU are in your answer):
-- 80-100: Very confident, clear answer from knowledge base
-- 50-79: Moderately confident, partial info
-- 0-49: Low confidence, guessing or no info
-
-KNOWLEDGE GAP:
-- Flag if you don't have the answer and user seems to need it (not greetings)
-- Be smart about it - use context and conversation flow
-
-TICKET CREATION (USE YOUR JUDGMENT):
-Think like a human support agent. Create a ticket (shouldCreateTicket=true) if:
-- User seems frustrated or unhappy
-- You can't answer their question well and they need real help
-- Conversation is going in circles (multiple messages, no resolution)
-- User explicitly wants human assistance (they'll say so in various ways - be smart!)
-- High urgency situation
-
-requestEmail=true ONLY if:
-- shouldCreateTicket=true AND user email is NOT available yet
-- When you request email, naturally ask for it in your reply: "I'd love to help! Can I get your email to set up proper support?"
-
-DON'T create tickets for:
-- Simple greetings or browsing
-- Questions you answered well
-- When everything is resolved
+RELEVANCE RULES:
+- Assume isRelevant=true (don't include in JSON) if question is about ${agentName}
+- ONLY include isRelevant=false if: recipes, coding, math, other companies/products
+- If you don't know the answer but it's about ${agentName}, still isRelevant=true (just say you don't know)
 
 Examples:
-- "hello" → isRelevant:true, intent:"greeting", shouldAnalyze:"false"
-- "can you do X?" (no answer) → isRelevant:true, aiConfidence:30, knowledgeGapDetected:true, reply naturally
-- "I need help" OR "can someone assist" → shouldCreateTicket:true, requestEmail:true (if no email)
-- "still not working" (frustrated, 3rd msg) → shouldCreateTicket:true, requestEmail:true`
+1. First message (no name): "Hello!" → {"reply": "Hi there! 👋 Welcome to ${agentName}. May I know your name? How can I help you today?"}
+2. "What's your pricing?" → {"reply": "Let me help you with our pricing..."}
+3. "How do I make pizza?" → {"reply": "I can only help with questions about ${agentName}. What would you like to know about our services?", "isRelevant": false, "relevanceScore": 0}
+4. "I'm Sarah, what features do you have?" → {"reply": "Nice to meet you, Sarah! Let me tell you about our key features...", "userName": "Sarah"}`
       }
     ];
 
-    // Add conversation history for context
-    console.log(`📚 Adding ${conversationHistory.length} previous messages to context`);
+    // Add conversation history
     conversationHistory.forEach(msg => {
-      messages.push({
+      quickMessages.push({
         role: msg.role,
         content: msg.content
       });
     });
 
     // Add current user message
-    messages.push({
+    quickMessages.push({
       role: "user",
       content: message
     });
 
-    console.log(`💬 Total messages sent to AI: ${messages.length} (1 system + ${conversationHistory.length} history + 1 current)`);
+    console.log(`💬 Sending ${quickMessages.length} messages to AI (${conversationHistory.length} history)`);
 
-    // Generate response using OpenAI
-    const completion = await getOpenAI().chat.completions.create({
+    // Quick AI call
+    const quickCompletion = await getOpenAI().chat.completions.create({
       model: "gpt-4.1-nano",
-      messages: messages,
-      max_completion_tokens: 500,
-      temperature: 0.7, // Natural but focused responses
+      messages: quickMessages,
+      max_completion_tokens: 250,
+      temperature: 0.6,
       response_format: { type: "json_object" }
     });
 
-    const rawResponse = completion.choices[0].message.content;
-    let parsedResponse;
-
+    let quickResponse;
     try {
-      parsedResponse = JSON.parse(rawResponse);
+      quickResponse = JSON.parse(quickCompletion.choices[0].message.content);
     } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', rawResponse);
-      // Fallback to plain text response
-      parsedResponse = {
-        reply: rawResponse,
-        isRelevant: true,
-        relevanceScore: 50,
-        userSentiment: "neutral",
-        userSentimentScore: 5,
-        aiConfidence: 50,
-        category: "General",
-        intent: "question",
-        urgency: 1,
-        shouldAnalyze: "false",
-        analysisReason: "JSON parsing failed",
-        knowledgeGapDetected: false,
-        unansweredQuestion: null,
-        shouldCreateTicket: false,
-        ticketReason: null,
-        requestEmail: false
+      console.error('JSON parse error:', parseError);
+      quickResponse = {
+        reply: quickCompletion.choices[0].message.content,
+        isRelevant: true
       };
     }
 
-    // Extract all fields from the enriched JSON response
-    const aiResponse = parsedResponse.reply;
-    const isRelevant = parsedResponse.isRelevant !== undefined ? parsedResponse.isRelevant : true;
-    const relevanceScore = parsedResponse.relevanceScore || 50;
-    const userSentiment = parsedResponse.userSentiment || "neutral";
-    const userSentimentScore = parsedResponse.userSentimentScore || 5;
-    const aiConfidence = parsedResponse.aiConfidence || 50;
-    const category = parsedResponse.category || "General";
-    const intent = parsedResponse.intent || "question";
-    const urgency = parsedResponse.urgency || 1;
-    const shouldAnalyze = parsedResponse.shouldAnalyze || "false";
-    const analysisReason = parsedResponse.analysisReason || "No reason provided";
-    const knowledgeGapDetected = parsedResponse.knowledgeGapDetected || false;
-    const unansweredQuestion = parsedResponse.unansweredQuestion || null;
-    const shouldCreateTicket = parsedResponse.shouldCreateTicket || false;
-    const ticketReason = parsedResponse.ticketReason || null;
-    const requestEmail = parsedResponse.requestEmail || false;
+    const aiResponse = quickResponse.reply;
+    const detectedUserName = quickResponse.userName || null;
+    const isRelevant = quickResponse.isRelevant !== undefined ? quickResponse.isRelevant : true;
+    const relevanceScore = quickResponse.relevanceScore || 100;
 
-    console.log(`📊 Analysis: ${category} | ${intent} | User: ${userSentiment}(${userSentimentScore}/10) | Urgency: ${urgency}/10 | AI Confidence: ${aiConfidence}%`);
-    console.log(`🎯 Relevance: ${isRelevant ? 'Yes' : 'No'} (${relevanceScore}%) | Analyze: ${shouldAnalyze}`);
+    console.log(`✅ Quick response generated (${aiResponse.length} chars)`);
+    if (detectedUserName) console.log(`👤 Name detected: ${detectedUserName}`);
+    if (!isRelevant) console.log(`⚠️ Irrelevant question detected (score: ${relevanceScore})`);
 
-    if (knowledgeGapDetected) {
-      console.log(`❓ Knowledge gap detected: "${unansweredQuestion}"`);
-    }
-    if (shouldCreateTicket) {
-      console.log(`🎫 Ticket should be created: ${ticketReason}`);
-    }
-    if (requestEmail) {
-      console.log(`📧 Email requested from user`);
+    // Filter irrelevant questions
+    let finalResponse = aiResponse;
+    if (!isRelevant || relevanceScore < 30) {
+      finalResponse = `I can only help with questions about ${agentName}. Please ask me about our services, features, or how I can assist you! 😊`;
+      console.log(`🚫 Replaced with redirect message`);
     }
 
     // Ensure anonymousUserId is defined
@@ -987,33 +1034,23 @@ Examples:
       console.log(`📧 User email detected and saved: ${userEmail}`);
     }
 
+    // Add userName if detected by AI (only if not already saved)
+    if (detectedUserName && !savedUserName) {
+      sessionUpdateData.userName = detectedUserName;
+      console.log(`👤 User name saved to session: ${detectedUserName}`);
+    }
+
     await sessionRef.set(sessionUpdateData, { merge: true });
 
-    // Update conversation metadata with analysis status and aggregated analytics
+    // Update conversation metadata (minimal for Phase 1)
     await conversationRef.set({
       conversationId: conversationId,
       startedAt: sessionData?.currentConversation?.startedAt || admin.firestore.FieldValue.serverTimestamp(),
       lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
-      shouldAnalyze: shouldAnalyze,
-      analysisReason: analysisReason,
-      analyzed: shouldAnalyze === "true" ? false : null, // Only set analyzed flag if we need to analyze
-      // Analytics (from most recent message) - single source of truth
-      analytics: {
-        userSentiment: userSentiment,
-        userSentimentScore: userSentimentScore,
-        aiConfidence: aiConfidence,
-        category: category,
-        intent: intent,
-        urgency: urgency,
-        isRelevant: isRelevant
-      },
-      // Track if ticket creation was suggested
-      ticketSuggested: shouldCreateTicket,
-      ticketReason: ticketReason,
-      awaitingEmailForTicket: (shouldCreateTicket && requestEmail && !userEmail) ? true : false
+      messageCount: admin.firestore.FieldValue.increment(1)
     }, { merge: true });
 
-    // Save user message in conversation
+    // Save user message
     const userMessageRef = conversationRef.collection('messages').doc();
     await userMessageRef.set({
       role: 'user',
@@ -1021,141 +1058,61 @@ Examples:
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // Save assistant response in conversation with enriched analytics
+    // Save assistant response
     const assistantMessageRef = conversationRef.collection('messages').doc();
     await assistantMessageRef.set({
       role: 'assistant',
-      content: aiResponse,
+      content: finalResponse,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       relevantChunks: topChunks.map(chunk => ({
         content: chunk.content.substring(0, 100) + '...',
         similarity: chunk.similarity,
         source: chunk.source
-      })),
-      // Analytics data (available immediately for dashboard)
-      analytics: {
-        isRelevant: isRelevant,
-        relevanceScore: relevanceScore,
-        userSentiment: userSentiment,
-        userSentimentScore: userSentimentScore,
-        aiConfidence: aiConfidence,
-        category: category,
-        intent: intent,
-        urgency: urgency,
-        shouldCreateTicket: shouldCreateTicket,
-        ticketReason: ticketReason
-      }
+      }))
     });
 
-    console.log(`✅ Messages saved to session ${sessionId}`);
-
-    // If shouldAnalyze is "true", trigger immediate analysis
-    if (shouldAnalyze === "true") {
-      console.log(`🔍 Triggering immediate analysis for conversation ${conversationId}`);
-      try {
-        await analyzeConversationImmediately(userId, agentId, finalAnonymousUserId, conversationId);
-      } catch (analysisError) {
-        console.error('❌ Analysis failed but chat succeeded:', analysisError);
-        // Don't throw - analysis failure shouldn't break chat
-      }
-    }
-
-    // If knowledge gap detected AND it's a real issue, process it asynchronously
-    // More sensitive detection: trigger if user frustrated OR high urgency OR low confidence with multiple messages
-    const shouldProcessGap = knowledgeGapDetected &&
-                             unansweredQuestion &&
-                             intent !== 'greeting' &&
-                             (
-                               userSentiment === 'negative' ||
-                               urgency >= 6 ||  // Lowered from 7 to 6
-                               aiConfidence < 50 ||  // New: low confidence
-                               (isRelevant && aiConfidence < 70 && conversationHistory.length >= 1)  // New: 2+ messages with low confidence
-                             );
-
-    if (shouldProcessGap) {
-      console.log(`📚 Processing knowledge gap (frustrated/high urgency/low confidence): "${unansweredQuestion}"`);
-      processKnowledgeGap(userId, agentId, unansweredQuestion, message).catch(error => {
-        console.error('❌ Knowledge gap processing failed:', error);
-        // Don't throw - this shouldn't break chat flow
-      });
-    } else if (knowledgeGapDetected && unansweredQuestion) {
-      console.log(`⏭️ Skipping knowledge gap (low priority): "${unansweredQuestion}"`);
-    }
-
-    // Check if we were waiting for email from previous messages
-    const existingConversationData = await conversationRef.get();
-    const wasAwaitingEmail = existingConversationData.exists ? existingConversationData.data()?.awaitingEmailForTicket : false;
-    const ticketAlreadyCreated = existingConversationData.exists ? existingConversationData.data()?.ticketCreated : false;
-
-    // If ticket already created for this conversation, skip
-    if (ticketAlreadyCreated) {
-      console.log(`⏭️ Ticket already created for this conversation, skipping`);
-    } else {
-      // If user just provided email and we were waiting for it, force ticket creation
-      let forceTicketCreation = false;
-      if (wasAwaitingEmail && userEmail) {
-        console.log(`✅ User provided email after we requested it - forcing ticket creation`);
-        forceTicketCreation = true;
-      }
-
-      // Handle ticket creation if needed
-      if (shouldCreateTicket || forceTicketCreation) {
-        console.log(`🎫 Ticket creation triggered: ${forceTicketCreation ? 'Email received after request' : ticketReason}`);
-
-        // Check if we already have user email
-        const existingSessionData = await sessionRef.get();
-        const existingEmail = existingSessionData.exists ? existingSessionData.data()?.userEmail : null;
-
-        if (existingEmail || userEmail) {
-          // Create ticket immediately
-          const finalEmail = userEmail || existingEmail;
-          console.log(`📧 Creating ticket with email: ${finalEmail}`);
-
-          try {
-            await createTicket(userId, agentId, finalAnonymousUserId, conversationId, {
-              email: finalEmail,
-              category: category,
-              urgency: urgency,
-              ticketReason: ticketReason || 'User requested support',
-              userSentiment: userSentiment,
-              userSentimentScore: userSentimentScore,
-              aiConfidence: aiConfidence
-            });
-
-            // Update conversation to mark ticket created
-            await conversationRef.update({
-              ticketCreated: true,
-              ticketCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              awaitingEmailForTicket: false
-            });
-
-            console.log(`✅ Ticket created successfully for conversation ${conversationId}`);
-          } catch (ticketError) {
-            console.error('❌ Ticket creation failed:', ticketError);
-            // Don't throw - chat should continue even if ticket fails
-          }
-        } else if (requestEmail) {
-          console.log(`📧 Email requested from user for ticket creation`);
-          // awaitingEmailForTicket already set in conversation update above
-        }
-      }
-    }
+    console.log(`💾 Messages saved to Firestore`);
 
     // Update message usage AFTER successful chat
-    // Each successful response = 1 message
-    const updatedUserDoc = await db.collection('users').doc(userId).get();
-    const currentMessagesUsed = (updatedUserDoc.data()?.messagesUsed || 0) + 1;
-    const messageLimit = updatedUserDoc.data()?.messageLimit || 100;
-
     await db.collection('users').doc(userId).update({
       messagesUsed: admin.firestore.FieldValue.increment(1)
     });
+
+    const updatedUserDoc = await db.collection('users').doc(userId).get();
+    const currentMessagesUsed = updatedUserDoc.data()?.messagesUsed || 0;
+    const messageLimit = updatedUserDoc.data()?.messageLimit || 100;
     console.log(`📊 Updated message usage: ${currentMessagesUsed}/${messageLimit}`);
 
+    // ============================================
+    // PHASE 2: BACKGROUND ANALYSIS (Async - every 10 messages)
+    // ============================================
+
+    const currentMessageCount = (conversationHistory.length + 2) / 2; // +2 for current pair, /2 for pairs
+
+    if (currentMessageCount % 10 === 0) {
+      console.log(`🔍 Triggering analysis (every 10 messages: ${currentMessageCount})`);
+
+      performDetailedAnalysis(userId, agentId, finalAnonymousUserId, conversationId, {
+        userMessage: message,
+        aiResponse: finalResponse,
+        conversationHistory,
+        savedUserName: detectedUserName || savedUserName,
+        analytics,
+        userLocation,
+        pageContent,
+        agentName
+      }).catch(err => {
+        console.error('❌ Background analysis failed (non-blocking):', err);
+      });
+    }
+
+    // Return immediately (user doesn't wait for analysis)
     return {
-      response: aiResponse,
+      response: finalResponse,
+      userName: detectedUserName || savedUserName || null,
       sessionId: sessionId,
-      relevantSources: topChunks.map(c => c.source)
+      relevantSources: topChunks.map(c => c.source),
+      isRelevant: isRelevant
     };
     
   } catch (error) {
@@ -1167,6 +1124,133 @@ Examples:
     }
 
     throw new Error(`Chat failed: ${error.message}`);
+  }
+}
+
+// NEW FUNCTION: Background Analysis (runs every 10 messages)
+async function performDetailedAnalysis(userId, agentId, anonymousUserId, conversationId, data) {
+  try {
+    console.log('🔬 Starting detailed analysis (background)...');
+
+    // Get all messages in conversation for full context
+    const conversationRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('sessions').doc(anonymousUserId)
+      .collection('conversations').doc(conversationId);
+
+    const messagesSnapshot = await conversationRef.collection('messages')
+      .orderBy('timestamp', 'desc')
+      .limit(20) // Last 20 messages for analysis
+      .get();
+
+    const messages = messagesSnapshot.docs
+      .reverse()
+      .map(doc => doc.data())
+      .map(m => `${m.role}: ${m.content}`)
+      .join('\n');
+
+    // Rate limiting
+    const now = Date.now();
+    const timeSinceLastCall = now - lastApiCall;
+    if (timeSinceLastCall < MIN_API_INTERVAL) {
+      await delay(MIN_API_INTERVAL - timeSinceLastCall);
+    }
+    lastApiCall = Date.now();
+
+    // Detailed analysis with AI
+    const analysisCompletion = await getOpenAI().chat.completions.create({
+      model: "gpt-4.1-nano",
+      messages: [
+        {
+          role: "system",
+          content: `You are a customer service conversation analyst. Analyze the last 10 message pairs.
+
+User: ${data.savedUserName || 'Unknown'}
+Behavior: ${data.analytics.returning || 'new'} visitor, ${data.analytics.engagement || 0}/100 engagement
+Location: ${data.userLocation?.city || 'Unknown'}
+
+CONVERSATION:
+${messages}
+
+RESPOND WITH JSON - OMIT FIELDS WITH NO MEANINGFUL DATA (null/false/neutral/0):
+{
+  "overallSentiment": "positive|negative" (OMIT if neutral),
+  "sentimentScore": 1-10 (ONLY if overallSentiment present),
+  "primaryCategory": "Support|Sales|Question|Complaint" (ONLY if clear pattern),
+  "primaryIntent": "support|sales|information|browsing" (ONLY if clear),
+  "averageUrgency": 1-10 (ONLY if >=6),
+  "knowledgeGaps": ["topic1", "topic2"] (ONLY if we failed to answer multiple times),
+  "shouldCreateTicket": true (ONLY if: frustrated user OR unresolved issues OR explicit request),
+  "ticketReason": "brief reason" (ONLY if shouldCreateTicket=true),
+  "conversationSummary": "1-2 sentence summary of entire conversation",
+  "keyTopics": ["topic1", "topic2", "topic3"] (main topics discussed)
+}
+
+Examples:
+1. Simple Q&A (no issues) → {"conversationSummary": "User asked about features", "keyTopics": ["features"]}
+2. Frustrated user → {"overallSentiment": "negative", "sentimentScore": 3, "shouldCreateTicket": true, "ticketReason": "Unresolved technical issue", ...}
+3. Sales inquiry → {"primaryIntent": "sales", "primaryCategory": "Sales", ...}`
+        }
+      ],
+      max_completion_tokens: 300,
+      temperature: 0.2,
+      response_format: { type: "json_object" }
+    });
+
+    const analysis = JSON.parse(analysisCompletion.choices[0].message.content);
+
+    console.log('✅ Analysis complete:', analysis);
+
+    // Save to Firestore
+    await conversationRef.update({
+      detailedAnalysis: analysis,
+      analyzedAt: admin.firestore.FieldValue.serverTimestamp(),
+      analyzed: true
+    });
+
+    // Process knowledge gaps
+    if (analysis.knowledgeGaps && analysis.knowledgeGaps.length > 0) {
+      console.log(`📚 Processing ${analysis.knowledgeGaps.length} knowledge gaps`);
+      for (const gap of analysis.knowledgeGaps) {
+        await processKnowledgeGap(userId, agentId, gap, messages).catch(err => {
+          console.error(`Failed to process knowledge gap "${gap}":`, err);
+        });
+      }
+    }
+
+    // Create ticket if needed
+    if (analysis.shouldCreateTicket) {
+      console.log(`🎫 Creating support ticket: ${analysis.ticketReason}`);
+
+      const sessionDoc = await db.collection('users').doc(userId)
+        .collection('agents').doc(agentId)
+        .collection('sessions').doc(anonymousUserId)
+        .get();
+
+      const userEmail = sessionDoc.exists ? sessionDoc.data()?.userEmail : null;
+
+      if (userEmail) {
+        await createTicket(userId, agentId, anonymousUserId, conversationId, {
+          email: userEmail,
+          category: analysis.primaryCategory || 'Support',
+          urgency: analysis.averageUrgency || 5,
+          ticketReason: analysis.ticketReason,
+          userSentiment: analysis.overallSentiment || 'neutral',
+          userSentimentScore: analysis.sentimentScore || 5,
+          aiConfidence: 50
+        });
+
+        console.log('✅ Ticket created successfully');
+      } else {
+        console.log('⚠️ Cannot create ticket - no email available');
+      }
+    }
+
+    console.log('✅ Background analysis complete');
+
+  } catch (error) {
+    console.error('❌ Background analysis error:', error);
+    // Don't throw - this is non-blocking
   }
 }
 
@@ -2352,7 +2436,7 @@ Return ONLY the enhanced answer, without any preamble or explanation.`;
 // Add new training data (append to existing chunks)
 exports.addTrainingData = onCall({
   timeoutSeconds: 300,
-  memory: '1GiB'
+  memory: '512MiB'
 }, async (request) => {
   if (!request.auth) {
     throw new Error('User must be authenticated');

@@ -10,7 +10,7 @@ export default {
         sans: ['Arimo', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       colors: {
-        lime: {
+        deniz: {
           50: '#f7fee7',
           100: '#ecfccb',
           200: '#d9f99d',

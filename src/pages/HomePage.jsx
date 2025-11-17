@@ -57,14 +57,13 @@ export default function HomePage() {
           })}
         </script>
       </Helmet>
-      <div className="min-h-screen bg-neutral-50 relative">
+      <div className="min-h-screen bg-gradient-to-br from-stone-900 to-stone-950 relative">
 
         {/* Content */}
         <div className="relative z-10">
           <Header />
           <Hero />
           <Features/>
-          <SessionIntelligence />
           <ProblemSolution />
           <Pricing />
           <FAQ/>

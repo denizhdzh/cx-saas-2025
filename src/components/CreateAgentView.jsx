@@ -2008,7 +2008,7 @@ export default function CreateAgentView({ onBack }) {
                       const totalTrainingContent = formData.trainingText.trim().length +
                         uploadedFiles.filter(f => f.status === 'ready').reduce((acc, f) => acc + (f.textContent?.length || 0), 0);
 
-                      if (totalTrainingContent < 300) {
+                      if (totalTrainingContent < 100) {
                         showNotification('Please provide at least 300 characters of training content (text or documents)', 'error');
                         return;
                       }
@@ -2059,23 +2059,7 @@ export default function CreateAgentView({ onBack }) {
                 <>
                   <button
                     onClick={() => {
-                      const embedCode = `<!-- Orchis Chatbot -->
-<script>
-(function(){
-  if(!window.OrchisChatbot){
-    const script = document.createElement('script');
-    script.src = 'https://orchis.app/chatbot-widget.js';
-    script.onload = function() {
-      if(window.OrchisChatbot) {
-        window.OrchisChatbot.init({
-          agentId: '${createdAgentId}'
-        });
-      }
-    };
-    document.head.appendChild(script);
-  }
-})();
-</script>`;
+                      const embedCode = `<script src="https://orchis.app/chatbot-widget.js" data-agent-id="${createdAgentId}"></script>`;
                       navigator.clipboard.writeText(embedCode);
                       showNotification('Embed code copied to clipboard!', 'success');
                     }}

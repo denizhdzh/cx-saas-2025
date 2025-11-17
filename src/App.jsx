@@ -8,6 +8,8 @@ import AdminPage from './pages/AdminPage';
 import BlogIndex from './blog/components/BlogIndex';
 import BlogPost from './blog/components/BlogPost';
 import ConversationHistoryPage from './pages/ConversationHistoryPage';
+import AIAgentPage from './homepage/pages/AIAgentPage';
+import SessionIntelligencePage from './homepage/pages/SessionIntelligencePage';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { AgentProvider } from './contexts/AgentContext';
@@ -23,12 +25,14 @@ function App() {
         <AgentProvider>
           <NotificationProvider>
             <BrowserRouter>
-          <div className="min-h-screen bg-stone-50 dark:bg-stone-900">
+          <div className="min-h-screen bg-stone-900 dark:bg-stone-900">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/signin" element={<SignInPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/roadmap" element={<RoadmapPage />} />
+              <Route path="/ai-agent" element={<AIAgentPage />} />
+              <Route path="/session-intelligence" element={<SessionIntelligencePage />} />
               <Route path="/blog" element={<BlogIndex />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
