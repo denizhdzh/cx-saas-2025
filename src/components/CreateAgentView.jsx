@@ -633,15 +633,15 @@ export default function CreateAgentView({ onBack }) {
                 key={step}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   step === currentStep
-                    ? 'w-8 bg-stone-900 dark:bg-stone-50'
+                    ? 'w-8 bg-neutral-900 dark:bg-neutral-50'
                     : step < currentStep
-                    ? 'w-1.5 bg-stone-400 dark:bg-stone-500'
-                    : 'w-1.5 bg-stone-300 dark:bg-stone-700'
+                    ? 'w-1.5 bg-neutral-400 dark:bg-neutral-500'
+                    : 'w-1.5 bg-neutral-300 dark:bg-neutral-700'
                 }`}
               />
             ))}
           </div>
-          <h2 className="text-base sm:text-lg font-semibold text-stone-900 dark:text-stone-50 text-center">
+          <h2 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-neutral-50 text-center">
             {stepTitle}
           </h2>
         </div>
@@ -651,7 +651,7 @@ export default function CreateAgentView({ onBack }) {
     // For step 4, don't show step counter - it's the final action step
     return (
       <div className="mb-4 sm:mb-6">
-        <h2 className="text-base sm:text-lg font-semibold text-stone-900 dark:text-stone-50 text-center">
+        <h2 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-neutral-50 text-center">
           {stepTitle}
         </h2>
       </div>
@@ -666,25 +666,25 @@ export default function CreateAgentView({ onBack }) {
           <div className="flex justify-center mb-4">
             <div className="relative w-16 h-16">
               <div className="absolute inset-0 flex items-center justify-center gap-1">
-                <div className="w-2 h-2 bg-stone-900 dark:bg-stone-50 rounded-full animate-bounce-dot" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-stone-900 dark:bg-stone-50 rounded-full animate-bounce-dot" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-stone-900 dark:bg-stone-50 rounded-full animate-bounce-dot" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-2 h-2 bg-neutral-900 dark:bg-neutral-50 rounded-full animate-bounce-dot" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-neutral-900 dark:bg-neutral-50 rounded-full animate-bounce-dot" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-neutral-900 dark:bg-neutral-50 rounded-full animate-bounce-dot" style={{ animationDelay: '300ms' }}></div>
               </div>
             </div>
           </div>
-          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
             Setting up your chatbot...
           </h3>
           <div className="max-w-xs mx-auto">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-stone-700 dark:text-stone-300 font-medium">{fetchProgress.currentStep}</span>
-              <span className="text-xs text-stone-900 dark:text-stone-50 font-bold">
+              <span className="text-xs text-neutral-700 dark:text-neutral-300 font-medium">{fetchProgress.currentStep}</span>
+              <span className="text-xs text-neutral-900 dark:text-neutral-50 font-bold">
                 {Math.round((fetchProgress.current / fetchProgress.total) * 100)}%
               </span>
             </div>
-            <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2 overflow-hidden">
               <div
-                className="bg-stone-900 dark:bg-stone-50 h-2 rounded-full transition-all duration-500"
+                className="bg-neutral-900 dark:bg-neutral-50 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${(fetchProgress.current / fetchProgress.total) * 100}%` }}
               ></div>
             </div>
@@ -694,9 +694,9 @@ export default function CreateAgentView({ onBack }) {
                   {fetchProgress.completed.includes(step) ? (
                     <CheckCircleIcon className="w-4 h-4 text-green-500" />
                   ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-stone-300 dark:border-stone-600"></div>
+                    <div className="w-4 h-4 rounded-full border-2 border-neutral-300 dark:border-neutral-600"></div>
                   )}
-                  <span className={fetchProgress.completed.includes(step) ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}>
+                  <span className={fetchProgress.completed.includes(step) ? 'text-green-600 dark:text-green-400' : 'text-neutral-500 dark:text-neutral-400'}>
                     {['Your logo', 'Business name', 'What you do', 'Chatbot ready!'][idx]}
                   </span>
                 </div>
@@ -723,7 +723,7 @@ export default function CreateAgentView({ onBack }) {
               <img
                 src={logoPreview}
                 alt="Logo"
-                className="w-20 h-20 rounded-xl object-cover dark:border-stone-700"
+                className="w-20 h-20 rounded-xl object-cover dark:border-neutral-700"
               />
               <input
                 type="file"
@@ -734,7 +734,7 @@ export default function CreateAgentView({ onBack }) {
               />
               <label
                 htmlFor="logo-upload-step1-edit"
-                className="absolute -bottom-2 -right-2 p-1.5 bg-stone-900 dark:bg-stone-50 text-white dark:text-stone-900 rounded-lg cursor-pointer hover:bg-stone-700 dark:hover:bg-stone-200 transition-colors shadow-lg"
+                className="absolute -bottom-2 -right-2 p-1.5 bg-neutral-900 dark:bg-neutral-50 text-white dark:text-neutral-900 rounded-lg cursor-pointer hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors shadow-lg"
                 title="Change logo"
               >
                 <PencilIcon className="w-3 h-3" />
@@ -744,7 +744,7 @@ export default function CreateAgentView({ onBack }) {
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1.5">
                 Project Name
               </label>
               <input
@@ -752,13 +752,13 @@ export default function CreateAgentView({ onBack }) {
                 name="projectName"
                 value={formData.projectName}
                 onChange={handleInputChange}
-                className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                className="form-input text-sm text-black dark:text-white bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl"
                 placeholder="Acme Corp"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1.5">
                 Website URL
               </label>
               <input
@@ -766,7 +766,7 @@ export default function CreateAgentView({ onBack }) {
                 name="websiteUrl"
                 value={formData.websiteUrl}
                 onChange={handleInputChange}
-                className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl"
+                className="form-input text-sm text-black dark:text-white bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl"
                 placeholder="https://example.com"
               />
             </div>
@@ -780,13 +780,13 @@ export default function CreateAgentView({ onBack }) {
     return (
       <div className="space-y-4">
         <div className="text-center mb-4">
-          <p className="text-sm text-stone-600 dark:text-stone-400">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
             Enter your website URL and we'll fetch everything automatically
           </p>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
+          <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1.5">
             Website URL
           </label>
           <div className="flex gap-2">
@@ -800,7 +800,7 @@ export default function CreateAgentView({ onBack }) {
                   handleFetchMetadata();
                 }
               }}
-              className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl flex-1"
+              className="form-input text-sm text-black dark:text-white bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl flex-1"
               placeholder="https://example.com"
             />
             <button
@@ -812,13 +812,13 @@ export default function CreateAgentView({ onBack }) {
               Auto-fill
             </button>
           </div>
-          <p className="text-xs text-stone-500 mt-2">
+          <p className="text-xs text-neutral-500 mt-2">
             We'll automatically grab your logo, site title, and description
           </p>
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-3">
-          <p className="text-xs text-stone-700 dark:text-stone-300">
+          <p className="text-xs text-neutral-700 dark:text-neutral-300">
             <strong>Tip:</strong> Paste your website URL and click Auto-fill. We'll do the rest!
           </p>
         </div>
@@ -840,7 +840,7 @@ export default function CreateAgentView({ onBack }) {
       <>
         <div className="space-y-4">
           <div className="text-center mb-4">
-            <p className="text-sm text-stone-600 dark:text-stone-400">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
               Choose how to train your agent
             </p>
           </div>
@@ -850,84 +850,84 @@ export default function CreateAgentView({ onBack }) {
             {/* Text Card */}
             <button
               onClick={() => setShowTextModal(true)}
-              className="w-full text-left border-2 border-stone-200 dark:border-stone-700 rounded-2xl p-4 hover:border-stone-900 dark:hover:border-stone-400 transition-all bg-white dark:bg-stone-800/50"
+              className="w-full text-left border-2 border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 hover:border-neutral-900 dark:hover:border-neutral-400 transition-all bg-white dark:bg-neutral-800/50"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                   hasText
                     ? 'bg-green-500 border-green-500'
-                    : 'border-stone-900 dark:border-stone-400 bg-stone-50 dark:bg-stone-800'
+                    : 'border-neutral-900 dark:border-neutral-400 bg-neutral-50 dark:bg-neutral-800'
                 }`}>
                   {hasText && <CheckCircleIcon className="w-4 h-4 text-white" />}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">
+                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                     Text Content
                   </h3>
-                  <p className="text-xs text-stone-500 mt-0.5">
+                  <p className="text-xs text-neutral-500 mt-0.5">
                     {hasText
                       ? `✓ ${formData.trainingText.length} characters added`
                       : 'Paste FAQs, product info, or business details'}
                   </p>
                 </div>
-                <ArrowRightIcon className="w-4 h-4 text-stone-400" />
+                <ArrowRightIcon className="w-4 h-4 text-neutral-400" />
               </div>
             </button>
 
             {/* Documents Card */}
             <button
               onClick={() => setShowDocumentModal(true)}
-              className="w-full text-left border-2 border-stone-200 dark:border-stone-700 rounded-2xl p-4 hover:border-stone-900 dark:hover:border-stone-400 transition-all bg-white dark:bg-stone-800/50"
+              className="w-full text-left border-2 border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 hover:border-neutral-900 dark:hover:border-neutral-400 transition-all bg-white dark:bg-neutral-800/50"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                   hasDocuments
                     ? 'bg-green-500 border-green-500'
-                    : 'border-stone-900 dark:border-stone-400 bg-stone-50 dark:bg-stone-800'
+                    : 'border-neutral-900 dark:border-neutral-400 bg-neutral-50 dark:bg-neutral-800'
                 }`}>
                   {hasDocuments && <CheckCircleIcon className="w-4 h-4 text-white" />}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">
+                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                     Documents
                   </h3>
-                  <p className="text-xs text-stone-500 mt-0.5">
+                  <p className="text-xs text-neutral-500 mt-0.5">
                     {hasDocuments
                       ? `✓ ${uploadedFiles.filter(f => f.status === 'ready').length} file(s) uploaded`
                       : 'Upload PDFs, Word docs, or text files'}
                   </p>
                 </div>
-                <ArrowRightIcon className="w-4 h-4 text-stone-400" />
+                <ArrowRightIcon className="w-4 h-4 text-neutral-400" />
               </div>
             </button>
 
             {/* Links Card */}
             <button
               onClick={() => setShowLinksModal(true)}
-              className="w-full text-left border-2 border-stone-200 dark:border-stone-700 rounded-2xl p-4 hover:border-stone-900 dark:hover:border-stone-400 transition-all bg-white dark:bg-stone-800/50"
+              className="w-full text-left border-2 border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 hover:border-neutral-900 dark:hover:border-neutral-400 transition-all bg-white dark:bg-neutral-800/50"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                   hasLinks
                     ? 'bg-green-500 border-green-500'
-                    : 'border-stone-300 dark:border-stone-600'
+                    : 'border-neutral-300 dark:border-neutral-600'
                 }`}>
                   {hasLinks && <CheckCircleIcon className="w-4 h-4 text-white" />}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">
+                    <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                       Policy Links
                     </h3>
-                    <span className="text-xs text-stone-500">Optional</span>
+                    <span className="text-xs text-neutral-500">Optional</span>
                   </div>
-                  <p className="text-xs text-stone-500 mt-0.5">
+                  <p className="text-xs text-neutral-500 mt-0.5">
                     {hasLinks
                       ? '✓ Added'
                       : 'Privacy Policy & Terms of Service URLs'}
                   </p>
                 </div>
-                <ArrowRightIcon className="w-4 h-4 text-stone-400" />
+                <ArrowRightIcon className="w-4 h-4 text-neutral-400" />
               </div>
             </button>
           </div>
@@ -942,8 +942,8 @@ export default function CreateAgentView({ onBack }) {
           )}
 
           {!hasTrainingContent && (
-            <div className="mt-4 bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded-xl p-3">
-              <p className="text-xs text-stone-700 dark:text-stone-300">
+            <div className="mt-4 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-xl p-3">
+              <p className="text-xs text-neutral-700 dark:text-neutral-300">
                 ⚠️ Please add at least 300 characters of training content to continue.
               </p>
             </div>
@@ -953,17 +953,17 @@ export default function CreateAgentView({ onBack }) {
         {/* Text Modal */}
         {showTextModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowTextModal(false)}>
-            <div className="bg-white dark:bg-stone-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="sticky top-0 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-700 p-5 z-10">
+            <div className="bg-white dark:bg-neutral-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 p-5 z-10">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-stone-900 dark:text-stone-50">Text Content</h2>
-                  <button onClick={() => setShowTextModal(false)} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors">✕</button>
+                  <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">Text Content</h2>
+                  <button onClick={() => setShowTextModal(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors">✕</button>
                 </div>
               </div>
               <div className="p-5 space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-semibold text-stone-900 dark:text-stone-50">Paste Training Text</label>
+                    <label className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Paste Training Text</label>
                     <button
                       onClick={() => {
                         const template = `Q: What are your business hours?\nA: We're open 9am-5pm Mon-Fri\n\nQ: How can I contact support?\nA: Email support@example.com\n\nQ: What products/services do you offer?\nA: \n\nQ: What is your pricing?\nA: `;
@@ -979,15 +979,15 @@ export default function CreateAgentView({ onBack }) {
                     value={formData.trainingText}
                     onChange={handleInputChange}
                     placeholder="Paste FAQ, product info, or any details...&#10;&#10;Example:&#10;Q: What are your hours?&#10;A: We're open 9am-5pm Mon-Fri"
-                    className="form-textarea text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl w-full h-48 resize-none"
+                    className="form-textarea text-sm text-black dark:text-white bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl w-full h-48 resize-none"
                     maxLength={10000}
                   />
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-stone-500">{formData.trainingText.length} / 10,000 characters</span>
+                    <span className="text-xs text-neutral-500">{formData.trainingText.length} / 10,000 characters</span>
                   </div>
                 </div>
               </div>
-              <div className="sticky bottom-0 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-700 p-5">
+              <div className="sticky bottom-0 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 p-5">
                 <button onClick={() => setShowTextModal(false)} className="btn-primary w-full py-2 rounded-xl">Done</button>
               </div>
             </div>
@@ -997,39 +997,39 @@ export default function CreateAgentView({ onBack }) {
         {/* Documents Modal */}
         {showDocumentModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDocumentModal(false)}>
-            <div className="bg-white dark:bg-stone-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="sticky top-0 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-700 p-5 z-10">
+            <div className="bg-white dark:bg-neutral-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 p-5 z-10">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-stone-900 dark:text-stone-50">Upload Documents</h2>
-                  <button onClick={() => setShowDocumentModal(false)} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors">✕</button>
+                  <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">Upload Documents</h2>
+                  <button onClick={() => setShowDocumentModal(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors">✕</button>
                 </div>
               </div>
               <div className="p-5 space-y-4">
                 <div
-                  className={`border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${isDragging ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/10' : 'border-stone-300 dark:border-stone-700'}`}
+                  className={`border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${isDragging ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/10' : 'border-neutral-300 dark:border-neutral-700'}`}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                 >
-                  <CloudArrowUpIcon className="w-8 h-8 text-stone-400 mx-auto mb-2" />
-                  <p className="text-xs text-stone-600 dark:text-stone-400 mb-2">Drop files or click to browse</p>
+                  <CloudArrowUpIcon className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-2">Drop files or click to browse</p>
                   <input type="file" multiple accept=".pdf,.txt,.docx" onChange={(e) => handleFileUpload(e.target.files)} className="hidden" id="file-upload-create" />
                   <label htmlFor="file-upload-create" className="btn-secondary text-xs py-1.5 px-4 rounded-xl inline-flex items-center gap-1.5 cursor-pointer">
                     <DocumentTextIcon className="w-3.5 h-3.5" />
                     Choose Files
                   </label>
-                  <p className="text-xs text-stone-500 mt-2">PDF, TXT, DOCX (max 10MB each)</p>
+                  <p className="text-xs text-neutral-500 mt-2">PDF, TXT, DOCX (max 10MB each)</p>
                 </div>
 
                 {uploadedFiles.length > 0 && (
                   <div className="space-y-2">
                     {uploadedFiles.map((file) => (
-                      <div key={file.id} className="border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-800">
+                      <div key={file.id} className="border border-neutral-200 dark:border-neutral-700 rounded-xl p-3 bg-neutral-50 dark:bg-neutral-800">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <span className="text-lg">{getFileIcon(file.type)}</span>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-stone-900 dark:text-stone-50 truncate">{file.name}</p>
+                              <p className="text-xs font-medium text-neutral-900 dark:text-neutral-50 truncate">{file.name}</p>
                               {(file.status === 'uploading' || file.status === 'processing' || file.status === 'extracting') && (
                                 <div className="mt-1.5 space-y-1">
                                   <div className="flex items-center justify-between">
@@ -1040,7 +1040,7 @@ export default function CreateAgentView({ onBack }) {
                                     </span>
                                     <span className="text-xs text-orange-600 font-bold">{file.progress}%</span>
                                   </div>
-                                  <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-1.5 overflow-hidden">
+                                  <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-1.5 overflow-hidden">
                                     <div className="bg-gradient-to-r from-orange-500 to-orange-400 h-1.5 rounded-full transition-all duration-300" style={{ width: `${file.progress}%` }}></div>
                                   </div>
                                 </div>
@@ -1052,12 +1052,12 @@ export default function CreateAgentView({ onBack }) {
                                     Ready
                                   </span>
                                 )}
-                                <span className="text-xs text-stone-400">{formatFileSize(file.size)}</span>
+                                <span className="text-xs text-neutral-400">{formatFileSize(file.size)}</span>
                               </div>
                             </div>
                           </div>
                           {file.status !== 'uploading' && (
-                            <button onClick={() => removeFile(file.id)} className="p-1 text-stone-400 hover:text-red-500 transition-colors ml-2">
+                            <button onClick={() => removeFile(file.id)} className="p-1 text-neutral-400 hover:text-red-500 transition-colors ml-2">
                               <TrashIcon className="w-3.5 h-3.5" />
                             </button>
                           )}
@@ -1067,7 +1067,7 @@ export default function CreateAgentView({ onBack }) {
                   </div>
                 )}
               </div>
-              <div className="sticky bottom-0 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-700 p-5">
+              <div className="sticky bottom-0 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 p-5">
                 <button onClick={() => setShowDocumentModal(false)} className="btn-primary w-full py-2 rounded-xl">Done</button>
               </div>
             </div>
@@ -1077,25 +1077,25 @@ export default function CreateAgentView({ onBack }) {
         {/* Links Modal */}
         {showLinksModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowLinksModal(false)}>
-            <div className="bg-white dark:bg-stone-900 rounded-3xl max-w-lg w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="border-b border-stone-200 dark:border-stone-700 p-5">
+            <div className="bg-white dark:bg-neutral-900 rounded-3xl max-w-lg w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="border-b border-neutral-200 dark:border-neutral-700 p-5">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-stone-900 dark:text-stone-50">Policy Links (Optional)</h2>
-                  <button onClick={() => setShowLinksModal(false)} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors">✕</button>
+                  <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">Policy Links (Optional)</h2>
+                  <button onClick={() => setShowLinksModal(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors">✕</button>
                 </div>
               </div>
               <div className="p-5 space-y-4">
-                <p className="text-xs text-stone-600 dark:text-stone-400">Add links to help your agent answer policy questions</p>
+                <p className="text-xs text-neutral-600 dark:text-neutral-400">Add links to help your agent answer policy questions</p>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block">Privacy Policy URL</label>
-                  <input type="url" name="privacyUrl" value={formData.privacyUrl} onChange={handleInputChange} placeholder="https://example.com/privacy" className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl w-full" />
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1.5 block">Privacy Policy URL</label>
+                  <input type="url" name="privacyUrl" value={formData.privacyUrl} onChange={handleInputChange} placeholder="https://example.com/privacy" className="form-input text-sm text-black dark:text-white bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl w-full" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5 block">Terms of Service URL</label>
-                  <input type="url" name="termsUrl" value={formData.termsUrl} onChange={handleInputChange} placeholder="https://example.com/terms" className="form-input text-sm text-black dark:text-white bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl w-full" />
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1.5 block">Terms of Service URL</label>
+                  <input type="url" name="termsUrl" value={formData.termsUrl} onChange={handleInputChange} placeholder="https://example.com/terms" className="form-input text-sm text-black dark:text-white bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl w-full" />
                 </div>
               </div>
-              <div className="border-t border-stone-200 dark:border-stone-700 p-5">
+              <div className="border-t border-neutral-200 dark:border-neutral-700 p-5">
                 <button onClick={() => setShowLinksModal(false)} className="btn-primary w-full py-2 rounded-xl">Done</button>
               </div>
             </div>
@@ -1183,14 +1183,14 @@ export default function CreateAgentView({ onBack }) {
   const renderStep3 = () => (
     <div className="space-y-4">
       {/* Info Banner */}
-      <div className="bg-stone-50 dark:bg-stone-900/30 border border-stone-200 dark:border-stone-700 rounded-2xl p-4">
+      <div className="bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4">
         <div className="flex items-start gap-3">
-          <GiftIcon className="w-5 h-5 text-stone-600 dark:text-stone-400 flex-shrink-0 mt-0.5" />
+          <GiftIcon className="w-5 h-5 text-neutral-600 dark:text-neutral-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-1">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50 mb-1">
               Dynamic Contents (Optional)
             </h3>
-            <p className="text-xs text-stone-600 dark:text-stone-400">
+            <p className="text-xs text-neutral-600 dark:text-neutral-400">
               Create popups with discounts, announcements, videos, or links. Skip for now or configure later.
             </p>
           </div>
@@ -1201,19 +1201,19 @@ export default function CreateAgentView({ onBack }) {
       {popups.length > 0 && !showPopupForm && (
         <div className="space-y-2">
           {popups.map((popup) => (
-            <div key={popup.id} className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-700 rounded-xl p-3">
+            <div key={popup.id} className="bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded">
+                    <span className="text-xs font-medium px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded">
                       {getTriggerLabel(popup.trigger, popup.triggerValue)}
                     </span>
-                    <span className="text-xs font-medium px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded">
+                    <span className="text-xs font-medium px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded">
                       {getContentTypeLabel(popup.contentType)}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-stone-900 dark:text-stone-50">{popup.title}</p>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-1">{popup.message}</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-50">{popup.title}</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-1">{popup.message}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-3">
                   <button
@@ -1223,7 +1223,7 @@ export default function CreateAgentView({ onBack }) {
                       setShowPopupForm(true);
                       setPopupFormStep(1);
                     }}
-                    className="text-xs text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50"
+                    className="text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-50"
                   >
                     <PencilIcon className="w-3.5 h-3.5" />
                   </button>
@@ -1244,12 +1244,12 @@ export default function CreateAgentView({ onBack }) {
       {showPopupForm && (
         <div className="bg-transparent rounded-xl p-4 space-y-3">
           {/* Header */}
-          <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-700">
+          <div className="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-neutral-700">
             <div className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${popupFormStep === 1 ? 'bg-stone-900 dark:bg-white text-white dark:text-stone-900' : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400'}`}>1</div>
-              <div className="w-8 h-0.5 bg-stone-200 dark:bg-stone-700"></div>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${popupFormStep === 2 ? 'bg-stone-900 dark:bg-white text-white dark:text-stone-900' : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400'}`}>2</div>
-              <span className="text-sm font-medium text-stone-700 dark:text-stone-300 ml-2">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${popupFormStep === 1 ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900' : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'}`}>1</div>
+              <div className="w-8 h-0.5 bg-neutral-200 dark:bg-neutral-700"></div>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${popupFormStep === 2 ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900' : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'}`}>2</div>
+              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 ml-2">
                 {popupFormStep === 1 ? 'Type & Trigger' : 'Content'}
               </span>
             </div>
@@ -1259,7 +1259,7 @@ export default function CreateAgentView({ onBack }) {
                 setPopupFormStep(1);
                 setEditingPopup(null);
               }}
-              className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
+              className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
             >
               <XMarkIcon className="w-4 h-4" />
             </button>
@@ -1269,7 +1269,7 @@ export default function CreateAgentView({ onBack }) {
           {popupFormStep === 1 && (
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
                   Content Type
                 </label>
                 <select
@@ -1298,7 +1298,7 @@ export default function CreateAgentView({ onBack }) {
 
                     setPopupForm({...popupForm, ...updates});
                   }}
-                  className="form-select text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                  className="form-select text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                 >
                   <option value="discount">💰 Discount Code</option>
                   <option value="announcement">📢 Announcement</option>
@@ -1308,13 +1308,13 @@ export default function CreateAgentView({ onBack }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
                   When to Show
                 </label>
                 <select
                   value={popupForm.trigger}
                   onChange={(e) => setPopupForm({...popupForm, trigger: e.target.value})}
-                  className="form-select text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                  className="form-select text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                 >
                   <option value="first_visit">👋 First Visit</option>
                   <option value="return_visit">🔄 Return Visit</option>
@@ -1326,14 +1326,14 @@ export default function CreateAgentView({ onBack }) {
 
               {(popupForm.trigger === 'time_delay' || popupForm.trigger === 'scroll_depth') && (
                 <div>
-                  <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
                     {popupForm.trigger === 'time_delay' ? 'Delay (seconds)' : 'Scroll %'}
                   </label>
                   <input
                     type="number"
                     value={popupForm.triggerValue}
                     onChange={(e) => setPopupForm({...popupForm, triggerValue: parseInt(e.target.value)})}
-                    className="form-input text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                    className="form-input text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                     min="1"
                     max={popupForm.trigger === 'scroll_depth' ? '100' : '999'}
                   />
@@ -1342,7 +1342,7 @@ export default function CreateAgentView({ onBack }) {
 
               <button
                 onClick={() => setPopupFormStep(2)}
-                className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-100 rounded-xl py-2 text-sm font-medium"
+                className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 rounded-xl py-2 text-sm font-medium"
               >
                 Next →
               </button>
@@ -1353,21 +1353,21 @@ export default function CreateAgentView({ onBack }) {
           {popupFormStep === 2 && (
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">Title</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Title</label>
                 <input
                   type="text"
                   value={popupForm.title}
                   onChange={(e) => setPopupForm({...popupForm, title: e.target.value})}
-                  className="form-input text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                  className="form-input text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">Message</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Message</label>
                 <textarea
                   value={popupForm.message}
                   onChange={(e) => setPopupForm({...popupForm, message: e.target.value})}
-                  className="form-textarea text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                  className="form-textarea text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                   rows="2"
                 />
               </div>
@@ -1375,21 +1375,21 @@ export default function CreateAgentView({ onBack }) {
               {popupForm.contentType === 'discount' && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">Code</label>
+                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Code</label>
                     <input
                       type="text"
                       value={popupForm.code}
                       onChange={(e) => setPopupForm({...popupForm, code: e.target.value})}
-                      className="form-input text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                      className="form-input text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">Discount %</label>
+                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Discount %</label>
                     <input
                       type="number"
                       value={popupForm.discountPercent}
                       onChange={(e) => setPopupForm({...popupForm, discountPercent: parseInt(e.target.value)})}
-                      className="form-input text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                      className="form-input text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                     />
                   </div>
                 </>
@@ -1397,12 +1397,12 @@ export default function CreateAgentView({ onBack }) {
 
               {popupForm.contentType === 'video' && (
                 <div>
-                  <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">Video URL</label>
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Video URL</label>
                   <input
                     type="url"
                     value={popupForm.videoUrl}
                     onChange={(e) => setPopupForm({...popupForm, videoUrl: e.target.value})}
-                    className="form-input text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                    className="form-input text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                     placeholder="https://youtube.com/..."
                   />
                 </div>
@@ -1411,12 +1411,12 @@ export default function CreateAgentView({ onBack }) {
               {(popupForm.contentType === 'link' || popupForm.contentType === 'discount') && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1.5">Button Link (optional)</label>
+                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Button Link (optional)</label>
                     <input
                       type="url"
                       value={popupForm.buttonLink}
                       onChange={(e) => setPopupForm({...popupForm, buttonLink: e.target.value})}
-                      className="form-input text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-xl w-full py-2"
+                      className="form-input text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-xl w-full py-2"
                       placeholder="https://..."
                     />
                   </div>
@@ -1426,13 +1426,13 @@ export default function CreateAgentView({ onBack }) {
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setPopupFormStep(1)}
-                  className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-900 dark:text-stone-50 hover:bg-stone-300 dark:hover:bg-stone-600 rounded-xl py-2 text-sm font-medium"
+                  className="flex-1 bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-50 hover:bg-neutral-300 dark:hover:bg-neutral-600 rounded-xl py-2 text-sm font-medium"
                 >
                   ← Back
                 </button>
                 <button
                   onClick={editingPopup ? handleUpdatePopup : handleAddPopup}
-                  className="flex-1 bg-stone-900 dark:bg-white text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-100 rounded-xl py-2 text-sm font-medium"
+                  className="flex-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 rounded-xl py-2 text-sm font-medium"
                 >
                   {editingPopup ? 'Update' : 'Add'}
                 </button>
@@ -1462,7 +1462,7 @@ export default function CreateAgentView({ onBack }) {
             setShowPopupForm(true);
             setPopupFormStep(1);
           }}
-          className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-100 rounded-xl py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 rounded-xl py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2"
         >
           <span className="text-lg">+</span>
           Add Dynamic Content
@@ -1495,12 +1495,12 @@ export default function CreateAgentView({ onBack }) {
 
       return (
         <div className="space-y-4">
-          <div className="bg-stone-100 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-4">
+          <div className="bg-neutral-100 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
-              <CheckCircleIcon className="w-5 h-5 text-stone-900 dark:text-stone-50" />
-              <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Training Complete!</h3>
+              <CheckCircleIcon className="w-5 h-5 text-neutral-900 dark:text-neutral-50" />
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Training Complete!</h3>
             </div>
-            <p className="text-xs text-stone-600 dark:text-stone-400 mb-4">
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-4">
               Your agent is ready to use. Copy the embed code below and paste it into your website's HTML.
             </p>
 
@@ -1522,11 +1522,11 @@ export default function CreateAgentView({ onBack }) {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl p-3">
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-stone-700 dark:text-stone-300">Embed Code</span>
+                <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Embed Code</span>
               </div>
-              <pre className="text-xs text-stone-600 dark:text-stone-400 overflow-x-auto whitespace-pre-wrap break-all">
+              <pre className="text-xs text-neutral-600 dark:text-neutral-400 overflow-x-auto whitespace-pre-wrap break-all">
                 <code>{embedCode}</code>
               </pre>
             </div>
@@ -1544,20 +1544,20 @@ export default function CreateAgentView({ onBack }) {
 
       return (
         <div className="space-y-4">
-          <div className="bg-stone-100 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-6 text-center">
+          <div className="bg-neutral-100 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-6 text-center">
             {/* 3 Dot Loader */}
             <div className="flex justify-center mb-4">
               <div className="relative w-16 h-16">
                 <div className="absolute inset-0 flex items-center justify-center gap-1">
-                  <div className="w-2 h-2 bg-stone-900 dark:bg-stone-50 rounded-full animate-bounce-dot" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-stone-900 dark:bg-stone-50 rounded-full animate-bounce-dot" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-stone-900 dark:bg-stone-50 rounded-full animate-bounce-dot" style={{ animationDelay: '300ms' }}></div>
+                  <div className="w-2 h-2 bg-neutral-900 dark:bg-neutral-50 rounded-full animate-bounce-dot" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-neutral-900 dark:bg-neutral-50 rounded-full animate-bounce-dot" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-neutral-900 dark:bg-neutral-50 rounded-full animate-bounce-dot" style={{ animationDelay: '300ms' }}></div>
                 </div>
               </div>
             </div>
 
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50 mb-2">Training Your Agent...</h3>
-            <p className="text-xs text-stone-600 dark:text-stone-400 mb-4">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50 mb-2">Training Your Agent...</h3>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-4">
               Processing {totalTrainingItems} training item{totalTrainingItems !== 1 ? 's' : ''}. This may take a minute.
             </p>
 
@@ -1570,8 +1570,8 @@ export default function CreateAgentView({ onBack }) {
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <div className="text-xs font-medium text-stone-900 dark:text-stone-50">Analyzing Training Data</div>
-                  <div className="text-xs text-stone-500 dark:text-stone-400">Completed</div>
+                  <div className="text-xs font-medium text-neutral-900 dark:text-neutral-50">Analyzing Training Data</div>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">Completed</div>
                 </div>
               </div>
 
@@ -1580,18 +1580,18 @@ export default function CreateAgentView({ onBack }) {
                   <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                 </div>
                 <div className="flex-1">
-                  <div className="text-xs font-medium text-stone-900 dark:text-stone-50">Building AI Model</div>
-                  <div className="text-xs text-stone-500 dark:text-stone-400">In progress...</div>
+                  <div className="text-xs font-medium text-neutral-900 dark:text-neutral-50">Building AI Model</div>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">In progress...</div>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 text-left">
-                <div className="w-6 h-6 rounded-full bg-stone-300 dark:bg-stone-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-6 h-6 rounded-full bg-neutral-300 dark:bg-neutral-600 flex items-center justify-center flex-shrink-0">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
                 <div className="flex-1">
-                  <div className="text-xs font-medium text-stone-500 dark:text-stone-400">Finalizing Setup</div>
-                  <div className="text-xs text-stone-400 dark:text-stone-500">Waiting...</div>
+                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Finalizing Setup</div>
+                  <div className="text-xs text-neutral-400 dark:text-neutral-500">Waiting...</div>
                 </div>
               </div>
             </div>
@@ -1603,27 +1603,27 @@ export default function CreateAgentView({ onBack }) {
     // Default review state
     return (
       <div className="space-y-4">
-        <div className="bg-stone-50 dark:bg-stone-800/30 border border-stone-200 dark:border-stone-700 rounded-2xl p-4">
+        <div className="bg-neutral-50 dark:bg-neutral-800/30 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4">
           <div className="flex items-start gap-3 mb-3">
             {logoPreview && (
               <img
                 src={logoPreview}
                 alt="Agent logo"
-                className="w-12 h-12 rounded-xl object-cover border border-stone-200 dark:border-stone-700 flex-shrink-0"
+                className="w-12 h-12 rounded-xl object-cover border border-neutral-200 dark:border-neutral-700 flex-shrink-0"
               />
             )}
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-stone-900 dark:text-stone-50">{formData.name}</div>
-              <div className="text-xs text-stone-600 dark:text-stone-400">{formData.projectName}</div>
+              <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">{formData.name}</div>
+              <div className="text-xs text-neutral-600 dark:text-neutral-400">{formData.projectName}</div>
               {formData.websiteUrl && (
                 <div className="text-xs text-blue-500 mt-1 truncate">{formData.websiteUrl}</div>
               )}
             </div>
           </div>
 
-          <div className="border-t border-stone-200 dark:border-stone-700 pt-3">
+          <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-stone-700 dark:text-stone-300">Training Content</span>
+              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Training Content</span>
               <span className="text-xs font-bold text-green-600">
                 {(formData.trainingText.trim() ? 1 : 0) + uploadedFiles.filter(f => f.status === 'ready').length}
               </span>
@@ -1633,8 +1633,8 @@ export default function CreateAgentView({ onBack }) {
               {formData.trainingText.trim() && (
                 <div className="flex items-center gap-2 text-xs">
                   <CheckCircleIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                  <span className="text-stone-700 dark:text-stone-300 truncate flex-1">Pasted Training Content</span>
-                  <span className="text-stone-500 text-xs">{formData.trainingText.trim().length} chars</span>
+                  <span className="text-neutral-700 dark:text-neutral-300 truncate flex-1">Pasted Training Content</span>
+                  <span className="text-neutral-500 text-xs">{formData.trainingText.trim().length} chars</span>
                 </div>
               )}
 
@@ -1642,8 +1642,8 @@ export default function CreateAgentView({ onBack }) {
               {uploadedFiles.filter(f => f.status === 'ready').map((file) => (
                 <div key={file.id} className="flex items-center gap-2 text-xs">
                   <CheckCircleIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                  <span className="text-stone-700 dark:text-stone-300 truncate flex-1">{file.name}</span>
-                  <span className="text-stone-500 text-xs">{formatFileSize(file.size)}</span>
+                  <span className="text-neutral-700 dark:text-neutral-300 truncate flex-1">{file.name}</span>
+                  <span className="text-neutral-500 text-xs">{formatFileSize(file.size)}</span>
                 </div>
               ))}
 
@@ -1651,23 +1651,23 @@ export default function CreateAgentView({ onBack }) {
               {formData.privacyUrl?.trim() && (
                 <div className="flex items-center gap-2 text-xs">
                   <CheckCircleIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                  <span className="text-stone-700 dark:text-stone-300 truncate flex-1">Privacy Policy</span>
-                  <span className="text-stone-500 text-xs">URL</span>
+                  <span className="text-neutral-700 dark:text-neutral-300 truncate flex-1">Privacy Policy</span>
+                  <span className="text-neutral-500 text-xs">URL</span>
                 </div>
               )}
               {formData.termsUrl?.trim() && (
                 <div className="flex items-center gap-2 text-xs">
                   <CheckCircleIcon className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                  <span className="text-stone-700 dark:text-stone-300 truncate flex-1">Terms of Service</span>
-                  <span className="text-stone-500 text-xs">URL</span>
+                  <span className="text-neutral-700 dark:text-neutral-300 truncate flex-1">Terms of Service</span>
+                  <span className="text-neutral-500 text-xs">URL</span>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="bg-stone-50 dark:bg-stone-900/30 border border-stone-200 dark:border-stone-700 rounded-2xl p-3">
-          <p className="text-xs text-stone-700 dark:text-stone-300">
+        <div className="bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-3">
+          <p className="text-xs text-neutral-700 dark:text-neutral-300">
             Ready to train your agent with {(formData.trainingText.trim() ? 1 : 0) + uploadedFiles.filter(f => f.status === 'ready').length + (formData.privacyUrl?.trim() ? 1 : 0) + (formData.termsUrl?.trim() ? 1 : 0)} training item{((formData.trainingText.trim() ? 1 : 0) + uploadedFiles.filter(f => f.status === 'ready').length + (formData.privacyUrl?.trim() ? 1 : 0) + (formData.termsUrl?.trim() ? 1 : 0)) !== 1 ? 's' : ''}
           </p>
         </div>
@@ -1691,7 +1691,7 @@ export default function CreateAgentView({ onBack }) {
         {/* Content List */}
         <div className="space-y-3">
           {!hasAnyContent ? (
-            <div className="w-full max-w-lg text-center py-8 px-4 text-stone-400 text-sm bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl">
+            <div className="w-full max-w-lg text-center py-8 px-4 text-neutral-400 text-sm bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl">
               No training content added yet
             </div>
           ) : (
@@ -1794,11 +1794,11 @@ export default function CreateAgentView({ onBack }) {
 
 
         {/* Mini Widget */}
-        <div className="relative mx-auto bg-gradient-to-br from-stone-900/60 to-stone-800/40 backdrop-blur-md border border-stone-700/50 rounded-3xl p-4 shadow-2xl" style={{width: '380px'}}>
+        <div className="relative mx-auto bg-gradient-to-br from-neutral-900/60 to-neutral-800/40 backdrop-blur-md border border-neutral-700/50 rounded-3xl p-4 shadow-2xl" style={{width: '380px'}}>
 
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-xl bg-stone-700/50 flex items-center justify-center overflow-hidden">
+            <div className="w-8 h-8 rounded-xl bg-neutral-700/50 flex items-center justify-center overflow-hidden">
               {logoPreview ? (
                 <img src={logoPreview} alt="Logo" className="w-8 h-8 object-cover rounded-xl" />
               ) : (
@@ -1809,7 +1809,7 @@ export default function CreateAgentView({ onBack }) {
               <div className="text-xs font-semibold text-white truncate">
                 {formData.projectName || 'Your Agent'}
               </div>
-              <div className="text-xs text-stone-400">Online now</div>
+              <div className="text-xs text-neutral-400">Online now</div>
             </div>
             <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
           </div>
@@ -1895,7 +1895,7 @@ export default function CreateAgentView({ onBack }) {
               type="text"
               disabled
               placeholder={`Ask ${formData.projectName || 'anything'}...`}
-              className="flex-1 bg-transparent text-xs text-stone-300 placeholder:text-stone-500 border-none outline-none"
+              className="flex-1 bg-transparent text-xs text-neutral-300 placeholder:text-neutral-500 border-none outline-none"
             />
             <div className="px-3 py-1.5 bg-white/90 text-black rounded-full text-xs font-semibold">
               send
@@ -1903,7 +1903,7 @@ export default function CreateAgentView({ onBack }) {
           </div>
 
           {/* Powered by */}
-          <div className="flex items-center justify-center gap-1 mt-2 text-xs text-stone-400">
+          <div className="flex items-center justify-center gap-1 mt-2 text-xs text-neutral-400">
             <img src="https://orchis.app/logo.webp" alt="Orchis" className="w-3 h-3 rounded" />
             <span>Powered by <span className="font-bold">ORCHIS</span></span>
           </div>
@@ -1938,7 +1938,7 @@ export default function CreateAgentView({ onBack }) {
             {agents && agents.length > 0 && (
               <button
                 onClick={onBack}
-                className="flex items-center gap-1.5 px-2 py-1 text-stone-500 hover:text-stone-900 dark:hover:text-stone-50 transition-colors rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 mb-4 text-xs w-fit"
+                className="flex items-center gap-1.5 px-2 py-1 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-50 transition-colors rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 mb-4 text-xs w-fit"
               >
                 <ArrowLeftIcon className="w-3 h-3" />
                 Cancel
@@ -1949,19 +1949,19 @@ export default function CreateAgentView({ onBack }) {
               <>
                 {currentAgentCount === 0 ? (
                   <div className="mb-4 sm:mb-6">
-                    <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-50 mb-2">
+                    <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50 mb-2">
                       Welcome, {user?.displayName || 'there'}! 👋
                     </h1>
-                    <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400">
+                    <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
                       Let's create your first AI Chatbot together. We're excited to have you on board and can't wait to see what you build!
                     </p>
                   </div>
                 ) : (
                   <div className="mb-4 sm:mb-6">
-                    <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-50 mb-2">
+                    <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50 mb-2">
                       Create New Agent
                     </h1>
-                    <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400">
+                    <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
                       Ready to expand your AI toolkit? Let's set up another intelligent agent to help your business grow.
                     </p>
                   </div>
@@ -1971,7 +1971,7 @@ export default function CreateAgentView({ onBack }) {
 
             {renderStepIndicator()}
 
-          <div className="bg-white dark:bg-stone-800/50 rounded-2xl sm:rounded-3xl border border-stone-200 dark:border-stone-800 p-3 sm:p-5 mb-4">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl sm:rounded-3xl border border-neutral-200 dark:border-neutral-800 p-3 sm:p-5 mb-4">
             {currentStep === 1 && renderStep1()}
             {currentStep === 2 && renderStep2()}
             {currentStep === 3 && renderStep3()}
@@ -2087,7 +2087,7 @@ export default function CreateAgentView({ onBack }) {
             className="hidden lg:flex flex-col items-center justify-center p-10 bg-cover bg-center bg-no-repeat relative min-h-[700px]"
             style={{backgroundImage: "url('/livepreview.webp')"}}
           >
-            <div className="absolute inset-0 bg-stone-900/20 dark:bg-stone-900/30"></div>
+            <div className="absolute inset-0 bg-neutral-900/20 dark:bg-neutral-900/30"></div>
             <div className="relative z-10 w-full max-w-[500px] mx-auto">
               {renderUploadedFilesList()}
               {renderPreviewWidget()}

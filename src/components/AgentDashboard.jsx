@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowDown01Icon, Settings02Icon, MachineRobotIcon } from '@hugeicons/core-free-icons';
+import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
 import TicketChart from './TicketChart';
 import CategoryDonutChart from './CategoryDonutChart';
 import SentimentChart from './SentimentChart';
@@ -16,19 +15,14 @@ import IntentChart from './IntentChart';
 import ConfidenceChart from './ConfidenceChart';
 import VisitorDetailModal from './VisitorDetailModal';
 import TicketDetailModal from './TicketDetailModal';
-import { useAgent } from '../contexts/AgentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getConversationAnalytics, getKnowledgeGaps } from '../utils/newAnalyticsFunctions';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 
-export default function AgentDashboard({ agent, onShowEmbed }) {
-  const navigate = useNavigate();
+export default function AgentDashboard({ agent }) {
   const { user } = useAuth();
-  const { agents, selectAgent, selectedAgent } = useAgent();
-  const [isAgentDropdownOpen, setIsAgentDropdownOpen] = useState(false);
   const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
-  const agentDropdownRef = useRef(null);
   const timeDropdownRef = useRef(null);
 
   // Analytics state
@@ -51,9 +45,6 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (agentDropdownRef.current && !agentDropdownRef.current.contains(event.target)) {
-        setIsAgentDropdownOpen(false);
-      }
       if (timeDropdownRef.current && !timeDropdownRef.current.contains(event.target)) {
         setIsTimeDropdownOpen(false);
       }
@@ -218,20 +209,6 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     loadTickets();
   }, [activeTab, agent?.id, user?.uid, timeRange]);
 
-  const handleAgentSelect = (selectedAgent) => {
-    selectAgent(selectedAgent);
-    setIsAgentDropdownOpen(false);
-    navigate(`/dashboard/${selectedAgent.id}`);
-  };
-
-
-  const handleAgentSettings = () => {
-    setIsAgentDropdownOpen(false);
-    if (onShowEmbed) {
-      onShowEmbed();
-    }
-  };
-
   const handleFillGap = (gap) => {
     setSelectedGap(gap);
     setIsModalOpen(true);
@@ -351,23 +328,23 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
     const colors = {
       'Feedback': 'bg-blue-500/5 text-blue-500 border-blue-500',
       'Question': 'bg-purple-500/5 text-purple-500 border-purple-500',
-      'Support Request': 'bg-orange-500/5 text-orange-500 border-orange-500',
-      'Support': 'bg-orange-500/5 text-orange-500 border-orange-500',
+      'Support Request': 'bg-green-500/5 text-green-500 border-green-500',
+      'Support': 'bg-green-500/5 text-green-500 border-green-500',
       'Sales Inquiry': 'bg-green-500/5 text-green-500 border-green-500',
       'Sales': 'bg-green-500/5 text-green-500 border-green-500',
       'Bug Report': 'bg-red-500/5 text-red-500 border-red-500',
       'Complaint': 'bg-red-500/5 text-red-500 border-red-500',
-      'General': 'bg-stone-500/5 text-stone-500 border-stone-500'
+      'General': 'bg-neutral-500/5 text-neutral-500 border-neutral-500'
     };
-    return colors[category] || 'bg-stone-100 text-stone-800 border-stone-200';
+    return colors[category] || 'bg-neutral-100 text-neutral-800 border-neutral-200';
   };
 
   if (!agent) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="text-lg font-medium text-stone-900 mb-2">No Agent Selected</div>
-          <div className="text-stone-500">Please select an agent to view analytics.</div>
+          <div className="text-lg font-medium text-neutral-900 mb-2">No Agent Selected</div>
+          <div className="text-neutral-500">Please select an agent to view analytics.</div>
         </div>
       </div>
     );
@@ -378,83 +355,14 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       {/* Controls Row */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2 md:gap-4 flex-wrap w-full md:w-auto">
-          {/* Widget Preview */}
-          <div className="relative" ref={agentDropdownRef}>
-            <button
-              onClick={() => setIsAgentDropdownOpen(!isAgentDropdownOpen)}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors"
-            >
-              <div className="w-5 h-5 bg-stone-100 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
-                {agent?.logoUrl ? (
-                  <img 
-                    src={agent.logoUrl} 
-                    alt={agent.name}
-                    className="w-5 h-5 object-cover rounded-md"
-                  />
-                ) : (
-                  <div className="w-4 h-4 bg-stone-600" />
-                )}
-              </div>
-              <div className="flex-1 text-left">
-                <div className="text-md font-bold text-stone-900 dark:text-stone-50">
-                  {agent?.projectName || agent?.name || 'Select Agent'}
-                </div>
-              </div>
-              <HugeiconsIcon icon={ArrowDown01Icon} className={`w-4 h-4 text-stone-500 transition-transform ${isAgentDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isAgentDropdownOpen && (
-              <div className="absolute top-full left-0 min-w-[250px] mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg z-10">
-                <div className="p-1 space-y-0.5">
-                  {agents.map((agentOption) => (
-                    <button
-                      key={agentOption.id}
-                      onClick={() => handleAgentSelect(agentOption)}
-                      className={`w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors group ${
-                        agent?.id === agentOption.id ? 'bg-stone-50 dark:bg-stone-800' : ''
-                      }`}
-                    >
-                      <div className="w-4 h-4 bg-stone-100 dark:bg-stone-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        {agentOption.logoUrl ? (
-                          <img
-                            src={agentOption.logoUrl}
-                            alt={agentOption.name}
-                            className="w-4 h-4 object-cover rounded"
-                          />
-                        ) : (
-                          <div className="w-3 h-3 bg-stone-600 dark:bg-stone-400" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-stone-900 dark:text-stone-100">{agentOption.projectName || agentOption.name}</div>
-                      </div>
-                    </button>
-                  ))}
-
-                  {/* Agent Settings */}
-                  <div className="border-t border-stone-100 dark:border-stone-700 mt-1">
-                    <button
-                      onClick={handleAgentSettings}
-                      className="w-full flex items-center gap-1 px-2 py-1 mt-1 text-left rounded-md hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors group"
-                    >
-                      <HugeiconsIcon icon={Settings02Icon} className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                      <span className="text-sm font-medium text-stone-700 dark:text-stone-300">Agent Settings</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          
           {/* Time Filter */}
           <div className="relative" ref={timeDropdownRef}>
             <button
               onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-neutral-200 dark:md:hover:bg-neutral-800 transition-colors"
             >
               <div className="flex-1 text-left">
-                <div className="text-md font-bold text-stone-900 dark:text-stone-50">
+                <div className="text-md font-bold text-neutral-900 dark:text-neutral-50">
                   {timeRange === 'hourly' ? 'Last 24H' :
                    timeRange === 'daily' ? 'Last 7 Days' :
                    timeRange === 'weekly' ? 'Last 30 Days' :
@@ -462,12 +370,12 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                    'All Time'}
                 </div>
               </div>
-              <HugeiconsIcon icon={ArrowDown01Icon} className={`w-4 h-4 text-stone-500 transition-transform ${isTimeDropdownOpen ? 'rotate-180' : ''}`} />
+              <HugeiconsIcon icon={ArrowDown01Icon} className={`w-4 h-4 text-neutral-500 transition-transform ${isTimeDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             {isTimeDropdownOpen && (
-              <div className="absolute top-full left-0 min-w-[150px] mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg z-10">
+              <div className="absolute top-full left-0 min-w-[150px] mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-10">
                 <div className="p-1 space-y-0.5">
                   {['hourly', 'daily', 'weekly', 'quarterly', 'alltime'].map((range) => (
                     <button
@@ -476,12 +384,12 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                         setTimeRange(range);
                         setIsTimeDropdownOpen(false);
                       }}
-                      className={`w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors group ${
-                        timeRange === range ? 'bg-stone-50 dark:bg-stone-800' : ''
+                      className={`w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors group ${
+                        timeRange === range ? 'bg-neutral-50 dark:bg-neutral-800' : ''
                       }`}
                     >
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                        <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                           {range === 'hourly' ? 'Last 24H' :
                            range === 'daily' ? 'Last 7 Days' :
                            range === 'weekly' ? 'Last 30 Days' :
@@ -499,7 +407,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           {/* Test Agent Button */}
           <button
             onClick={handleTestAgent}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg transition-all cursor-pointer"
             title={`Chat with ${agent?.projectName || 'your agent'}`}
           >
             Show {agent?.projectName || 'Agent'} Demo
@@ -507,13 +415,13 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         </div>
 
         {/* Tab System */}
-        <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 rounded-lg p-1 w-full md:w-auto">
+        <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1 w-full md:w-auto">
           <button
             onClick={() => setActiveTab('analytics')}
             className={`flex-1 md:flex-initial px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
               activeTab === 'analytics'
-                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-50 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-50'
             }`}
           >
             Analytics
@@ -522,8 +430,8 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             onClick={() => setActiveTab('visitors')}
             className={`flex-1 md:flex-initial px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
               activeTab === 'visitors'
-                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-50 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-50'
             }`}
           >
             Visitors
@@ -532,8 +440,8 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             onClick={() => setActiveTab('tickets')}
             className={`flex-1 md:flex-initial px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
               activeTab === 'tickets'
-                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50'
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-50 shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-50'
             }`}
           >
             Tickets
@@ -547,8 +455,8 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       {/* Analytics Dashboard */}
       <div className="mb-6">
         {analyticsLoading ? (
-          <div className="h-40 flex items-center justify-center bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800">
-            <div className="text-stone-400 text-sm">Loading analytics...</div>
+          <div className="h-40 flex items-center justify-center bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800">
+            <div className="text-neutral-400 text-sm">Loading analytics...</div>
           </div>
         ) : (
           <TicketChart analyticsData={analyticsData} />
@@ -556,10 +464,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       </div>
 
       {/* User Sentiment Analysis - Full Width */}
-      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 mt-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">User Sentiment</h3>
-          <div className="text-sm text-stone-500">Customer Mood Distribution</div>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">User Sentiment</h3>
+          <div className="text-sm text-neutral-500">Customer Mood Distribution</div>
         </div>
         <div className="h-64">
           <SentimentChart data={analyticsData?.sentimentData || []} />
@@ -569,10 +477,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       {/* Bottom Analytics Row - 2x2 Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {/* User Intent */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Intent</h3>
-            <div className="text-sm text-stone-500">Why They Contacted</div>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">User Intent</h3>
+            <div className="text-sm text-neutral-500">Why They Contacted</div>
           </div>
           <div className="h-64">
             <IntentChart data={analyticsData?.intentData || []} />
@@ -580,10 +488,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         </div>
 
         {/* AI Confidence */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">AI Confidence</h3>
-            <div className="text-sm text-stone-500">Answer Quality</div>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">AI Confidence</h3>
+            <div className="text-sm text-neutral-500">Answer Quality</div>
           </div>
           <div className="h-64">
             <ConfidenceChart
@@ -594,10 +502,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         </div>
 
         {/* Intent Categories Donut Chart */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Categories</h3>
-            <div className="text-sm text-stone-500">Message Types</div>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Categories</h3>
+            <div className="text-sm text-neutral-500">Message Types</div>
           </div>
           <div className="h-64">
             <CategoryDonutChart data={analyticsData?.categoryData || []} />
@@ -605,10 +513,10 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         </div>
 
         {/* Urgency Distribution */}
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Urgency Levels</h3>
-            <div className="text-sm text-stone-500">AI-Detected Priority</div>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Urgency Levels</h3>
+            <div className="text-sm text-neutral-500">AI-Detected Priority</div>
           </div>
           <div className="h-64">
             <UrgencyChart data={analyticsData?.urgencyData || []} />
@@ -619,38 +527,38 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
 
 
       {/* Knowledge Gaps */}
-      <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mt-6">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 mt-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Knowledge Gaps</h3>
-          <div className="text-sm text-stone-500">Questions your agent couldn't answer</div>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">Knowledge Gaps</h3>
+          <div className="text-sm text-neutral-500">Questions your agent couldn't answer</div>
         </div>
         {knowledgeGaps.length > 0 ? (
           <div className="space-y-3">
             {knowledgeGaps.slice(0, 10).map((gap) => (
               <div
                 key={gap.id}
-                className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800"
+                className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg border border-neutral-100 dark:border-neutral-800"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
+                    <span className="text-xs px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border border-green-200 dark:border-green-800">
                       {gap.category || 'General'}
                     </span>
                   </div>
-                  <div className="text-sm font-medium text-stone-900 dark:text-stone-50 mb-1">
+                  <div className="text-sm font-medium text-neutral-900 dark:text-neutral-50 mb-1">
                     {gap.representativeQuestion || gap.question || 'Unknown question'}
                   </div>
-                  <div className="text-xs text-stone-500 dark:text-stone-400">
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
                     First asked: {gap.firstAsked?.toLocaleDateString()} • Last asked: {gap.lastAsked?.toLocaleDateString()}
                   </div>
                 </div>
                 <div className="ml-4 flex items-center gap-3">
-                  <span className="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 font-semibold">
+                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 font-semibold">
                     Asked {gap.count}x
                   </span>
                   <button
                     onClick={() => handleFillGap(gap)}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
                   >
                     Fill Gap
                   </button>
@@ -661,8 +569,8 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
         ) : (
           <div className="h-32 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">You're all set!</div>
-              <div className="text-stone-300 dark:text-stone-600 text-xs">No unanswered questions detected so far</div>
+              <div className="text-neutral-400 dark:text-neutral-500 text-sm mb-1">You're all set!</div>
+              <div className="text-neutral-300 dark:text-neutral-600 text-xs">No unanswered questions detected so far</div>
             </div>
           </div>
         )}
@@ -675,15 +583,15 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
       {activeTab === 'visitors' && (
         <>
         {/* User Locations - Full Width */}
-          <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6 mb-6">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">User Locations</h3>
-              <div className="text-sm text-stone-500">Geographic Distribution</div>
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">User Locations</h3>
+              <div className="text-sm text-neutral-500">Geographic Distribution</div>
             </div>
             <div className="h-96">
               {analyticsLoading ? (
                 <div className="h-full flex items-center justify-center">
-                  <div className="text-stone-400 text-sm">Loading...</div>
+                  <div className="text-neutral-400 text-sm">Loading...</div>
                 </div>
               ) : (
                 <UserWorldMap data={analyticsData?.locationData || []} />
@@ -695,15 +603,15 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
 
             
             {/* Languages */}
-            <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Languages</h3>
-                <div className="text-sm text-stone-500">User Preferences</div>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Languages</h3>
+                <div className="text-sm text-neutral-500">User Preferences</div>
               </div>
               <div className="h-64">
                 {analyticsLoading ? (
                   <div className="h-full flex items-center justify-center">
-                    <div className="text-stone-400 text-sm">Loading...</div>
+                    <div className="text-neutral-400 text-sm">Loading...</div>
                   </div>
                 ) : (
                   <LanguageChart data={analyticsData?.languageData || {}} />
@@ -712,15 +620,15 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             </div>
 
             {/* Browsers */}
-            <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Browsers</h3>
-                <div className="text-sm text-stone-500">Browser Distribution</div>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Browsers</h3>
+                <div className="text-sm text-neutral-500">Browser Distribution</div>
               </div>
               <div className="h-64">
                 {analyticsLoading ? (
                   <div className="h-full flex items-center justify-center">
-                    <div className="text-stone-400 text-sm">Loading...</div>
+                    <div className="text-neutral-400 text-sm">Loading...</div>
                   </div>
                 ) : (
                   <BrowserChart data={analyticsData?.browserData || {}} />
@@ -729,15 +637,15 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             </div>
 
             {/* Devices */}
-            <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Devices</h3>
-                <div className="text-sm text-stone-500">Device Types</div>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">Devices</h3>
+                <div className="text-sm text-neutral-500">Device Types</div>
               </div>
               <div className="h-64">
                 {analyticsLoading ? (
                   <div className="h-full flex items-center justify-center">
-                    <div className="text-stone-400 text-sm">Loading...</div>
+                    <div className="text-neutral-400 text-sm">Loading...</div>
                   </div>
                 ) : (
                   <DeviceChart data={analyticsData?.deviceData || {}} />
@@ -746,15 +654,15 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             </div>
 
             {/* Return Users */}
-            <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-50">User Type</h3>
-                <div className="text-sm text-stone-500">New vs Return</div>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">User Type</h3>
+                <div className="text-sm text-neutral-500">New vs Return</div>
               </div>
               <div className="h-64">
                 {analyticsLoading ? (
                   <div className="h-full flex items-center justify-center">
-                    <div className="text-stone-400 text-sm">Loading...</div>
+                    <div className="text-neutral-400 text-sm">Loading...</div>
                   </div>
                 ) : (
                   <ReturnUserChart data={analyticsData?.returnUserData || []} />
@@ -766,14 +674,14 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           
 
           {/* All Visitors List */}
-          <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Latest Visitors</h3>
-              <div className="text-sm text-stone-500">{visitors.length} total</div>
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">Latest Visitors</h3>
+              <div className="text-sm text-neutral-500">{visitors.length} total</div>
             </div>
             {visitorsLoading ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="text-stone-400 text-sm">Loading visitors...</div>
+                <div className="text-neutral-400 text-sm">Loading visitors...</div>
               </div>
             ) : visitors.length > 0 ? (
               <div className="space-y-3">
@@ -781,12 +689,12 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                   <div
                     key={visitor.id}
                     onClick={() => handleVisitorClick(visitor)}
-                    className="p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-900/50 transition-colors cursor-pointer"
+                    className="p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg border border-neutral-100 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900/50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-medium text-stone-900 dark:text-stone-50">
+                          <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
                             {visitor.anonymousUserId}
                           </span>
                           {visitor.userEmail && (
@@ -795,7 +703,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-stone-500 dark:text-stone-400">
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
                           {visitor.userInfo?.location?.city && visitor.userInfo?.location?.country && (
                             <>📍 {visitor.userInfo.location.city}, {visitor.userInfo.location.country}</>
                           )}
@@ -805,16 +713,16 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
                           {visitor.totalConversations || 0} conversations
                         </div>
-                        <div className="text-xs text-stone-400">
+                        <div className="text-xs text-neutral-400">
                           Last visit: {visitor.lastMessageTime?.toDate?.().toLocaleDateString()}
                         </div>
                       </div>
                     </div>
                     {visitor.userInfo?.language && (
-                      <div className="text-xs text-stone-500">
+                      <div className="text-xs text-neutral-500">
                         🌐 Language: {visitor.userInfo.language}
                       </div>
                     )}
@@ -824,8 +732,8 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
             ) : (
               <div className="h-64 flex items-center justify-center">
                 <div className="text-center">
-                  <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No visitors yet</div>
-                  <div className="text-stone-300 dark:text-stone-600 text-xs">When someone visits your site, they'll appear here</div>
+                  <div className="text-neutral-400 dark:text-neutral-500 text-sm mb-1">No visitors yet</div>
+                  <div className="text-neutral-300 dark:text-neutral-600 text-xs">When someone visits your site, they'll appear here</div>
                 </div>
               </div>
             )}
@@ -835,14 +743,14 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
 
       {/* Tickets Tab */}
       {activeTab === 'tickets' && (
-        <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Support Tickets</h3>
-            <div className="text-sm text-stone-500">{tickets.length} total</div>
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">Support Tickets</h3>
+            <div className="text-sm text-neutral-500">{tickets.length} total</div>
           </div>
           {ticketsLoading ? (
             <div className="h-64 flex items-center justify-center">
-              <div className="text-stone-400 text-sm">Loading tickets...</div>
+              <div className="text-neutral-400 text-sm">Loading tickets...</div>
             </div>
           ) : tickets.length > 0 ? (
             <div className="space-y-3">
@@ -850,7 +758,7 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                 <div
                   key={ticket.id}
                   onClick={() => handleTicketClick(ticket)}
-                  className="p-4 bg-stone-50 dark:bg-stone-900/30 rounded-lg border border-stone-100 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-900/50 transition-colors cursor-pointer"
+                  className="p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg border border-neutral-100 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-start gap-4">
                     {/* Left: Main Info */}
@@ -868,33 +776,33 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
                         </span>
                         <span className={`text-xs px-2 py-1 rounded-full border ${
                           ticket.status === 'open'
-                            ? 'bg-orange-500/5 text-orange-500 border-orange-500'
+                            ? 'bg-green-500/5 text-green-500 border-green-500'
                             : 'bg-green-500/5 text-green-500 border-green-500'
                         }`}>
                           {ticket.status === 'open' ? '🔴 Open' : '✓ Closed'}
                         </span>
                       </div>
-                      <div className="text-sm font-medium text-stone-900 dark:text-stone-50 mb-1">
+                      <div className="text-sm font-medium text-neutral-900 dark:text-neutral-50 mb-1">
                         {ticket.summary}
                       </div>
-                      <div className="text-xs text-stone-500 dark:text-stone-400">
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">
                         {ticket.email && <>📧 {ticket.email}</>}
                         {ticket.userInfo?.location?.city && (
                           <> • 📍 {ticket.userInfo.location.city}, {ticket.userInfo.location.country}</>
                         )}
                       </div>
-                      <div className="text-xs text-stone-400 mt-1">
+                      <div className="text-xs text-neutral-400 mt-1">
                         Created: {ticket.createdAt?.toDate?.().toLocaleString()}
                       </div>
                     </div>
 
                     {/* Right: Stats */}
                     <div className="flex flex-col items-end gap-1">
-                      <div className="text-xs text-stone-500">
-                        Sentiment: <span className="font-semibold text-stone-900 dark:text-stone-50">{ticket.userSentimentScore}/10</span>
+                      <div className="text-xs text-neutral-500">
+                        Sentiment: <span className="font-semibold text-neutral-900 dark:text-neutral-50">{ticket.userSentimentScore}/10</span>
                       </div>
-                      <div className="text-xs text-stone-500">
-                        AI Confidence: <span className="font-semibold text-stone-900 dark:text-stone-50">{ticket.aiConfidence}%</span>
+                      <div className="text-xs text-neutral-500">
+                        AI Confidence: <span className="font-semibold text-neutral-900 dark:text-neutral-50">{ticket.aiConfidence}%</span>
                       </div>
                     </div>
                   </div>
@@ -904,8 +812,8 @@ export default function AgentDashboard({ agent, onShowEmbed }) {
           ) : (
             <div className="h-64 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No tickets yet</div>
-                <div className="text-stone-300 dark:text-stone-600 text-xs">When someone needs support, tickets will appear here</div>
+                <div className="text-neutral-400 dark:text-neutral-500 text-sm mb-1">No tickets yet</div>
+                <div className="text-neutral-300 dark:text-neutral-600 text-xs">When someone needs support, tickets will appear here</div>
               </div>
             </div>
           )}

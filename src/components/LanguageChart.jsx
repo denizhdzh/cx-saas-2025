@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 
 const COLORS = {
-  light: '#f973164a', // violet-500 with opacity
-  dark: '#f973164a'   // violet-400 with opacity
+  light: '#22c55e4a', // violet-500 with opacity
+  dark: '#22c55e4a'   // violet-400 with opacity
 };
 
 export default function LanguageChart({ data = {} }) {
@@ -54,7 +54,7 @@ export default function LanguageChart({ data = {} }) {
           <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
             {data.category}
           </p>
-          <p className="text-xs mt-1" style={{ color: isDark ? COLORS.dark : COLORS.light }}>
+          <p className="text-xs mt-1" style={{ color: '#22c55e' }}>
             {data.count} sessions ({data.percentage}%)
           </p>
         </div>
@@ -67,8 +67,8 @@ export default function LanguageChart({ data = {} }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">Not enough data yet</div>
-          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Start getting conversations to see insights</div>
+          <div className="text-neutral-400 dark:text-neutral-500 text-sm">Not enough data yet</div>
+          <div className="text-neutral-300 dark:text-neutral-600 text-xs mt-1">Start getting conversations to see insights</div>
         </div>
       </div>
     );
@@ -81,7 +81,7 @@ export default function LanguageChart({ data = {} }) {
           transition: fill 0.2s ease;
         }
         .category-bar:hover {
-          fill: ${isDark ? 'rgba(167, 139, 250, 0.6)' : 'rgba(139, 92, 246, 0.6)'} !important;
+          fill: rgba(34, 197, 94, 0.4) !important;
         }
       `}</style>
       <ResponsiveContainer width="100%" height="100%" key={isDark ? 'dark' : 'light'}>

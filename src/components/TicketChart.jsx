@@ -13,42 +13,42 @@ export default function TicketChart({ analyticsData }) {
   const csatScore = Math.round((avgSentiment / 10) * 100);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 dark:bg-stone-800/50 p-2 rounded-2xl">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 dark:bg-neutral-800/50 p-2 rounded-2xl">
       {/* Ticket Creation Rate */}
-      <div className="bg-stone-50 dark:bg-stone-900 rounded-xl p-6 border border-stone-200 dark:border-stone-500/20">
-        <div className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">
+      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-neutral-500/20">
+        <div className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">
           Ticket Creation Rate
         </div>
-        <div className="text-4xl font-bold text-stone-900 dark:text-stone-50 mb-1">
+        <div className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-50 mb-1">
           {ticketCreationRate}%
         </div>
-        <div className="text-xs text-stone-500">
+        <div className="text-[10px] sm:text-xs text-neutral-500">
           {totalTickets} tickets from {totalConversations} conversations
         </div>
       </div>
 
       {/* AI Resolution Rate */}
-      <div className="bg-stone-50 dark:bg-stone-900 rounded-xl p-6 border border-stone-200 dark:border-stone-500/20">
-        <div className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">
+      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-neutral-500/20">
+        <div className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">
           AI Resolution Rate
         </div>
-        <div className="text-4xl font-bold text-stone-900 dark:text-stone-50 mb-1">
+        <div className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-50 mb-1">
           {aiResolutionRate}%
         </div>
-        <div className="text-xs text-stone-500">
+        <div className="text-[10px] sm:text-xs text-neutral-500">
           {highConfidenceMessages} of {totalAIMessages} AI responses
         </div>
       </div>
 
       {/* CSAT Score */}
-      <div className="bg-stone-50 dark:bg-stone-900 rounded-xl p-6 border border-stone-200 dark:border-stone-500/20">
-        <div className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">
+      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-neutral-500/20 sm:col-span-2 lg:col-span-1">
+        <div className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">
           CSAT Score
         </div>
-        <div className="text-4xl font-bold text-stone-900 dark:text-stone-50 mb-1">
+        <div className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-50 mb-1">
           {csatScore}%
         </div>
-        <div className="text-xs text-stone-500">
+        <div className="text-[10px] sm:text-xs text-neutral-500">
           Avg sentiment: {avgSentiment.toFixed(1)}/10
         </div>
       </div>

@@ -377,31 +377,90 @@
       };
     }
 
-    // ===== USER ID =====
+    // ===== HYBRID USER ID (Device Fingerprint + Cookie + localStorage) =====
     generateAnonymousUserId() {
-      const storedUserId = localStorage.getItem('orchis_anonymous_user_id');
+      const storageKey = `orchis_user_${this.agentId}`;
+      const cookieName = `orchis_uid_${this.agentId}`;
+
+      // 1. Try localStorage first (fastest)
+      let storedUserId = localStorage.getItem(storageKey);
       if (storedUserId) {
+        console.log('✅ User ID from localStorage:', storedUserId);
+        this.setCookie(cookieName, storedUserId, 365); // Refresh cookie
         return storedUserId;
       }
 
+      // 2. Try cookie (survives localStorage clear)
+      storedUserId = this.getCookie(cookieName);
+      if (storedUserId) {
+        console.log('✅ User ID from cookie (localStorage cleared):', storedUserId);
+        localStorage.setItem(storageKey, storedUserId); // Restore to localStorage
+        return storedUserId;
+      }
+
+      // 3. Try device fingerprint (survives both clears)
+      const deviceId = this.generateDeviceFingerprint();
+      const fingerprintKey = `orchis_fp_${this.agentId}_${deviceId}`;
+      storedUserId = localStorage.getItem(fingerprintKey);
+
+      if (storedUserId) {
+        console.log('✅ User ID from fingerprint:', storedUserId);
+        localStorage.setItem(storageKey, storedUserId);
+        this.setCookie(cookieName, storedUserId, 365);
+        return storedUserId;
+      }
+
+      // 4. Generate new user ID
+      const newUserId = 'anon_' + deviceId + '_' + Date.now().toString(36);
+      console.log('🆕 Generated new user ID:', newUserId);
+
+      // Save to all storage methods
+      localStorage.setItem(storageKey, newUserId);
+      localStorage.setItem(fingerprintKey, newUserId);
+      this.setCookie(cookieName, newUserId, 365);
+
+      return newUserId;
+    }
+
+    // Generate robust device fingerprint
+    generateDeviceFingerprint() {
       const fingerprint = [
-        window.location.hostname,
         navigator.userAgent,
         navigator.language,
-        screen.width + 'x' + screen.height,
-        Intl.DateTimeFormat().resolvedOptions().timeZone
-      ].join('-');
+        screen.width + 'x' + screen.height + 'x' + screen.colorDepth,
+        new Date().getTimezoneOffset(),
+        !!window.sessionStorage,
+        !!window.localStorage,
+        navigator.hardwareConcurrency || 'unknown',
+        navigator.platform
+      ].join('|');
 
+      // Simple hash function
       let hash = 0;
       for (let i = 0; i < fingerprint.length; i++) {
         const char = fingerprint.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
         hash = hash & hash;
       }
-      const userId = 'anon_' + Math.abs(hash).toString(36);
+      return Math.abs(hash).toString(36);
+    }
 
-      localStorage.setItem('orchis_anonymous_user_id', userId);
-      return userId;
+    // Cookie helpers
+    setCookie(name, value, days) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+      document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+    }
+
+    getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null;
     }
 
     // ===== DEVICE & BROWSER =====
@@ -1588,11 +1647,6 @@
       this.setLoading(true);
 
       try {
-        // Enhanced prompt for better conversation
-        const enhancedMessage = this.userName 
-          ? `User ${this.userName} asks: ${message}`
-          : message;
-
         // Send last 10 messages (5 user + 5 assistant pairs) for AI continuity
         let recentMessages = [];
         const maxMessages = 10;
@@ -1613,7 +1667,7 @@
         const timestamp = Date.now();
         const requestData = {
           agentId: this.config.agentId,
-          message: enhancedMessage,
+          message: message, // Send raw message - AI gets userName from backend savedUserName
           sessionId: this.sessionManager.sessionId,
           anonymousUserId: this.sessionManager.anonymousUserId,
           conversationHistory: recentMessages,
@@ -1623,7 +1677,7 @@
 
         // Generate HMAC if secret key is provided
         if (this.config.secretKey) {
-          const payload = `${this.config.agentId}:${enhancedMessage}:${timestamp}`;
+          const payload = `${this.config.agentId}:${message}:${timestamp}`;
           const hmac = await this.generateHMAC(payload, this.config.secretKey);
           if (hmac) {
             requestData.hmac = hmac;

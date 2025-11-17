@@ -661,20 +661,20 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
       <div className="space-y-4">
 
         <div>
-          <label className="block text-xs font-medium text-stone-500 mb-1">
+          <label className="block text-xs font-medium text-neutral-500 mb-1">
             Agent Name
           </label>
           <input
             type="text"
             value={brandingForm.projectName}
             onChange={(e) => setBrandingForm({...brandingForm, projectName: e.target.value})}
-            className="form-input text-sm bg-transparent border border-stone-300 dark:border-stone-700 text-neutral-900 dark:text-neutral-100"
+            className="form-input text-sm bg-transparent border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100"
             placeholder="My Company"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-stone-500 mb-2">
+          <label className="block text-xs font-medium text-neutral-500 mb-2">
             Project Logo
           </label>
           <div className="flex items-center space-x-3">
@@ -682,7 +682,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
               <img
                 src={logoPreview}
                 alt="Logo preview"
-                className="w-10 h-10 rounded-lg object-cover border border-stone-200"
+                className="w-10 h-10 rounded-lg object-cover border border-neutral-200"
               />
             )}
             <input
@@ -728,11 +728,11 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
           <textarea
             value={securityForm.allowedDomains}
             onChange={(e) => setSecurityForm({...securityForm, allowedDomains: e.target.value})}
-            className="form-textarea bg-transparent text-black dark:text-white border border-stone-200 dark:border-stone-700 text-sm h-24"
+            className="form-textarea bg-transparent text-black dark:text-white border border-neutral-200 dark:border-neutral-700 text-sm h-24"
             placeholder="example.com&#10;mysite.org&#10;*.mydomain.com"
             rows={4}
           />
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-neutral-500 mt-1">
             One domain per line. Use * for subdomains (*.example.com). Leave empty to allow all domains.
           </p>
         </div>
@@ -786,7 +786,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-black dark:text-white">Active Popups</h3>
           {popups.map((popup) => (
-            <div key={popup.id} className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+            <div key={popup.id} className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -798,7 +798,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                     </span>
                   </div>
                   <p className="text-sm font-medium text-black dark:text-white">{popup.title}</p>
-                  <p className="text-xs text-stone-500 mt-1">{popup.message}</p>
+                  <p className="text-xs text-neutral-500 mt-1">{popup.message}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   <button
@@ -821,7 +821,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
       )}
 
       {/* Add/Edit Popup Form */}
-      <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-6">
+      <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg p-6">
         <h3 className="text-base font-semibold text-black dark:text-white mb-4">
           {editingPopup ? 'Edit Popup' : 'Add New Popup'}
         </h3>
@@ -835,7 +835,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
             <select
               value={popupForm.trigger}
               onChange={(e) => setPopupForm({...popupForm, trigger: e.target.value})}
-              className="form-select text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-lg w-full"
+              className="form-select text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-lg w-full"
             >
               <option value="first_visit">First Visit - User visits for the first time</option>
               <option value="return_visit">Return Visit - User has been here before</option>
@@ -855,7 +855,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                 type="number"
                 value={popupForm.triggerValue}
                 onChange={(e) => setPopupForm({...popupForm, triggerValue: parseInt(e.target.value)})}
-                className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                className="form-input text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 text-black dark:text-white"
                 placeholder={popupForm.trigger === 'time_delay' ? '3' : '50'}
                 min={popupForm.trigger === 'time_delay' ? '1' : '10'}
                 max={popupForm.trigger === 'time_delay' ? '300' : '100'}
@@ -871,7 +871,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
             <select
               value={popupForm.contentType}
               onChange={(e) => setPopupForm({...popupForm, contentType: e.target.value})}
-              className="form-select text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-black dark:text-white rounded-lg w-full"
+              className="form-select text-sm bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-black dark:text-white rounded-lg w-full"
             >
               <option value="discount">Discount - Show discount code</option>
               <option value="announcement">Announcement - General message</option>
@@ -889,7 +889,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
               type="text"
               value={popupForm.title}
               onChange={(e) => setPopupForm({...popupForm, title: e.target.value})}
-              className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+              className="form-input text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 text-black dark:text-white"
               placeholder="Welcome! 👋"
             />
           </div>
@@ -902,7 +902,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
             <textarea
               value={popupForm.message}
               onChange={(e) => setPopupForm({...popupForm, message: e.target.value})}
-              className="form-textarea bg-transparent text-black dark:text-white border border-stone-200 dark:border-stone-700 text-sm"
+              className="form-textarea bg-transparent text-black dark:text-white border border-neutral-200 dark:border-neutral-700 text-sm"
               placeholder="Your message here..."
               rows={3}
             />
@@ -919,7 +919,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                   type="text"
                   value={popupForm.code}
                   onChange={(e) => setPopupForm({...popupForm, code: e.target.value})}
-                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white font-mono"
+                  className="form-input text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 text-black dark:text-white font-mono"
                   placeholder="SAVE20"
                 />
               </div>
@@ -931,7 +931,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                   type="number"
                   value={popupForm.discountPercent}
                   onChange={(e) => setPopupForm({...popupForm, discountPercent: parseInt(e.target.value)})}
-                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                  className="form-input text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 text-black dark:text-white"
                   placeholder="20"
                   min="0"
                   max="100"
@@ -950,7 +950,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                 type="text"
                 value={popupForm.videoUrl}
                 onChange={(e) => setPopupForm({...popupForm, videoUrl: e.target.value})}
-                className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                className="form-input text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 text-black dark:text-white"
                 placeholder="https://www.youtube.com/watch?v=..."
               />
             </div>
@@ -967,7 +967,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                   type="text"
                   value={popupForm.buttonText}
                   onChange={(e) => setPopupForm({...popupForm, buttonText: e.target.value})}
-                  className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                  className="form-input text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 text-black dark:text-white"
                   placeholder="Learn More"
                 />
               </div>
@@ -980,7 +980,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                     type="text"
                     value={popupForm.buttonLink}
                     onChange={(e) => setPopupForm({...popupForm, buttonLink: e.target.value})}
-                    className="form-input text-sm bg-transparent border border-stone-200 dark:border-stone-700 text-black dark:text-white"
+                    className="form-input text-sm bg-transparent border border-neutral-200 dark:border-neutral-700 text-black dark:text-white"
                     placeholder="https://example.com/page"
                   />
                 </div>
@@ -1056,7 +1056,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
       </div>
 
       {/* Code Display */}
-      <div className="bg-stone-900 rounded-lg p-4 overflow-x-auto">
+      <div className="bg-neutral-900 rounded-lg p-4 overflow-x-auto">
         <pre className="text-green-400 text-xs font-mono whitespace-pre-wrap">
           {embedCode}
         </pre>
@@ -1088,11 +1088,11 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
         {/* 3 Main Options */}
         <div className="space-y-4">
           {/* Option 1: Add New Data */}
-          <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+          <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-black dark:text-white mb-1">Add New Training Data</h4>
-                <p className="text-xs text-stone-600 dark:text-stone-400">
+                <p className="text-xs text-neutral-600 dark:text-neutral-400">
                   Add new content without affecting existing chunks. Appends to your current training data.
                 </p>
               </div>
@@ -1106,11 +1106,11 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
           </div>
 
           {/* Option 2: Delete All & Re-train */}
-          <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+          <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-black dark:text-white mb-1">Delete All & Re-train</h4>
-                <p className="text-xs text-stone-600 dark:text-stone-400">
+                <p className="text-xs text-neutral-600 dark:text-neutral-400">
                   Remove all training data and start fresh. Use when rebuilding your entire knowledge base.
                 </p>
               </div>
@@ -1127,15 +1127,15 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
-            <div className="text-xs text-stone-500 mb-1">Total Sources</div>
-            <div className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
+          <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
+            <div className="text-xs text-neutral-500 mb-1">Total Sources</div>
+            <div className="text-2xl font-semibold text-neutral-900 dark:text-neutral-50">
               {trainingSources.length}
             </div>
           </div>
-          <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
-            <div className="text-xs text-stone-500 mb-1">Total Embedding Knowledge</div>
-            <div className="text-2xl font-semibold text-stone-900 dark:text-stone-50">
+          <div className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
+            <div className="text-xs text-neutral-500 mb-1">Total Embedding Knowledge</div>
+            <div className="text-2xl font-semibold text-neutral-900 dark:text-neutral-50">
               {totalChunks}
             </div>
           </div>
@@ -1143,28 +1143,28 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
 
         {/* Training Sources List */}
         {loadingTrainingData ? (
-          <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+          <div className="text-center py-12 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
             <div className="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto mb-3"></div>
-            <p className="text-sm text-stone-500">Loading training data...</p>
+            <p className="text-sm text-neutral-500">Loading training data...</p>
           </div>
         ) : trainingSources.length === 0 ? (
-          <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
-            <HugeiconsIcon icon={FolderLibraryIcon} className="w-12 h-12 text-stone-300 dark:text-stone-600 mx-auto mb-3" />
-            <p className="text-sm text-stone-500">No training data yet</p>
-            <p className="text-xs text-stone-400 mt-1">Upload documents in the agent creation page to train your agent</p>
+          <div className="text-center py-12 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+            <HugeiconsIcon icon={FolderLibraryIcon} className="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+            <p className="text-sm text-neutral-500">No training data yet</p>
+            <p className="text-xs text-neutral-400 mt-1">Upload documents in the agent creation page to train your agent</p>
           </div>
         ) : (
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-black dark:text-white">Training Sources</h3>
             {trainingSources.map((source, idx) => (
-              <div key={idx} className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-4">
+              <div key={idx} className="bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <HugeiconsIcon icon={FolderLibraryIcon} className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                       <p className="text-sm font-medium text-black dark:text-white">{source.source}</p>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-stone-500">
+                    <div className="flex items-center gap-4 text-xs text-neutral-500">
                       <span>{source.totalChunks} chunks</span>
                       <span>•</span>
                       <span>{source.totalChars.toLocaleString()} characters</span>
@@ -1200,7 +1200,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
       <div className="space-y-6">
         {/* Header with actions */}
         <div className="flex items-center justify-between">
-          <div className="text-sm text-stone-600 dark:text-stone-400">
+          <div className="text-sm text-neutral-600 dark:text-neutral-400">
             {unreadAlerts.length > 0 ? (
               <span className="text-red-500 font-medium">
                 {unreadAlerts.length} unread alert{unreadAlerts.length > 1 ? 's' : ''}
@@ -1222,10 +1222,10 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
 
         {/* Alerts list */}
         {alerts.length === 0 ? (
-          <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
-            <HugeiconsIcon icon={Alert02Icon} className="w-12 h-12 text-stone-300 dark:text-stone-600 mx-auto mb-3" />
-            <p className="text-sm text-stone-500">No security alerts yet</p>
-            <p className="text-xs text-stone-400 mt-1">You'll be notified here when unauthorized access is attempted</p>
+          <div className="text-center py-12 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+            <HugeiconsIcon icon={Alert02Icon} className="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+            <p className="text-sm text-neutral-500">No security alerts yet</p>
+            <p className="text-xs text-neutral-400 mt-1">You'll be notified here when unauthorized access is attempted</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -1270,24 +1270,24 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
             {/* Read alerts */}
             {readAlerts.length > 0 && (
               <>
-                <div className="text-xs text-stone-400 font-medium mt-6 mb-2">Read Alerts</div>
+                <div className="text-xs text-neutral-400 font-medium mt-6 mb-2">Read Alerts</div>
                 {readAlerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className="bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg p-4 opacity-60"
+                    className="bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4 opacity-60"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-stone-100 dark:bg-stone-700 rounded-lg">
-                        <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-4 h-4 text-stone-500" />
+                      <div className="p-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg">
+                        <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-4 h-4 text-neutral-500" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                        <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                           {alert.type === 'domain_blocked' ? '🚫 Unauthorized Domain Access' : 'Security Alert'}
                         </h4>
-                        <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
                           Domain: <span className="font-mono">{alert.requestDomain}</span>
                         </p>
-                        <p className="text-xs text-stone-500 mt-2">
+                        <p className="text-xs text-neutral-500 mt-2">
                           {alert.timestamp ? new Date(alert.timestamp).toLocaleString() : 'Just now'}
                         </p>
                       </div>
@@ -1316,9 +1316,9 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <HugeiconsIcon icon={BinaryCodeIcon} className="w-16 h-16 text-stone-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-50 mb-2">No Agent Selected</h2>
-          <p className="text-stone-600 dark:text-stone-400">Please select an agent to generate embed code.</p>
+          <HugeiconsIcon icon={BinaryCodeIcon} className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-50 mb-2">No Agent Selected</h2>
+          <p className="text-neutral-600 dark:text-neutral-400">Please select an agent to generate embed code.</p>
         </div>
       </div>
     );
@@ -1331,17 +1331,17 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
         <div className="flex items-center gap-3 mb-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 p-2 text-stone-900 dark:text-stone-50 hover:text-stone-500 transition-colors rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 cursor-pointer"
+            className="flex items-center gap-2 p-2 text-neutral-900 dark:text-neutral-50 hover:text-neutral-500 transition-colors rounded-lg hover:bg-neutral-200 dark:md:hover:bg-neutral-800 cursor-pointer"
             title="Back to Analytics"
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} className="w-4 h-4" />
-            <span className="text-xs text-stone-500">Back</span>
+            <span className="text-xs text-neutral-500">Back</span>
           </button>
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-thin text-stone-900 dark:text-stone-50">Embed Settings</h1>
-            <div className="w-12 h-px bg-stone-900 dark:bg-stone-100 mt-4"></div>
+            <h1 className="text-2xl font-thin text-neutral-900 dark:text-neutral-50">Embed Settings</h1>
+            <div className="w-12 h-px bg-neutral-900 dark:bg-neutral-100 mt-4"></div>
           </div>
         </div>
       </div>
@@ -1357,18 +1357,18 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
-                  className={`w-full flex items-center gap-1 px-4 py-2 text-left rounded-lg hover:bg-stone-800 dark:md:hover:bg-stone-100 hover:text-white dark:md:hover:text-stone-900 transition-colors group ${
-                    activeSection === section.id ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-black' : ''
+                  className={`w-full flex items-center gap-1 px-4 py-2 text-left rounded-lg hover:bg-neutral-800 dark:md:hover:bg-neutral-100 hover:text-white dark:md:hover:text-neutral-900 transition-colors group ${
+                    activeSection === section.id ? 'bg-neutral-800 dark:bg-neutral-100 text-white dark:text-black' : ''
                   }`}
                 >
                   <HugeiconsIcon 
                     icon={Icon} 
                     className={`w-4 h-4 transition-colors ${
-                      activeSection === section.id ? 'text-white dark:text-black' : 'text-stone-500 group-hover:text-white dark:md:group-hover:text-stone-900'
+                      activeSection === section.id ? 'text-white dark:text-black' : 'text-neutral-500 group-hover:text-white dark:md:group-hover:text-neutral-900'
                     }`} 
                   />
                   <span className={`text-sm font-medium transition-colors ${
-                    activeSection === section.id ? 'text-white dark:text-black' : 'text-stone-900 dark:text-stone-50 dark:md:group-hover:text-stone-900 group-hover:text-white'
+                    activeSection === section.id ? 'text-white dark:text-black' : 'text-neutral-900 dark:text-neutral-50 dark:md:group-hover:text-neutral-900 group-hover:text-white'
                   }`}>{section.title}</span>
                 </button>
               );
@@ -1377,8 +1377,8 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
         </div>
 
         {/* Right Content - Section Content */}
-        <div className="flex-1 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <h2 className="text-lg font-medium text-stone-900 dark:text-stone-50 mb-6">
+        <div className="flex-1 bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+          <h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-50 mb-6">
             {sections.find(s => s.id === activeSection)?.title}
           </h2>
           
@@ -1394,7 +1394,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
       {/* Add Training Data Modal */}
       {showAddDataModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Add New Training Data</h3>
 
             <div className="space-y-4">
@@ -1406,12 +1406,12 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                   multiple
                   accept=".txt,.pdf,.doc,.docx"
                   onChange={handleFileUpload}
-                  className="block w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-stone-100 dark:file:bg-stone-800 file:text-stone-700 dark:file:text-stone-300 hover:file:bg-stone-200 dark:hover:file:bg-stone-700"
+                  className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-neutral-100 dark:file:bg-neutral-800 file:text-neutral-700 dark:file:text-neutral-300 hover:file:bg-neutral-200 dark:hover:file:bg-neutral-700"
                 />
                 {uploadedFiles.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {uploadedFiles.map((file, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-stone-50 dark:bg-stone-800 rounded">
+                      <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-neutral-50 dark:bg-neutral-800 rounded">
                         <span className="flex-1 truncate">{file.name}</span>
                         <span className={`px-2 py-0.5 rounded ${
                           file.status === 'ready' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
@@ -1439,9 +1439,9 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                   value={newTrainingText}
                   onChange={(e) => setNewTrainingText(e.target.value)}
                   placeholder="Or paste your training content here (FAQ, product info, etc.)..."
-                  className="w-full h-40 px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-black dark:text-white resize-none"
+                  className="w-full h-40 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-sm text-black dark:text-white resize-none"
                 />
-                <p className="text-xs text-stone-500 mt-1">{newTrainingText.length} characters</p>
+                <p className="text-xs text-neutral-500 mt-1">{newTrainingText.length} characters</p>
               </div>
 
               <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-lg p-3">
@@ -1478,7 +1478,7 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
       {/* Delete All & Retrain Modal */}
       {showDeleteRetrainModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Delete All & Re-train</h3>
 
             <div className="space-y-4">
@@ -1497,12 +1497,12 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                   multiple
                   accept=".txt,.pdf,.doc,.docx"
                   onChange={handleRetrainFileUpload}
-                  className="block w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-stone-100 dark:file:bg-stone-800 file:text-stone-700 dark:file:text-stone-300 hover:file:bg-stone-200 dark:hover:file:bg-stone-700"
+                  className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-neutral-100 dark:file:bg-neutral-800 file:text-neutral-700 dark:file:text-neutral-300 hover:file:bg-neutral-200 dark:hover:file:bg-neutral-700"
                 />
                 {retrainUploadedFiles.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {retrainUploadedFiles.map((file, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-stone-50 dark:bg-stone-800 rounded">
+                      <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-neutral-50 dark:bg-neutral-800 rounded">
                         <span className="flex-1 truncate">{file.name}</span>
                         <span className={`px-2 py-0.5 rounded ${
                           file.status === 'ready' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
@@ -1530,9 +1530,9 @@ export default function EmbedView({ agent, onBack, initialSection = null }) {
                   value={retrainText}
                   onChange={(e) => setRetrainText(e.target.value)}
                   placeholder="Or paste your new training content here (FAQ, product info, etc.)..."
-                  className="w-full h-40 px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg text-sm text-black dark:text-white resize-none"
+                  className="w-full h-40 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-sm text-black dark:text-white resize-none"
                 />
-                <p className="text-xs text-stone-500 mt-1">{retrainText.length} characters</p>
+                <p className="text-xs text-neutral-500 mt-1">{retrainText.length} characters</p>
               </div>
 
               <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-lg p-3">

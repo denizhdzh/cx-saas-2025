@@ -26,7 +26,7 @@ export default function ReferrerChart({ data = {} }) {
     category: item.category,
     count: item.count,
     percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) : 0,
-    fill: '#f973161a' // orange-500 with 10% opacity
+    fill: '#22c55e1a' // green-500 with 10% opacity
   }));
 
   const CustomTooltip = ({ active, payload }) => {
@@ -43,7 +43,7 @@ export default function ReferrerChart({ data = {} }) {
           <p className="text-sm font-semibold capitalize" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
             {data.category}
           </p>
-          <p className="text-xs mt-1" style={{ color: '#f97316' }}>
+          <p className="text-xs mt-1" style={{ color: '#22c55e' }}>
             {data.count} visitors ({data.percentage}%)
           </p>
         </div>
@@ -56,8 +56,8 @@ export default function ReferrerChart({ data = {} }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm mb-1">No referrer data yet</div>
-          <div className="text-stone-300 dark:text-stone-600 text-xs">Data will appear as users arrive</div>
+          <div className="text-neutral-400 dark:text-neutral-500 text-sm mb-1">No referrer data yet</div>
+          <div className="text-neutral-300 dark:text-neutral-600 text-xs">Data will appear as users arrive</div>
         </div>
       </div>
     );
@@ -70,7 +70,7 @@ export default function ReferrerChart({ data = {} }) {
           transition: fill 0.2s ease;
         }
         .category-bar:hover {
-          fill: rgba(249, 115, 22, 0.2) !important;
+          fill: rgba(34, 197, 94, 0.2) !important;
         }
       `}</style>
       <ResponsiveContainer width="100%" height="100%">

@@ -138,7 +138,7 @@ export default function SettingsView({ onBack }) {
       <div className="space-y-4">
         {/* Profile Picture */}
         <div>
-          <label className="block text-xs font-medium text-stone-500 dark:text-stone-400 mb-2">
+          <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">
             Profile Picture
           </label>
           <div className="flex items-center gap-4">
@@ -147,11 +147,11 @@ export default function SettingsView({ onBack }) {
                 <img
                   src={accountForm.photoURL}
                   alt="Profile"
-                  className="w-20 h-20 rounded-full object-cover border-2 border-stone-200 dark:border-stone-700"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-neutral-200 dark:border-neutral-700"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-stone-500">
+                <div className="w-20 h-20 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-neutral-500">
                     {accountForm.displayName?.charAt(0)?.toUpperCase() || 'U'}
                   </span>
                 </div>
@@ -165,44 +165,44 @@ export default function SettingsView({ onBack }) {
               />
               <label
                 htmlFor="photo-upload"
-                className="absolute bottom-0 right-0 p-1.5 bg-stone-800 dark:bg-stone-100 rounded-full cursor-pointer hover:opacity-90 transition-opacity"
+                className="absolute bottom-0 right-0 p-1.5 bg-neutral-800 dark:bg-neutral-100 rounded-full cursor-pointer hover:opacity-90 transition-opacity"
               >
-                <HugeiconsIcon icon={Camera01Icon} className="w-3 h-3 text-stone-50 dark:text-stone-900" />
+                <HugeiconsIcon icon={Camera01Icon} className="w-3 h-3 text-neutral-50 dark:text-neutral-900" />
               </label>
             </div>
-            <div className="text-xs text-stone-500 dark:text-stone-400">
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">
               Click the camera icon to upload a new photo (max 2MB)
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">
+          <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
             Display Name
           </label>
           <input
             type="text"
             value={accountForm.displayName}
             onChange={(e) => setAccountForm({ ...accountForm, displayName: e.target.value })}
-            className="form-input text-sm bg-transparent border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-50"
+            className="form-input text-sm bg-transparent border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-50"
             placeholder="Your Name"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-stone-500 dark:text-stone-400 mb-1">
+          <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
             Email Address
           </label>
           <div className="flex items-center gap-2">
-            <HugeiconsIcon icon={Mail01Icon} className="w-4 h-4 text-stone-400" />
+            <HugeiconsIcon icon={Mail01Icon} className="w-4 h-4 text-neutral-400" />
             <input
               type="email"
               value={accountForm.email}
               disabled
-              className="form-input text-sm bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-500 dark:text-stone-400 cursor-not-allowed flex-1"
+              className="form-input text-sm bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 cursor-not-allowed flex-1"
             />
           </div>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
             Email cannot be changed
           </p>
         </div>
@@ -223,20 +223,20 @@ export default function SettingsView({ onBack }) {
     <div className="space-y-6">
       <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
         <h4 className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">⚠️ Danger Zone</h4>
-        <p className="text-xs text-stone-700 dark:text-stone-300 mb-4">
+        <p className="text-xs text-neutral-700 dark:text-neutral-300 mb-4">
           Once you delete your account, there is no going back. This will permanently delete your account, all agents, analytics data, and conversations.
         </p>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">
+            <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
               Type <span className="font-bold">DELETE</span> to confirm
             </label>
             <input
               type="text"
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
-              className="form-input text-sm bg-transparent border border-red-300 dark:border-red-700 text-stone-900 dark:text-stone-50"
+              className="form-input text-sm bg-transparent border border-red-300 dark:border-red-700 text-neutral-900 dark:text-neutral-50"
               placeholder="DELETE"
             />
           </div>
@@ -257,7 +257,7 @@ export default function SettingsView({ onBack }) {
     return (
       <div className="max-w-5xl mx-auto px-6 py-6">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-900 dark:border-stone-50"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900 dark:border-neutral-50"></div>
         </div>
       </div>
     );
@@ -270,37 +270,37 @@ export default function SettingsView({ onBack }) {
         <div className="flex items-center gap-3 mb-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 p-2 text-stone-900 dark:text-stone-50 hover:text-stone-500 transition-colors rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 cursor-pointer"
+            className="flex items-center gap-2 p-2 text-neutral-900 dark:text-neutral-50 hover:text-neutral-500 transition-colors rounded-lg hover:bg-neutral-200 dark:md:hover:bg-neutral-800 cursor-pointer"
             title="Back to Dashboard"
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} className="w-4 h-4" />
-            <span className="text-xs text-stone-500">Back</span>
+            <span className="text-xs text-neutral-500">Back</span>
           </button>
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-thin text-stone-900 dark:text-stone-50">Settings</h1>
-            <div className="w-12 h-px bg-stone-900 dark:bg-stone-100 mt-4"></div>
+            <h1 className="text-2xl font-thin text-neutral-900 dark:text-neutral-50">Settings</h1>
+            <div className="w-12 h-px bg-neutral-900 dark:bg-neutral-100 mt-4"></div>
           </div>
         </div>
       </div>
 
       {/* Message Usage Progress */}
       {subscriptionData && (
-        <div className="mb-8 p-6 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700">
+        <div className="mb-8 p-6 bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-stone-900 dark:text-stone-50">
+            <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
               {subscriptionData.plan === 'free' ? 'One-Time Message Credits' : 'Monthly Message Usage'}
             </h3>
-            <span className="text-xs text-stone-600 dark:text-stone-400 capitalize">
+            <span className="text-xs text-neutral-600 dark:text-neutral-400 capitalize">
               {subscriptionData.plan} Plan
             </span>
           </div>
-          <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400 mb-3">
+          <div className="flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400 mb-3">
             <span>{subscriptionData.messagesUsed} messages</span>
             <span>{subscriptionData.messageLimit} messages {subscriptionData.plan === 'free' ? 'total' : 'limit'}</span>
           </div>
-          <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-2">
+          <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
             <div
               className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all duration-300"
               style={{
@@ -308,7 +308,7 @@ export default function SettingsView({ onBack }) {
               }}
             ></div>
           </div>
-          <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+          <div className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
             {subscriptionData.plan === 'free'
               ? `${subscriptionData.messageLimit - subscriptionData.messagesUsed} credits remaining (does not renew)`
               : `${((subscriptionData.messagesUsed / subscriptionData.messageLimit) * 100).toFixed(1)}% used this month`
@@ -328,18 +328,18 @@ export default function SettingsView({ onBack }) {
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
-                  className={`w-full flex items-center gap-1 px-4 py-2 text-left rounded-lg hover:bg-stone-800 dark:md:hover:bg-stone-100 hover:text-white dark:md:hover:text-stone-900 transition-colors group ${
-                    activeSection === section.id ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-black' : ''
+                  className={`w-full flex items-center gap-1 px-4 py-2 text-left rounded-lg hover:bg-neutral-800 dark:md:hover:bg-neutral-100 hover:text-white dark:md:hover:text-neutral-900 transition-colors group ${
+                    activeSection === section.id ? 'bg-neutral-800 dark:bg-neutral-100 text-white dark:text-black' : ''
                   }`}
                 >
                   <HugeiconsIcon
                     icon={Icon}
                     className={`w-4 h-4 transition-colors ${
-                      activeSection === section.id ? 'text-white dark:text-black' : 'text-stone-500 group-hover:text-white dark:md:group-hover:text-stone-900'
+                      activeSection === section.id ? 'text-white dark:text-black' : 'text-neutral-500 group-hover:text-white dark:md:group-hover:text-neutral-900'
                     }`}
                   />
                   <span className={`text-sm font-medium transition-colors ${
-                    activeSection === section.id ? 'text-white dark:text-black' : 'text-stone-900 dark:text-stone-50 dark:md:group-hover:text-stone-900 group-hover:text-white'
+                    activeSection === section.id ? 'text-white dark:text-black' : 'text-neutral-900 dark:text-neutral-50 dark:md:group-hover:text-neutral-900 group-hover:text-white'
                   }`}>{section.title}</span>
                 </button>
               );
@@ -348,8 +348,8 @@ export default function SettingsView({ onBack }) {
         </div>
 
         {/* Right Content - Section Content */}
-        <div className="flex-1 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
-          <h2 className="text-lg font-medium text-stone-900 dark:text-stone-50 mb-6">
+        <div className="flex-1 bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+          <h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-50 mb-6">
             {sections.find(s => s.id === activeSection)?.title}
           </h2>
 

@@ -260,25 +260,25 @@ export default function UserWorldMap({ data }) {
     }
 
     if (!countryCode || !countryData[countryCode]) {
-      return isDark ? '#44403c' : '#d6d3d1'; // stone-700 dark : stone-300 light
+      return isDark ? '#44403c' : '#d6d3d1'; // neutral-700 dark : neutral-300 light
     }
 
     const count = countryData[countryCode];
     const intensity = count / maxCount;
 
-    // Violet gradient based on intensity
+    // Green gradient based on intensity
     if (isDark) {
-      if (intensity > 0.8) return '#f97316'; // violet-400
-      if (intensity > 0.6) return '#f97316cc'; // violet-400 80%
-      if (intensity > 0.4) return '#f9731699'; // violet-400 60%
-      if (intensity > 0.2) return '#f9731666'; // violet-400 40%
-      return '#f9731633'; // violet-400 20%
+      if (intensity > 0.8) return '#22c55e'; // green-400
+      if (intensity > 0.6) return '#22c55ecc'; // green-400 80%
+      if (intensity > 0.4) return '#22c55e99'; // green-400 60%
+      if (intensity > 0.2) return '#22c55e66'; // green-400 40%
+      return '#22c55e33'; // green-400 20%
     } else {
-      if (intensity > 0.8) return '#f97316'; // violet-500
-      if (intensity > 0.6) return '#f97316cc'; // violet-500 80%
-      if (intensity > 0.4) return '#f9731699'; // violet-500 60%
-      if (intensity > 0.2) return '#f9731666'; // violet-500 40%
-      return '#f9731633'; // violet-500 20%
+      if (intensity > 0.8) return '#22c55e'; // green-500
+      if (intensity > 0.6) return '#22c55ecc'; // green-500 80%
+      if (intensity > 0.4) return '#22c55e99'; // green-500 60%
+      if (intensity > 0.2) return '#22c55e66'; // green-500 40%
+      return '#22c55e33'; // green-500 20%
     }
   };
 
@@ -309,8 +309,8 @@ export default function UserWorldMap({ data }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">Not enough data yet</div>
-          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Start getting conversations to see insights</div>
+          <div className="text-neutral-400 dark:text-neutral-500 text-sm">Not enough data yet</div>
+          <div className="text-neutral-300 dark:text-neutral-600 text-xs mt-1">Start getting conversations to see insights</div>
         </div>
       </div>
     );
@@ -380,9 +380,9 @@ export default function UserWorldMap({ data }) {
         {/* Legend */}
         <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm rounded-md px-2 py-2">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#f9731633' : '#f9731633' }}></div>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#f9731699' : '#f9731699' }}></div>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#f97316' : '#f97316' }}></div>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#22c55e33' : '#22c55e33' }}></div>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#22c55e99' : '#22c55e99' }}></div>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isDark ? '#22c55e' : '#22c55e' }}></div>
             <span className="text-xs text-white ml-1">Activity</span>
           </div>
         </div>

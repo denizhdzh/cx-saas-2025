@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const COLORS = {
-  light: '#f97316', // violet-500
-  dark: '#f97316'   // violet-400
+  light: '#22c55e', // green-500
+  dark: '#22c55e'   // green-400
 };
 
 export default function ReturnUserChart({ data = [] }) {
@@ -28,10 +28,10 @@ export default function ReturnUserChart({ data = [] }) {
 
   const total = data.reduce((sum, item) => sum + (item.value || 0), 0);
 
-  // Create gradient colors based on violet
+  // Create gradient colors based on green
   const chartData = data.map((item, index) => {
     const opacity = 0.4 + (index * 0.3); // Gradual opacity increase
-    const rgb = isDark ? '249, 115, 22' : '249, 115, 22'; // violet colors
+    const rgb = isDark ? '34, 197, 94' : '34, 197, 94'; // green colors
     return {
       ...item,
       fill: `rgba(${rgb}, ${opacity})`
@@ -66,8 +66,8 @@ export default function ReturnUserChart({ data = [] }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">Not enough data yet</div>
-          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Start getting conversations to see insights</div>
+          <div className="text-neutral-400 dark:text-neutral-500 text-sm">Not enough data yet</div>
+          <div className="text-neutral-300 dark:text-neutral-600 text-xs mt-1">Start getting conversations to see insights</div>
         </div>
       </div>
     );
@@ -108,7 +108,7 @@ export default function ReturnUserChart({ data = [] }) {
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: entry.fill }}
             />
-            <span className="text-xs font-medium text-stone-700 dark:text-stone-300">
+            <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
               {entry.name}: {entry.value}
             </span>
           </div>

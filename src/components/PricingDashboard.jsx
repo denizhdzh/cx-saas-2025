@@ -186,7 +186,7 @@ export default function PricingDashboard() {
     return (
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-900 dark:border-stone-50"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900 dark:border-neutral-50"></div>
         </div>
       </div>
     );
@@ -198,32 +198,32 @@ export default function PricingDashboard() {
       <div className="mb-12">
         <button
           onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-stone-500 hover:text-stone-900 dark:hover:text-stone-50 transition-colors mb-6"
+          className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-50 transition-colors mb-6"
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} className="w-4 h-4" />
           <span className="text-sm">Back</span>
         </button>
-        <h1 className="text-2xl font-thin text-stone-900 dark:text-stone-50">Billing & Usage</h1>
-        <div className="w-12 h-px bg-stone-900 dark:bg-stone-50 mt-4"></div>
+        <h1 className="text-2xl font-thin text-neutral-900 dark:text-neutral-50">Billing & Usage</h1>
+        <div className="w-12 h-px bg-neutral-900 dark:bg-neutral-50 mt-4"></div>
       </div>
 
       {/* Usage Progress Bar - Show for all users */}
       {subscriptionData && (
-        <div className="mb-12 p-6 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700">
+        <div className="mb-12 p-6 bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-medium text-stone-900 dark:text-stone-50">
+              <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-50">
                 {subscriptionData.plan === 'free' ? 'One-Time Message Credits' : 'Monthly Usage'}
               </h3>
               <span className="text-sm text-orange-500 capitalize">
                 {subscriptionData.plan} Plan
               </span>
             </div>
-            <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400 mb-3">
+            <div className="flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400 mb-3">
               <span>{subscriptionData.messagesUsed.toLocaleString()} messages</span>
               <span>{subscriptionData.messageLimit.toLocaleString()} messages {subscriptionData.plan === 'free' ? 'total' : 'limit'}</span>
             </div>
-            <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-3">
+            <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-3">
               <div
                 className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 rounded-full transition-all duration-300"
                 style={{
@@ -231,7 +231,7 @@ export default function PricingDashboard() {
                 }}
               ></div>
             </div>
-            <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+            <div className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
               {subscriptionData.plan === 'free'
                 ? `${formatNumber(subscriptionData.messageLimit - subscriptionData.messagesUsed)} credits remaining (does not renew)`
                 : `${((subscriptionData.messagesUsed / subscriptionData.messageLimit) * 100).toFixed(1)}% used this month`
@@ -249,8 +249,8 @@ export default function PricingDashboard() {
               onClick={() => setIsYearly(false)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 !isYearly
-                  ? 'bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900'
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+                  ? 'bg-neutral-800 dark:bg-neutral-100 text-neutral-50 dark:text-neutral-900'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
               }`}
             >
               Monthly
@@ -259,8 +259,8 @@ export default function PricingDashboard() {
               onClick={() => setIsYearly(true)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${
                 isYearly
-                  ? 'bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900'
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+                  ? 'bg-neutral-800 dark:bg-neutral-100 text-neutral-50 dark:text-neutral-900'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
               }`}
             >
               Yearly
@@ -273,8 +273,8 @@ export default function PricingDashboard() {
           {/* Current Plan */}
           <div className="mb-12">
             <div className="text-center">
-              <p className="text-stone-600 dark:text-stone-400">
-                You're currently on the <span className="font-medium text-stone-900 dark:text-stone-50">Free Plan</span>
+              <p className="text-neutral-600 dark:text-neutral-400">
+                You're currently on the <span className="font-medium text-neutral-900 dark:text-neutral-50">Free Plan</span>
               </p>
             </div>
           </div>
@@ -296,30 +296,30 @@ export default function PricingDashboard() {
                 </div>
               )}
 
-              <div className={`bg-white dark:bg-stone-800/50 rounded-xl border p-6 h-full flex flex-col ${
-                plan.popular ? 'border-orange-500' : 'border-stone-200 dark:border-stone-700'
+              <div className={`bg-white dark:bg-neutral-800/50 rounded-xl border p-6 h-full flex flex-col ${
+                plan.popular ? 'border-orange-500' : 'border-neutral-200 dark:border-neutral-700'
               }`}>
                 {/* Header */}
                 <div className="mb-6">
                   <div className="flex items-center gap-3 mb-3">
-                    <HugeiconsIcon icon={Icon} className="w-8 h-8 text-stone-900 dark:text-stone-50" />
-                    <h3 className="text-xl font-semibold text-stone-900 dark:text-stone-50">{plan.name}</h3>
+                    <HugeiconsIcon icon={Icon} className="w-8 h-8 text-neutral-900 dark:text-neutral-50" />
+                    <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-50">{plan.name}</h3>
                   </div>
-                  <p className="text-sm text-stone-600 dark:text-stone-400">{plan.description}</p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">{plan.description}</p>
                 </div>
 
                 {/* Price */}
                 <div className="mb-6">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-stone-900 dark:text-stone-50 transition-all duration-300">
+                    <span className="text-3xl font-bold text-neutral-900 dark:text-neutral-50 transition-all duration-300">
                       ${isYearly ? Math.round(getYearlyPrice(plan.monthlyPrice) / 12) : plan.monthlyPrice}
                     </span>
-                    <span className="text-stone-500 dark:text-stone-400 text-sm">
+                    <span className="text-neutral-500 dark:text-neutral-400 text-sm">
                       /month
                     </span>
                   </div>
                   {isYearly && (
-                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 animate-slide-down">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 animate-slide-down">
                       ${getYearlyPrice(plan.monthlyPrice)} billed yearly
                     </p>
                   )}
@@ -337,10 +337,10 @@ export default function PricingDashboard() {
                         <HugeiconsIcon
                           icon={isEnabled ? Tick01Icon : Cancel01Icon}
                           className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
-                            isEnabled ? 'text-green-600 dark:text-green-400' : 'text-stone-400'
+                            isEnabled ? 'text-green-600 dark:text-green-400' : 'text-neutral-400'
                           }`}
                         />
-                        <span className="text-sm text-stone-700 dark:text-stone-300">
+                        <span className="text-sm text-neutral-700 dark:text-neutral-300">
                           {displayValue ? `${displayValue} ${feature.name}` : feature.name}
                         </span>
                       </div>
@@ -351,7 +351,7 @@ export default function PricingDashboard() {
                 {/* Note */}
                 {plan.note && (
                   <div className="mb-4 p-2 bg-orange-500/5 rounded-lg">
-                    <p className="text-xs text-stone-600 dark:text-stone-400 text-center">{plan.note}</p>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400 text-center">{plan.note}</p>
                   </div>
                 )}
 
@@ -372,13 +372,13 @@ export default function PricingDashboard() {
 
       {/* Manage Billing Section - Only show if HAS active subscription */}
       {hasActiveSubscription && (
-      <div className="mt-12 p-6 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700">
+      <div className="mt-12 p-6 bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
-            <h3 className="text-lg font-medium text-stone-900 dark:text-stone-50 mb-1">
+            <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-50 mb-1">
               Manage Your Subscription
             </h3>
-            <p className="text-sm text-stone-600 dark:text-stone-400">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
               View invoices, update payment method, or cancel your subscription
             </p>
           </div>
@@ -397,25 +397,25 @@ export default function PricingDashboard() {
       {/* Billing History - Show if there are any billings */}
       {billings.length > 0 && (
         <div className="mt-12">
-          <h2 className="text-xl font-thin text-stone-900 dark:text-stone-50 mb-6">Billing History</h2>
-          <div className="bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden">
+          <h2 className="text-xl font-thin text-neutral-900 dark:text-neutral-50 mb-6">Billing History</h2>
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-stone-200 dark:border-stone-700">
-                    <th className="text-left py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                  <tr className="border-b border-neutral-200 dark:border-neutral-700">
+                    <th className="text-left py-4 px-6 text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                    <th className="text-left py-4 px-6 text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
                       Description
                     </th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                    <th className="text-left py-4 px-6 text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
                       Amount
                     </th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                    <th className="text-left py-4 px-6 text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="text-right py-4 px-6 text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
+                    <th className="text-right py-4 px-6 text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
                       Invoice
                     </th>
                   </tr>
@@ -425,20 +425,20 @@ export default function PricingDashboard() {
                     <tr
                       key={billing.id}
                       className={`${
-                        index !== billings.length - 1 ? 'border-b border-stone-200 dark:border-stone-700' : ''
-                      } hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors`}
+                        index !== billings.length - 1 ? 'border-b border-neutral-200 dark:border-neutral-700' : ''
+                      } hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors`}
                     >
-                      <td className="py-4 px-6 text-sm text-stone-900 dark:text-stone-50">
+                      <td className="py-4 px-6 text-sm text-neutral-900 dark:text-neutral-50">
                         {new Date(billing.paidAt).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
                         })}
                       </td>
-                      <td className="py-4 px-6 text-sm text-stone-700 dark:text-stone-300">
+                      <td className="py-4 px-6 text-sm text-neutral-700 dark:text-neutral-300">
                         {billing.billingReason === 'subscription_create' ? 'Initial Subscription' : 'Monthly Renewal'}
                       </td>
-                      <td className="py-4 px-6 text-sm font-medium text-stone-900 dark:text-stone-50">
+                      <td className="py-4 px-6 text-sm font-medium text-neutral-900 dark:text-neutral-50">
                         ${billing.amount.toFixed(2)} {billing.currency}
                       </td>
                       <td className="py-4 px-6">
@@ -464,7 +464,7 @@ export default function PricingDashboard() {
                             href={billing.invoicePdf}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-50 transition-colors"
+                            className="text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50 transition-colors"
                           >
                             <HugeiconsIcon icon={Download01Icon} className="w-4 h-4" />
                           </a>
@@ -482,11 +482,11 @@ export default function PricingDashboard() {
       {/* FAQ Section */}
       <div className="mt-20">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-thin text-stone-900 dark:text-stone-50">Questions?</h2>
-          <div className="w-8 h-px bg-stone-900 dark:bg-stone-50 mx-auto mt-4"></div>
+          <h2 className="text-2xl font-thin text-neutral-900 dark:text-neutral-50">Questions?</h2>
+          <div className="w-8 h-px bg-neutral-900 dark:bg-neutral-50 mx-auto mt-4"></div>
         </div>
         <div className="text-center">
-          <p className="text-stone-600 dark:text-stone-400">Need help choosing a plan? Contact our team.</p>
+          <p className="text-neutral-600 dark:text-neutral-400">Need help choosing a plan? Contact our team.</p>
         </div>
       </div>
     </div>

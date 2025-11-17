@@ -72,16 +72,16 @@ export default function SentimentChart({ data = [] }) {
           className="backdrop-blur-sm rounded-lg shadow-xl p-3 border"
           style={{
             backgroundColor: isDark ? 'rgba(28, 25, 23, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            borderColor: '#f97316'
+            borderColor: '#22c55e'
           }}
         >
           <div className="flex items-center gap-2">
             <span className="text-2xl">{item.icon}</span>
             <div>
-              <p className="text-sm font-bold text-stone-900 dark:text-stone-50">
+              <p className="text-sm font-bold text-neutral-900 dark:text-neutral-50">
                 {item.label}
               </p>
-              <p className="text-xs text-stone-600 dark:text-stone-400">
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
                 {item.count} {item.count === 1 ? 'message' : 'messages'}
               </p>
             </div>
@@ -103,7 +103,7 @@ export default function SentimentChart({ data = [] }) {
           cx={cx}
           cy={cy}
           r={5}
-          fill="#f97316"
+          fill="#22c55e"
           stroke={isDark ? '#1c1917' : '#ffffff'}
           strokeWidth={2}
         />
@@ -128,8 +128,8 @@ export default function SentimentChart({ data = [] }) {
         >
           <defs>
             <linearGradient id="sentimentGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#f97316" stopOpacity={0.1}/>
+              <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/>
+              <stop offset="95%" stopColor="#22c55e" stopOpacity={0.1}/>
             </linearGradient>
           </defs>
           <CartesianGrid
@@ -151,15 +151,15 @@ export default function SentimentChart({ data = [] }) {
             axisLine={false}
             width={30}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#f97316', strokeWidth: 2 }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#22c55e', strokeWidth: 2 }} />
           <Area
             type="monotone"
             dataKey="count"
-            stroke="#f97316"
+            stroke="#22c55e"
             strokeWidth={3}
             fill="url(#sentimentGradient)"
             dot={<CustomDot />}
-            activeDot={{ r: 6, stroke: '#f97316', strokeWidth: 3 }}
+            activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 3 }}
             animationDuration={800}
             animationEasing="ease-out"
           />

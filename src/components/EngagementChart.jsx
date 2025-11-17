@@ -24,12 +24,12 @@ export default function EngagementChart({ data = {} }) {
 
   const total = chartDataArray.reduce((sum, item) => sum + item.value, 0);
 
-  // Create gradient colors based on orange
+  // Create gradient colors based on green
   const chartData = chartDataArray.map((item, index) => {
     const opacity = 0.3 + (index * 0.3); // Gradual opacity increase
     return {
       ...item,
-      fill: `rgba(249, 115, 22, ${opacity})`
+      fill: `rgba(34, 197, 94, ${opacity})`
     };
   });
 
@@ -48,7 +48,7 @@ export default function EngagementChart({ data = {} }) {
           <p className="text-sm font-semibold capitalize" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
             {data.name} Engagement
           </p>
-          <p className="text-xs mt-1" style={{ color: '#f97316' }}>
+          <p className="text-xs mt-1" style={{ color: '#22c55e' }}>
             {data.value} sessions ({percentage}%)
           </p>
         </div>
@@ -61,8 +61,8 @@ export default function EngagementChart({ data = {} }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">Not enough data yet</div>
-          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Start getting conversations to see insights</div>
+          <div className="text-neutral-400 dark:text-neutral-500 text-sm">Not enough data yet</div>
+          <div className="text-neutral-300 dark:text-neutral-600 text-xs mt-1">Start getting conversations to see insights</div>
         </div>
       </div>
     );
@@ -102,7 +102,7 @@ export default function EngagementChart({ data = {} }) {
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: entry.fill }}
             />
-            <span className="text-xs font-medium text-stone-700 dark:text-stone-300">
+            <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
               {entry.name}: {entry.value}
             </span>
           </div>

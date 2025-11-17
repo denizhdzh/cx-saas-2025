@@ -109,7 +109,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="w-full bg-stone-50 dark:bg-stone-900 sticky top-0 z-50">
+    <nav className="w-full bg-neutral-50 dark:bg-neutral-900 sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo and Brand */}
@@ -123,7 +123,7 @@ export default function Navbar() {
               alt="Orchis Logo"
               className="w-7 h-7"
             />
-            <span className="font-bold text-stone-900 dark:text-stone-50 text-md">ORCHIS</span>
+            <span className="font-bold text-neutral-900 dark:text-neutral-50 text-md">ORCHIS</span>
           </a>
 
           {/* Right Section: Alerts + User Profile */}
@@ -141,10 +141,10 @@ export default function Navbar() {
                     navigate(`/dashboard/${agentWithAlerts.id}?view=agentsettings&section=alerts`);
                   }
                 }}
-                className="relative p-2 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors cursor-pointer"
+                className="relative p-2 rounded-lg hover:bg-neutral-200 dark:md:hover:bg-neutral-800 transition-colors cursor-pointer"
                 title={`${unreadAlertsCount} unread security alert${unreadAlertsCount > 1 ? 's' : ''}`}
               >
-                <HugeiconsIcon icon={Alert02Icon} className="w-5 h-5 text-stone-500" />
+                <HugeiconsIcon icon={Alert02Icon} className="w-5 h-5 text-neutral-500" />
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                   {unreadAlertsCount > 9 ? '9+' : unreadAlertsCount}
                 </span>
@@ -155,9 +155,9 @@ export default function Navbar() {
             <div className="relative" ref={userDropdownRef}>
             <button
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-stone-200 dark:md:hover:bg-stone-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-neutral-200 dark:md:hover:bg-neutral-800 transition-colors cursor-pointer"
             >
-              <div className="w-7 h-7 bg-stone-900 dark:bg-stone-50 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-7 h-7 bg-neutral-900 dark:bg-neutral-50 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
                 {user?.photoURL ? (
                   <img
                     src={user.photoURL}
@@ -165,30 +165,30 @@ export default function Navbar() {
                     className="w-7 h-7 object-cover"
                   />
                 ) : (
-                  <span className="text-xs font-medium text-stone-50 dark:text-stone-900">
+                  <span className="text-xs font-medium text-neutral-50 dark:text-neutral-900">
                     {getInitials(user?.displayName)}
                   </span>
                 )}
               </div>
               <div className="flex-1 text-left">
-                <div className="text-sm font-semibold text-stone-900 dark:text-stone-50">
+                <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                   {user?.displayName || 'User'}
                 </div>
               </div>
-              <HugeiconsIcon icon={ArrowDown01Icon} className={`w-4 h-4 text-stone-500 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+              <HugeiconsIcon icon={ArrowDown01Icon} className={`w-4 h-4 text-neutral-500 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             {isUserDropdownOpen && (
-              <div className="absolute top-full right-0 min-w-[200px] mt-1 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg shadow-lg z-10">
+              <div className="absolute top-full right-0 min-w-[200px] mt-1 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg z-10">
                 <div className="p-1 space-y-0.5">
                   {/* Message Credits */}
                   <div className="px-2 py-2 mb-1">
-                    <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 mb-1">
+                    <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-1">
                       <span>Credits</span>
                       <span>{messageCredits.limit - messageCredits.used} / {messageCredits.limit}</span>
                     </div>
-                    <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-1.5">
+                    <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-1.5">
                       <div
                         className="bg-orange-500 h-1.5 rounded-full transition-all"
                         style={{ width: `${messageCredits.limit > 0 ? ((messageCredits.limit - messageCredits.used) / messageCredits.limit) * 100 : 0}%` }}
@@ -198,27 +198,27 @@ export default function Navbar() {
 
                   <button
                     onClick={handleSettings}
-                    className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
+                    className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-neutral-800 dark:md:hover:bg-neutral-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
                   >
-                    <HugeiconsIcon icon={Settings03Icon} className="w-4 h-4 text-stone-500 group-hover:text-white dark:md:group-hover:text-black" />
-                    <span className="text-sm font-medium text-stone-900 dark:text-stone-50 dark:md:group-hover:text-black group-hover:text-white">Settings</span>
+                    <HugeiconsIcon icon={Settings03Icon} className="w-4 h-4 text-neutral-500 group-hover:text-white dark:md:group-hover:text-black" />
+                    <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50 dark:md:group-hover:text-black group-hover:text-white">Settings</span>
                   </button>
 
                   <button
                     onClick={handleBilling}
-                    className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
+                    className="w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-neutral-800 dark:md:hover:bg-neutral-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
                   >
-                    <HugeiconsIcon icon={CreditCardIcon} className="w-4 h-4 text-stone-500 group-hover:text-white dark:md:group-hover:text-black" />
-                    <span className="text-sm font-medium text-stone-900 dark:text-stone-50 dark:md:group-hover:text-black group-hover:text-white">Billing</span>
+                    <HugeiconsIcon icon={CreditCardIcon} className="w-4 h-4 text-neutral-500 group-hover:text-white dark:md:group-hover:text-black" />
+                    <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50 dark:md:group-hover:text-black group-hover:text-white">Billing</span>
                   </button>
 
-                  <div className="border-t border-stone-100 dark:border-stone-700 mt-1">
+                  <div className="border-t border-neutral-100 dark:border-neutral-700 mt-1">
                     <button
                       onClick={handleLogout}
-                      className="mt-1 w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-stone-800 dark:md:hover:bg-stone-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
+                      className="mt-1 w-full flex items-center gap-1 px-2 py-1 text-left rounded-md hover:bg-neutral-800 dark:md:hover:bg-neutral-50 hover:text-white dark:md:hover:text-black transition-colors group cursor-pointer"
                     >
-                      <HugeiconsIcon icon={SquareArrowMoveRightUpIcon} className="w-4 h-4 text-stone-500 group-hover:text-white dark:md:group-hover:text-black" />
-                      <span className="text-sm font-medium text-stone-900 dark:text-stone-50 dark:md:group-hover:text-black group-hover:text-white">Log out</span>
+                      <HugeiconsIcon icon={SquareArrowMoveRightUpIcon} className="w-4 h-4 text-neutral-500 group-hover:text-white dark:md:group-hover:text-black" />
+                      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-50 dark:md:group-hover:text-black group-hover:text-white">Log out</span>
                     </button>
                   </div>
                 </div>

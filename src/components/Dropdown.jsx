@@ -31,12 +31,12 @@ export default function Dropdown({
   return (
     <div className={className}>
       {label && (
-        <label className="block text-xs font-medium text-stone-900 dark:text-stone-50 mb-1">
+        <label className="block text-xs font-medium text-neutral-900 dark:text-neutral-50 mb-1">
           {label}
         </label>
       )}
       {description && (
-        <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
           {description}
         </p>
       )}
@@ -44,27 +44,27 @@ export default function Dropdown({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-50 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors text-left"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-50 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-left"
         >
           <div className="flex-1 min-w-0">
             <div className="text-sm truncate">
               {selectedOption?.label || placeholder}
             </div>
             {selectedOption?.description && (
-              <div className="text-xs text-stone-500 dark:text-stone-400 truncate mt-0.5">
+              <div className="text-xs text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
                 {selectedOption.description}
               </div>
             )}
           </div>
           <ChevronDownIcon
-            className={`w-4 h-4 text-stone-500 flex-shrink-0 transition-transform ${
+            className={`w-4 h-4 text-neutral-500 flex-shrink-0 transition-transform ${
               isOpen ? 'rotate-180' : ''
             }`}
           />
         </button>
 
         {isOpen && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
             <div className="p-1">
               {options.map((option) => (
                 <button
@@ -76,15 +76,15 @@ export default function Dropdown({
                   }}
                   className={`w-full flex flex-col gap-1 px-3 py-2 text-left rounded-md transition-colors ${
                     value === option.value
-                      ? 'bg-stone-100 dark:bg-stone-800'
-                      : 'hover:bg-stone-50 dark:hover:bg-stone-800/50'
+                      ? 'bg-neutral-100 dark:bg-neutral-800'
+                      : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
                   }`}
                 >
-                  <div className="text-sm font-medium text-stone-900 dark:text-stone-50">
+                  <div className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
                     {option.label}
                   </div>
                   {option.description && (
-                    <div className="text-xs text-stone-500 dark:text-stone-400">
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
                       {option.description}
                     </div>
                   )}

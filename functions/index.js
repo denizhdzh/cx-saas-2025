@@ -674,6 +674,64 @@ exports.chatWithAgentExternal = onRequest({
   }
 });
 
+// Helper: Get past conversation summaries for context
+async function getPastConversationContext(userId, agentId, anonymousUserId, currentConversationId) {
+  try {
+    // Get last 2 conversations (exclude current one)
+    const conversationsRef = db.collection('users').doc(userId)
+      .collection('agents').doc(agentId)
+      .collection('sessions').doc(anonymousUserId)
+      .collection('conversations');
+
+    const snapshot = await conversationsRef
+      .where('conversationId', '!=', currentConversationId)
+      .orderBy('conversationId', 'desc')
+      .orderBy('lastMessageTime', 'desc')
+      .limit(2)
+      .get();
+
+    if (snapshot.empty) {
+      console.log('📭 No past conversations found');
+      return null;
+    }
+
+    const summaries = [];
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+
+      // Try to get analysis summary first
+      if (data.detailedAnalysis?.conversationSummary) {
+        summaries.push(data.detailedAnalysis.conversationSummary);
+      } else if (data.conversationSummary) {
+        // Fallback to basic summary
+        summaries.push(`${data.conversationSummary.firstMessage.substring(0, 100)}`);
+      } else {
+        // Last resort: get first few messages
+        const messagesSnapshot = await conversationsRef.doc(doc.id).collection('messages')
+          .orderBy('timestamp', 'asc')
+          .limit(3)
+          .get();
+
+        if (!messagesSnapshot.empty) {
+          const msgs = messagesSnapshot.docs.map(m => {
+            const msg = m.data();
+            return `${msg.role}: ${msg.content.substring(0, 80)}`;
+          }).join('; ');
+          summaries.push(msgs);
+        }
+      }
+    }
+
+    if (summaries.length === 0) return null;
+
+    console.log(`📚 Loaded ${summaries.length} past conversation summaries`);
+    return summaries.join('\n- ');
+  } catch (error) {
+    console.error('⚠️ Error loading past conversations:', error);
+    return null; // Non-blocking, continue without past context
+  }
+}
+
 // Shared chat processing function
 async function processChatMessage(agentId, message, sessionId, conversationHistory, userId, anonymousUserId, sessionData) {
   try {
@@ -775,7 +833,14 @@ async function processChatMessage(agentId, message, sessionId, conversationHisto
       .collection('agents').doc(agentId)
       .collection('sessions').doc(anonymousUserId);
     const existingSessionDoc = await userSessionRef.get();
-    const savedUserName = existingSessionDoc.exists ? existingSessionDoc.data()?.userName : null;
+    const userData = existingSessionDoc.exists ? existingSessionDoc.data() : {};
+    const savedUserName = userData?.userName || null; // Ensure null if undefined/empty
+
+    // Get current conversationId
+    const currentConversationId = sessionData?.currentConversation?.conversationId || `conv_${Date.now()}`;
+
+    // Load past conversation context (last 2 conversations)
+    const pastConversationContext = await getPastConversationContext(userId, agentId, anonymousUserId, currentConversationId);
 
     let pageContext = '';
     if (pageContent) {
@@ -861,17 +926,13 @@ async function processChatMessage(agentId, message, sessionId, conversationHisto
     // Count conversation messages (needed before name section)
     const conversationMessageCount = conversationHistory.length + 1; // +1 for current message
 
+    console.log(`🔍 DEBUG: savedUserName=${JSON.stringify(savedUserName)}, conversationMessageCount=${conversationMessageCount}, conversationHistory.length=${conversationHistory.length}`);
+
     // Build personalized user context for AI
     let personalizedContext = '';
 
-    // User identity
-    if (savedUserName) {
-      personalizedContext += `\n👤 USER: ${savedUserName} (USE THEIR NAME!)`;
-    } else if (conversationMessageCount <= 1) {
-      personalizedContext += `\n👤 USER: Unknown - PROACTIVELY ASK: "May I know your name?" in your greeting`;
-    } else {
-      personalizedContext += `\n👤 USER: Unknown - ask naturally when appropriate`;
-    }
+    // User identity - REMOVED (will be in RULE #1 instead)
+    // No personalized context for name here to avoid confusion
 
     // Location
     if (userLocation?.city && userLocation?.country) {
@@ -923,18 +984,24 @@ ${personalizedContext}
 
 KNOWLEDGE BASE:
 ${context}
+${pastConversationContext ? `\n\n📚 PAST CONVERSATIONS WITH THIS USER:\n- ${pastConversationContext}\n(Use this context to provide continuity - reference previous topics if relevant)` : ''}
+
+🚨 RULE #1 (HIGHEST PRIORITY - NON-NEGOTIABLE):
+${!savedUserName
+  ? '⚠️⚠️⚠️ NO USER NAME DETECTED ⚠️⚠️⚠️\nYOU MUST ASK: "May I know your name?" in this response.\nEven if they ask a question, ask for their name FIRST, then answer.\nExample: "I\'d be happy to help! May I know your name first? 😊"'
+  : `✅ User's name is ${savedUserName} - USE IT naturally in your conversation (e.g., "Hi ${savedUserName}!", "${savedUserName}, here's...")`}
 
 YOUR TASK:
-1. ${!savedUserName && conversationMessageCount <= 1 ? '⚠️ CRITICAL: This is the first message and you don\'t know their name. YOU MUST ask "May I know your name?" in your greeting. This is MANDATORY.' : 'Answer the user\'s question naturally and conversationally'}
+1. Follow RULE #1 above (name asking/using)
 2. ONLY answer questions about ${agentName} - politely decline unrelated topics
-3. If you don't have specific information, say: "I don't have that detail yet, but I can help with [related topic]"
-4. Keep responses concise (2-3 sentences) unless complexity requires more
-5. Use a warm, friendly tone - like a helpful human colleague
+3. Keep responses concise (2-3 sentences) unless complexity requires more
+4. Be warm, friendly, and conversational - like a helpful human colleague
+5. Read previous conversation to maintain context and continuity
 
 RESPOND WITH JSON ONLY:
 {
-  "reply": "your response (warm, natural, helpful)",
-  "userName": "extract if user shares name this message (e.g. 'I'm John' or 'My name is Sarah' → extract 'John'/'Sarah'), otherwise null",
+  "reply": "your response (warm, natural, conversational)",
+  "userName": "ALWAYS include this field: extract name if user shares it (e.g. 'I'm John' → 'John'), otherwise null",
   "isRelevant": false (ONLY include if question is completely unrelated to ${agentName}),
   "relevanceScore": 0-100 (ONLY include if isRelevant=false)
 }
@@ -945,10 +1012,11 @@ RELEVANCE RULES:
 - If you don't know the answer but it's about ${agentName}, still isRelevant=true (just say you don't know)
 
 Examples:
-1. First message (no name): "Hello!" → {"reply": "Hi there! 👋 Welcome to ${agentName}. May I know your name? How can I help you today?"}
-2. "What's your pricing?" → {"reply": "Let me help you with our pricing..."}
-3. "How do I make pizza?" → {"reply": "I can only help with questions about ${agentName}. What would you like to know about our services?", "isRelevant": false, "relevanceScore": 0}
-4. "I'm Sarah, what features do you have?" → {"reply": "Nice to meet you, Sarah! Let me tell you about our key features...", "userName": "Sarah"}`
+1. First message (no name): "Hello!" → {"reply": "Hi there! 👋 Welcome to ${agentName}. May I know your name? How can I help you today?", "userName": null}
+2. First message with question: "What's your pricing?" → {"reply": "Hello! 👋 May I know your name? I'd be happy to explain our pricing to you!", "userName": null}
+3. "I'm Sarah, what features do you have?" → {"reply": "Nice to meet you, Sarah! Let me tell you about our key features...", "userName": "Sarah"}
+4. With saved name: "What about discounts?" → {"reply": "Great question, ${savedUserName}! We offer several discount options...", "userName": null}
+5. Off-topic: "How do I make pizza?" → {"reply": "I can only help with questions about ${agentName}. What would you like to know about our services?", "isRelevant": false, "relevanceScore": 0, "userName": null}`
       }
     ];
 
@@ -967,6 +1035,11 @@ Examples:
     });
 
     console.log(`💬 Sending ${quickMessages.length} messages to AI (${conversationHistory.length} history)`);
+    if (conversationHistory.length > 0) {
+      console.log(`📜 Last 3 history messages:`, JSON.stringify(conversationHistory.slice(-3).map(m => `${m.role}: ${m.content.substring(0, 50)}...`)));
+    } else {
+      console.log(`⚠️ No conversation history - this is either first message OR history not being sent from widget!`);
+    }
 
     // Quick AI call
     const quickCompletion = await getOpenAI().chat.completions.create({
@@ -1574,51 +1647,6 @@ Respond with valid JSON only:
   }
 }
 
-// Generate embed code
-exports.generateEmbedCode = onCall(async (request) => {
-  if (!request.auth) {
-    throw new Error('User must be authenticated');
-  }
-
-  const { agentId } = request.data;
-  
-  try {
-    // Get agent data (using user structure)
-    const agentDoc = await db.collection('users').doc(request.auth.uid).collection('agents').doc(agentId).get();
-    if (!agentDoc.exists) {
-      throw new Error('Agent not found');
-    }
-    
-    const agent = agentDoc.data();
-    
-    // Generate simple embed code - widget fetches config from database automatically
-    const hasHMAC = agent.secretKey && agent.allowedDomains && agent.allowedDomains.length > 0;
-
-    const embedCode = `<!-- Orchis Chatbot -->
-<script>
-(function(){
-  if(!window.OrchisChatbot){
-    const script = document.createElement('script');
-    script.src = 'https://orchis.app/chatbot-widget.js';
-    script.onload = function() {
-      if(window.OrchisChatbot) {
-        window.OrchisChatbot.init({
-          agentId: '${agentId}'${hasHMAC ? `,\n          allowedDomains: ${JSON.stringify(agent.allowedDomains)},\n          secretKey: '${agent.secretKey}'` : ''}
-        });
-      }
-    };
-    document.head.appendChild(script);
-  }
-})();
-</script>`;
-
-    return { embedCode };
-    
-  } catch (error) {
-    console.error('Error generating embed code:', error);
-    throw new Error('Failed to generate embed code');
-  }
-});
 
 // Generate dynamic sitemap
 exports.generateSitemap = onRequest({
@@ -2524,319 +2552,3 @@ exports.addTrainingData = onCall({
     throw new Error(`Failed to add training data: ${error.message}`);
   }
 });
-
-// Update chunk with AI (intelligently replace specific info)
-exports.updateChunkWithAI = onCall({
-  timeoutSeconds: 120,
-  memory: '512MiB'
-}, async (request) => {
-  if (!request.auth) {
-    throw new Error('User must be authenticated');
-  }
-
-  const { agentId, chunkId, oldInfo, newInfo, originalContent } = request.data;
-  const userId = request.auth.uid;
-
-  try {
-    console.log(`🤖 Updating chunk ${chunkId} with AI`);
-    console.log(`📝 Replacing "${oldInfo}" with "${newInfo}"`);
-
-    // Use AI to intelligently update the chunk content
-    const updatePrompt = `You are a precise text editor. Update the following text by replacing "${oldInfo}" with "${newInfo}", while keeping everything else exactly the same.
-
-Original text:
-${originalContent}
-
-Instructions:
-- Only replace "${oldInfo}" with "${newInfo}"
-- Keep all other text, formatting, and structure identical
-- If the old info appears multiple times, replace all occurrences
-- Return ONLY the updated text, no explanations
-
-Updated text:`;
-
-    // Rate limiting
-    const now = Date.now();
-    const timeSinceLastCall = now - lastApiCall;
-    if (timeSinceLastCall < MIN_API_INTERVAL) {
-      await delay(MIN_API_INTERVAL - timeSinceLastCall);
-    }
-    lastApiCall = Date.now();
-
-    const completion = await getOpenAI().chat.completions.create({
-      model: "gpt-4.1-nano",
-      messages: [
-        {
-          role: "system",
-          content: "You are a precise text editor. Only make the requested changes, nothing more."
-        },
-        {
-          role: "user",
-          content: updatePrompt
-        }
-      ],
-      max_completion_tokens: 2000,
-      temperature: 0.1
-    });
-
-    const updatedContent = completion.choices[0].message.content.trim();
-    console.log(`✅ AI updated the content`);
-
-    // Generate new embedding for updated content
-    const embeddingResponse = await getOpenAI().embeddings.create({
-      model: "text-embedding-ada-002",
-      input: updatedContent,
-    });
-
-    const newEmbedding = embeddingResponse.data[0].embedding;
-
-    // Update the chunk in Firestore
-    const chunkRef = db.collection('users').doc(userId)
-      .collection('agents').doc(agentId)
-      .collection('chunks').doc(chunkId);
-
-    await chunkRef.update({
-      content: updatedContent,
-      embedding: newEmbedding,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      'metadata.lastUpdated': new Date().toISOString(),
-      'metadata.updateHistory': admin.firestore.FieldValue.arrayUnion({
-        oldInfo: oldInfo,
-        newInfo: newInfo,
-        updatedAt: new Date().toISOString()
-      })
-    });
-
-    console.log(`✅ Chunk ${chunkId} updated successfully`);
-
-    return {
-      success: true,
-      updatedContent: updatedContent,
-      message: 'Chunk updated successfully'
-    };
-
-  } catch (error) {
-    console.error('❌ Error updating chunk:', error);
-    throw new Error(`Failed to update chunk: ${error.message}`);
-  }
-});
-
-exports.initializeUser = onCall({ cors: true }, async (request) => {
-  try {
-    const userId = request.auth?.uid;
-
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-
-    // Only create if doesn't exist
-    if (!userDoc.exists) {
-      console.log('📝 Creating new user document for:', userId);
-
-      const userData = {
-        displayName: request.auth.token.name || 'User',
-        email: request.auth.token.email,
-        photoURL: request.auth.token.picture || null,
-        subscriptionStatus: 'free',
-        subscriptionPlan: 'free',
-        messageLimit: 100,
-        messagesUsed: 0,
-        agentLimit: 1,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      };
-
-      await userRef.set(userData);
-      console.log('✅ User document created successfully!');
-
-      // Send welcome email
-      if (userData.email) {
-        await sendEmail({
-          to: userData.email,
-          subject: '🎉 Welcome to Orchis!',
-          html: `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1 style="color: #f97316; font-size: 28px; margin-bottom: 20px;">🎉 Welcome to Orchis!</h1>
-
-              <p style="font-size: 16px; color: #44403c; line-height: 1.6;">
-                Hey ${userData.displayName}!
-              </p>
-
-              <p style="font-size: 16px; color: #44403c; line-height: 1.6;">
-                You're all set! Now let's create your first AI agent and start automating customer support.
-              </p>
-
-              <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 8px 0; color: #78350f;">Quick Start:</h3>
-                <ul style="margin: 8px 0; padding-left: 20px; color: #78350f;">
-                  <li>Create your AI agent</li>
-                  <li>Upload your knowledge base</li>
-                  <li>Embed widget on your website</li>
-                </ul>
-              </div>
-
-              <a href="https://orchis.app/dashboard"
-                 style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 16px;">
-                Create Your First Agent →
-              </a>
-
-              <p style="margin-top: 32px; color: #78716c; font-size: 14px;">
-                Need help? Reply to this email anytime!
-              </p>
-
-              <p style="color: #a8a29e; font-size: 12px; margin-top: 24px;">
-                — Team Orchis
-              </p>
-            </div>
-          `
-        });
-        console.log('📧 Welcome email sent to:', userData.email);
-      }
-
-      return { success: true, created: true, userData };
-    }
-
-    console.log('✅ User document already exists');
-    return { success: true, created: false, userData: userDoc.data() };
-
-  } catch (error) {
-    console.error('❌ Error initializing user:', error);
-    throw new Error('Failed to initialize user: ' + error.message);
-  }
-});
-
-// Get admin stats with enriched analytics
-exports.getAdminStats = onCall({ cors: true }, async (request) => {
-  try {
-    console.log('📊 Fetching admin stats...');
-
-    // Get all users
-    const usersSnapshot = await db.collection('users').get();
-    const totalUsers = usersSnapshot.size;
-
-    // Count users by subscription plan
-    const planDistribution = {
-      free: 0,
-      starter: 0,
-      growth: 0,
-      scale: 0
-    };
-
-    let totalAgents = 0;
-    let totalConversations = 0;
-    let totalMessages = 0;
-
-    // Analytics aggregates
-    const sentimentBreakdown = { positive: 0, neutral: 0, negative: 0 };
-    const categoryBreakdown = { Support: 0, Sales: 0, Question: 0, Complaint: 0, General: 0 };
-    const intentBreakdown = { question: 0, complaint: 0, browsing: 0, purchase: 0, greeting: 0 };
-    let urgentMessages = 0; // urgency >= 7
-    let ticketSuggestions = 0;
-    let irrelevantQuestions = 0;
-    let totalConfidence = 0;
-    let confidenceCount = 0;
-
-    // Process each user
-    for (const userDoc of usersSnapshot.docs) {
-      const userData = userDoc.data();
-      const plan = userData.subscriptionPlan || 'free';
-
-      // Count plan distribution
-      if (planDistribution.hasOwnProperty(plan)) {
-        planDistribution[plan]++;
-      }
-
-      // Get agents for this user
-      const agentsSnapshot = await userDoc.ref.collection('agents').get();
-      totalAgents += agentsSnapshot.size;
-
-      // For each agent, get sessions and analyze messages
-      for (const agentDoc of agentsSnapshot.docs) {
-        const sessionsSnapshot = await agentDoc.ref.collection('sessions').get();
-
-        for (const sessionDoc of sessionsSnapshot.docs) {
-          const conversationsSnapshot = await sessionDoc.ref.collection('conversations').get();
-          totalConversations += conversationsSnapshot.size;
-
-          for (const conversationDoc of conversationsSnapshot.docs) {
-            const messagesSnapshot = await conversationDoc.ref.collection('messages')
-              .where('role', '==', 'assistant')
-              .get();
-
-            for (const messageDoc of messagesSnapshot.docs) {
-              const messageData = messageDoc.data();
-              totalMessages++;
-
-              // Extract analytics if available
-              const analytics = messageData.analytics;
-              if (analytics) {
-                // User Sentiment
-                if (analytics.userSentiment) {
-                  sentimentBreakdown[analytics.userSentiment] = (sentimentBreakdown[analytics.userSentiment] || 0) + 1;
-                }
-
-                // Category
-                if (analytics.category) {
-                  categoryBreakdown[analytics.category] = (categoryBreakdown[analytics.category] || 0) + 1;
-                }
-
-                // Intent
-                if (analytics.intent) {
-                  intentBreakdown[analytics.intent] = (intentBreakdown[analytics.intent] || 0) + 1;
-                }
-
-                // Urgency
-                if (analytics.urgency >= 7) {
-                  urgentMessages++;
-                }
-
-                // Ticket suggestions
-                if (analytics.shouldCreateTicket) {
-                  ticketSuggestions++;
-                }
-
-                // Relevance
-                if (analytics.isRelevant === false) {
-                  irrelevantQuestions++;
-                }
-
-                // AI Confidence
-                if (analytics.aiConfidence) {
-                  totalConfidence += analytics.aiConfidence;
-                  confidenceCount++;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    const avgConfidence = confidenceCount > 0 ? Math.round(totalConfidence / confidenceCount) : 0;
-
-    console.log('✅ Admin stats fetched successfully');
-
-    return {
-      totalUsers,
-      planDistribution,
-      totalAgents,
-      totalConversations,
-      totalMessages,
-      sentimentBreakdown,
-      categoryBreakdown,
-      intentBreakdown,
-      urgentMessages,
-      ticketSuggestions,
-      irrelevantQuestions,
-      avgConfidence
-    };
-
-  } catch (error) {
-    console.error('❌ Error fetching admin stats:', error);
-    throw new Error('Failed to fetch admin stats: ' + error.message);
-  }
-});
-

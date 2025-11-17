@@ -10,8 +10,8 @@ const INTENT_CONFIG = {
 };
 
 const COLORS = {
-  light: '#f973164a', // violet-500
-  dark: '#f973164a'   // violet-400
+  light: '#22c55e4a', // violet-500
+  dark: '#22c55e4a'   // violet-400
 };
 
 export default function IntentChart({ data = [] }) {
@@ -79,7 +79,7 @@ export default function IntentChart({ data = [] }) {
               <p className="text-sm font-semibold" style={{ color: isDark ? '#fafaf9' : '#1c1917' }}>
                 {item.label}
               </p>
-              <p className="text-xs" style={{ color: item.color }}>
+              <p className="text-xs" style={{ color: '#22c55e' }}>
                 {item.count} {item.count === 1 ? 'message' : 'messages'}
               </p>
             </div>
@@ -94,8 +94,8 @@ export default function IntentChart({ data = [] }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-stone-400 dark:text-stone-500 text-sm">No intent data yet</div>
-          <div className="text-stone-300 dark:text-stone-600 text-xs mt-1">Intent tracking will appear here</div>
+          <div className="text-neutral-400 dark:text-neutral-500 text-sm">No intent data yet</div>
+          <div className="text-neutral-300 dark:text-neutral-600 text-xs mt-1">Intent tracking will appear here</div>
         </div>
       </div>
     );

@@ -25,7 +25,7 @@ function App() {
         <AgentProvider>
           <NotificationProvider>
             <BrowserRouter>
-          <div className="min-h-screen bg-stone-900 dark:bg-stone-900">
+          <div className="min-h-screen bg-neutral-900 dark:bg-neutral-900">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/signin" element={<SignInPage />} />
